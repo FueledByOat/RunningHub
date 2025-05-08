@@ -37,14 +37,12 @@ activity_id = 2058321970
 # Initialize Dash app
 create_dash_app(app, get_latest_polyline(activity_id), activity_id, DB_PATH)
 
-
 @app.route("/")
 def home():
     return render_template("home.html")
 
-
-@app.route("/activity")
-def single_activity():
+@app.route("/activity/")
+def activity():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -52,7 +50,7 @@ def single_activity():
     activity = cur.fetchone()
     conn.close()
 
-    return render_template("single_activity.html", activity=activity)
+    return render_template("activity.html", activity=activity)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)
