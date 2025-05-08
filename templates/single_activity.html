@@ -1,35 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <title>Activity Analysis</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Analysis | RunningHub</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 </head>
-
 <body>
+  <header class="site-header">
     <div class="container">
-        <h1>Activity: {{ activity.name }}</h1>
-        <p><strong>ID:</strong> {{ activity.id }} | <strong>City:</strong> {{ activity.location_city }} |
-            <strong>Date:</strong> {{ activity.start_date }}</p>
-
-        <div class="activity-banner">
-            <div><strong>Distance:</strong> {{ activity.distance }} km</div>
-            <div><strong>Time:</strong> {{ activity.moving_time }} min</div>
-            <div><strong>Avg Speed:</strong> {{ activity.average_speed }} km/h</div>
-            <div><strong>Max Speed:</strong> {{ activity.max_speed }} km/h</div>
-            <div><strong>Cadence:</strong> {{ activity.average_cadence }} spm</div>
-            <div><strong>Energy:</strong> {{ activity.kilojoules }} kJ</div>
-            <div><strong>HR Avg:</strong> {{ activity.average_heartrate }} bpm</div>
-            <div><strong>HR Max:</strong> {{ activity.max_heartrate }} bpm</div>
-            <div><strong>Shoes:</strong> {{ activity.gear_id }}</div>
-        </div>
-
-        <div class="map-container">
-            <iframe src="/map/" width="100%" height="100%" style="border:none;"></iframe>
-        </div>
+      <h1 class="logo">RUNNING<span>HUB</span></h1>
+      <p class="tagline">Detailed activity analysis</p>
     </div>
-</body>
+  </header>
 
+  <main class="container">
+    <h2 class="page-title">{{ activity.name }}</h2>
+    <p class="activity-meta">
+      <i class="fas fa-hashtag"></i> {{ activity.id }} |
+      <i class="fas fa-map-marker-alt"></i> {{ activity.location_city }} |
+      <i class="fas fa-calendar"></i> {{ activity.start_date }}
+    </p>
+
+    <div class="activity-banner">
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-route"></i></div>
+        <div class="metric-value">{{ activity.distance }} mi</div>
+        <div class="metric-label">Distance</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-clock"></i></div>
+        <div class="metric-value">{{ activity.moving_time }} min</div>
+        <div class="metric-label">Time</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-tachometer-alt"></i></div>
+        <div class="metric-value">{{ activity.average_speed }} mi/h</div>
+        <div class="metric-label">Avg Speed</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-bolt"></i></div>
+        <div class="metric-value">{{ activity.max_speed }} mi/h</div>
+        <div class="metric-label">Max Speed</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-shoe-prints"></i></div>
+        <div class="metric-value">{{ activity.average_cadence }} spm</div>
+        <div class="metric-label">Cadence</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-fire"></i></div>
+        <div class="metric-value">{{ activity.kilojoules }} kJ</div>
+        <div class="metric-label">Energy</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-heartbeat"></i></div>
+        <div class="metric-value">{{ activity.average_heartrate }} bpm</div>
+        <div class="metric-label">HR Avg</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-heart"></i></div>
+        <div class="metric-value">{{ activity.max_heartrate }} bpm</div>
+        <div class="metric-label">HR Max</div>
+      </div>
+      
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-running"></i></div>
+        <div class="metric-value">{{ activity.gear_id }}</div>
+        <div class="metric-label">Shoes</div>
+      </div>
+    </div>
+
+    <div class="btn-container">
+      <a href="{{ url_for('home') }}" class="btn">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </a>
+      <a href="#" class="btn btn-accent">
+        <i class="fas fa-download"></i> Export Data
+      </a>
+    </div>
+
+    <div class="map-container">
+        <iframe src="/map/" width="100%" height="100%" style="border:none;"></iframe>
+    </div>
+  </main>
+  
+  <footer class="site-footer">
+    <div class="container">
+      <p>RunningHub &copy; 2025 | Your personal running analytics platform</p>
+    </div>
+  </footer>
+</body>
 </html>
