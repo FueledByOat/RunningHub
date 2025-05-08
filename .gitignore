@@ -1,0 +1,5 @@
+docker_compose.yml
+dockerfile.txt
+secrets.env
+/venv
+*.db

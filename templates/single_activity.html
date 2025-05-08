@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Activity Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>Activity: {{ activity.name }}</h1>
+        <p><strong>ID:</strong> {{ activity.id }} | <strong>City:</strong> {{ activity.location_city }} |
+            <strong>Date:</strong> {{ activity.start_date }}</p>
+
+        <div class="activity-banner">
+            <div><strong>Distance:</strong> {{ activity.distance }} km</div>
+            <div><strong>Time:</strong> {{ activity.moving_time }} min</div>
+            <div><strong>Avg Speed:</strong> {{ activity.average_speed }} km/h</div>
+            <div><strong>Max Speed:</strong> {{ activity.max_speed }} km/h</div>
+            <div><strong>Cadence:</strong> {{ activity.average_cadence }} spm</div>
+            <div><strong>Energy:</strong> {{ activity.kilojoules }} kJ</div>
+            <div><strong>HR Avg:</strong> {{ activity.average_heartrate }} bpm</div>
+            <div><strong>HR Max:</strong> {{ activity.max_heartrate }} bpm</div>
+            <div><strong>Shoes:</strong> {{ activity.gear_id }}</div>
+        </div>
+
+        <div class="map-container">
+            <iframe src="/map/" width="100%" height="100%" style="border:none;"></iframe>
+        </div>
+    </div>
+</body>
+
+</html>

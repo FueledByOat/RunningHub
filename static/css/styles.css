@@ -1,0 +1,67 @@
+/* Color palette centered on #0c1559 (deep blue) */
+:root {
+    --primary: #0c1559;
+    --accent: #ffcc00;
+    --background: #f4f4f9;
+    --text: #333;
+    --white: #fff;
+  }
+  
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background);
+    color: var(--text);
+  }
+  
+  .container {
+    max-width: 960px;
+    margin: 50px auto;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  h1 {
+    color: var(--primary);
+  }
+  
+  .btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background-color: var(--primary);
+    color: var(--white);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn:hover {
+    background-color: #1a2780; /* slightly lighter */
+  }
+  
+  .activity-banner {
+    background-color: var(--white);
+    border-left: 8px solid var(--primary);
+    padding: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: space-between;
+  }
+  
+  .activity-banner div {
+    flex: 1 1 30%;
+    min-width: 150px;
+  }
+  
+  .map-container {
+    height: 400px;
+    margin-top: 30px;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  
