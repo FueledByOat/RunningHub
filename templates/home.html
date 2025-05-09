@@ -31,12 +31,10 @@
       </a>
     </div>
 
-    <div class="map-container">
-      <!-- Placeholder for featured map or dashboard visualization -->
-      <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color:var(--gray-light);">
-        <i class="fas fa-map-marked-alt" style="font-size:3rem; color:var(--primary);"></i>
-      </div>
-    </div>
+    <div class="heatmap-container-home">
+      <iframe src="{{ url_for('density_redirect') }}?start_date={{ '2000-01-01' }}" width="100%" height="100%" style="border:none;">
+</iframe>
+  </div>
   </main>
   
   <footer class="site-footer">

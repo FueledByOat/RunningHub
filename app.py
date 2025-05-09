@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 import sqlite3
 from dash_app import create_dash_app
+from density_dash import create_density_dash
 import pandas as pd
 import datetime
 import json
@@ -16,12 +17,13 @@ import utils.format_utils as format_utils # custom utils
 
 app = Flask(__name__) # Flask app
 
-activity_id = db_utils.get_latest_activity() # load latest activity_id as default
-dash_app = create_dash_app(app) # Initialize Dash app
+LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
+dash_app = create_dash_app(app) # Initialize Dash activities page app
+create_density_dash(app, db_path=db_utils.DB_PATH)
 
 @app.route("/")
 def home():
-    return render_template("home.html", activity = activity_id)
+    return render_template("home.html", activity = LATEST_ACTIVITY_ID)
 
 @app.route("/activity/")
 def activity():
@@ -52,7 +54,7 @@ def activity():
 @app.route('/statistics/')
 def statistics():
     """Render the statistics page with data from the database"""
-    period = request.args.get('period', 'month')  # Default to month view
+    period = request.args.get('period', 'week')  # Default to week view
     
     # Get current date
     now = datetime.now()
@@ -158,7 +160,6 @@ def statistics():
             continue
     
     # Get personal records
-    # For simplicity, we'll use fastest 5K, 10K, and longest run as examples
     personal_records = []
     
     # Fastest 5K (approximately 5000m)
@@ -179,6 +180,29 @@ def statistics():
         
         personal_records.append({
             'distance': '5K',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest 8K (approximately 80000m)
+    fastest_8k = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 760000 AND 8400
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_8k:
+        date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_8k['moving_time'] // 60
+        seconds = fastest_8k['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_8k['moving_time'] / 60) / (fastest_8k['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': '8K',
             'time': time_str,
             'pace': pace,
             'date': date_str
@@ -207,6 +231,52 @@ def statistics():
             'date': date_str
         })
     
+    # Fastest HM Half Marathon (approximately 21,097m)
+    fastest_HM = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 20750 AND 22000
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_HM:
+        date_str = datetime.strptime(fastest_HM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_HM['moving_time'] // 60
+        seconds = fastest_HM['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_HM['moving_time'] / 60) / (fastest_HM['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': 'Half Marathon',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest FM Full Marathon (approximately 42195m)
+    fastest_FM = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 41800 AND 43050
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_FM:
+        date_str = datetime.strptime(fastest_FM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_FM['moving_time'] // 60
+        seconds = fastest_FM['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_FM['moving_time'] / 60) / (fastest_FM['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': 'Full Marathon',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
     # Longest run
     longest_run = conn.execute(
         '''SELECT id, name, distance, moving_time, start_date_local
@@ -225,21 +295,26 @@ def statistics():
         pace = round((longest_run['moving_time'] / 60) / (longest_run['distance'] / 1000), 2)
         
         personal_records.append({
-            'distance': f"{distance_km} km",
+            'distance': f"Longest Run: {distance_km}",
             'time': time_str,
             'pace': pace,
             'date': date_str
         })
-    
+
     # Get shoe usage data
     shoes = conn.execute(
-        '''SELECT gear_id, COUNT(*) as activities,
-           SUM(distance) as total_distance,
+        '''SELECT coalesce(g.model_name, a.gear_id) as gear_id, 
+            COUNT(*) as activities,
+           SUM(a.distance) as total_distance,
            MAX(start_date_local) as last_used
-           FROM activities
-           WHERE gear_id IS NOT NULL AND gear_id != ''
-           GROUP BY gear_id
-           ORDER BY last_used DESC'''
+           FROM activities as a
+           LEFT JOIN gear as g 
+           on a.gear_id = g.gear_id
+           WHERE a.gear_id IS NOT NULL AND a.gear_id != ''
+           GROUP BY a.gear_id
+           HAVING MAX(start_date_local) >= ?
+           ORDER BY last_used DESC
+           ''', (start_date,)
     ).fetchall()
     
     shoe_data = []
@@ -262,6 +337,9 @@ def statistics():
            LIMIT 5'''
     ).fetchall()
     
+
+
+
     activities_list = []
     for activity in recent_activities:
         date_str = datetime.strptime(activity['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b')
@@ -306,12 +384,37 @@ def statistics():
         pace_values=json.dumps(pace_values),
         personal_records=personal_records,
         shoes=shoe_data,
-        recent_activities=activities_list
+        recent_activities=activities_list,
+        start_date = start_date
     )
 
 @app.route("/map/")
 def dashredirect():
     return redirect(f"/map/?id={request.args.get('id')}")
+
+
+
+@app.route("/density/")
+def density_redirect():
+    # trying to route this and stats together for jinja changes
+    period = request.args.get('period', 'week')  # Default to week view
+    # Get current date
+    now = datetime.now()
+    print(request.referrer)
+    zoom = 12 if "stat" in request.referrer else 10
+    # Determine date range based on period
+    if period == 'week':
+        start_date = (now - timedelta(days=7)).strftime('%Y-%m-%d')
+    elif period == 'month':
+        start_date = (now - timedelta(days=30)).strftime('%Y-%m-%d')
+    elif period == 'year':
+        start_date = (now - relativedelta(years=1)).strftime('%Y-%m-%d')
+    else:  # 'all'
+        start_date = '2000-01-01'  # A date far in the past
+
+    start_date = request.args.get("start_date", "2024-01-01")
+    print(zoom)
+    return redirect(f"/density_dash/?start_date={start_date}&zoom={zoom}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)
