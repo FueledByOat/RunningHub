@@ -51,7 +51,13 @@
         <div class="metric-value">{{ activity.max_speed }} mi/h</div>
         <div class="metric-label">Max Speed</div>
       </div>
-      
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="far fa-clock"></i></div>
+        <div class="metric-value">{{ activity.average_pace }}</div>
+        <div class="metric-label">Avg Pace</div>
+      </div>
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-shoe-prints"></i></div>
         <div class="metric-value">{{ activity.average_cadence }} spm</div>
@@ -86,9 +92,6 @@
     <div class="btn-container">
       <a href="{{ url_for('home') }}" class="btn">
         <i class="fas fa-arrow-left"></i> Back to Home
-      </a>
-      <a href="#" class="btn btn-accent">
-        <i class="fas fa-download"></i> Export Data
       </a>
     </div>
 
