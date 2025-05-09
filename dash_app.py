@@ -46,7 +46,7 @@ def create_dash_app(flask_app, polyline_str, activity_id=None, db_path=None):
 
     # Get stream data
     distance, heartrate, altitude = get_streams_data(activity_id, db_path) if activity_id and db_path else ([], [], [])
-
+    distance = [i / 1609 for i in distance]
     # Interpolate both to a common X axis (distance in meters)
     x_ref = np.linspace(0, max(distance) if distance else 1, num=500)  # Common X-axis
     hr_interp = interpolate_to_common_x(x_ref, heartrate, distance)
@@ -55,8 +55,8 @@ def create_dash_app(flask_app, polyline_str, activity_id=None, db_path=None):
     # Dash layout
     dash_app.layout = html.Div([
         html.H3("Route & Metrics Overview"),
-        dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=13,
-               style={'width': '100%', 'height': '500px'}, children=[
+        dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=14,
+               style={'width': '100%', 'height': '400px'}, children=[
                    dl.TileLayer(),
                    dl.Polyline(positions=[[p['lat'], p['lon']] for p in lat_lng], color='blue')
                ]),
