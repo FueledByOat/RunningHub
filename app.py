@@ -31,9 +31,15 @@ def activity():
     conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("SELECT * FROM activities ORDER BY start_date DESC LIMIT 1")
-    # for testing
-    cur.execute(f"SELECT * FROM activities WHERE id = {activity_id}")
+    cur.execute("""SELECT a.*,  coalesce(g.model_name, a.gear_id) as gear_name
+                FROM activities as a
+                LEFT JOIN gear as g 
+                on a.gear_id = g.gear_id
+                WHERE a.gear_id IS NOT NULL AND a.gear_id != ''
+                AND a.type in ('Run', 'Bike')
+                ORDER BY a.start_date 
+                DESC LIMIT 1""")
+
     activity = dict(cur.fetchone())
     # print(activity.distance)
     
@@ -50,6 +56,156 @@ def activity():
     activity['kilojoules'] = round(activity['kilojoules'])        
 
     return render_template("activity.html", activity=activity)
+
+@app.route('/trophy_room/')
+def trophy_room():
+
+    conn = sqlite3.connect(db_utils.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.row_factory = db_utils.dict_factory
+    # Get personal records
+    personal_records = []
+    
+    # Fastest 5K (approximately 5000m)
+    fastest_5k = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 4500 AND 5500
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_5k:
+        date_str = datetime.strptime(fastest_5k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_5k['moving_time'] // 60
+        seconds = fastest_5k['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_5k['moving_time'] / 60) / (fastest_5k['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': '5K',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest 8K (approximately 80000m)
+    fastest_8k = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 760000 AND 8400
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_8k:
+        date_str = datetime.strptime(fastest_8k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_8k['moving_time'] // 60
+        seconds = fastest_8k['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_8k['moving_time'] / 60) / (fastest_8k['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': '8K',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest 10K (approximately 10000m)
+    fastest_10k = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 9500 AND 10500
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_10k:
+        date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_10k['moving_time'] // 60
+        seconds = fastest_10k['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_10k['moving_time'] / 60) / (fastest_10k['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': '10K',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest HM Half Marathon (approximately 21,097m)
+    fastest_HM = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 20750 AND 22000
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_HM:
+        date_str = datetime.strptime(fastest_HM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_HM['moving_time'] // 60
+        seconds = fastest_HM['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_HM['moving_time'] / 60) / (fastest_HM['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': 'Half Marathon',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Fastest FM Full Marathon (approximately 42195m)
+    fastest_FM = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run' AND distance BETWEEN 41800 AND 43050
+           ORDER BY moving_time ASC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if fastest_FM:
+        date_str = datetime.strptime(fastest_FM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = fastest_FM['moving_time'] // 60
+        seconds = fastest_FM['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        pace = round((fastest_FM['moving_time'] / 60) / (fastest_FM['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': 'Full Marathon',
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    
+    # Longest run
+    longest_run = conn.execute(
+        '''SELECT id, name, distance, moving_time, start_date_local
+           FROM activities
+           WHERE type = 'Run'
+           ORDER BY distance DESC
+           LIMIT 1'''
+    ).fetchone()
+    
+    if longest_run:
+        date_str = datetime.strptime(longest_run['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
+        minutes = longest_run['moving_time'] // 60
+        seconds = longest_run['moving_time'] % 60
+        time_str = f"{minutes}:{seconds:02d}"
+        distance_km = round(longest_run['distance'] / 1000, 2)
+        pace = round((longest_run['moving_time'] / 60) / (longest_run['distance'] / 1000), 2)
+        
+        personal_records.append({
+            'distance': f"Longest Run: {distance_km}",
+            'time': time_str,
+            'pace': pace,
+            'date': date_str
+        })
+    return render_template("trophy_room.html", personal_records=personal_records)
+
 
 @app.route('/statistics/')
 def statistics():
@@ -158,148 +314,6 @@ def statistics():
             pace_values.append(round(pace_minutes, 2))
         except (ValueError, ZeroDivisionError):
             continue
-    
-    # Get personal records
-    personal_records = []
-    
-    # Fastest 5K (approximately 5000m)
-    fastest_5k = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 4500 AND 5500
-           ORDER BY moving_time ASC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if fastest_5k:
-        date_str = datetime.strptime(fastest_5k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_5k['moving_time'] // 60
-        seconds = fastest_5k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        pace = round((fastest_5k['moving_time'] / 60) / (fastest_5k['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': '5K',
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
-    
-    # Fastest 8K (approximately 80000m)
-    fastest_8k = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 760000 AND 8400
-           ORDER BY moving_time ASC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if fastest_8k:
-        date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_8k['moving_time'] // 60
-        seconds = fastest_8k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        pace = round((fastest_8k['moving_time'] / 60) / (fastest_8k['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': '8K',
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
-    
-    # Fastest 10K (approximately 10000m)
-    fastest_10k = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 9500 AND 10500
-           ORDER BY moving_time ASC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if fastest_10k:
-        date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_10k['moving_time'] // 60
-        seconds = fastest_10k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        pace = round((fastest_10k['moving_time'] / 60) / (fastest_10k['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': '10K',
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
-    
-    # Fastest HM Half Marathon (approximately 21,097m)
-    fastest_HM = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 20750 AND 22000
-           ORDER BY moving_time ASC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if fastest_HM:
-        date_str = datetime.strptime(fastest_HM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_HM['moving_time'] // 60
-        seconds = fastest_HM['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        pace = round((fastest_HM['moving_time'] / 60) / (fastest_HM['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': 'Half Marathon',
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
-    
-    # Fastest FM Full Marathon (approximately 42195m)
-    fastest_FM = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 41800 AND 43050
-           ORDER BY moving_time ASC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if fastest_FM:
-        date_str = datetime.strptime(fastest_FM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_FM['moving_time'] // 60
-        seconds = fastest_FM['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        pace = round((fastest_FM['moving_time'] / 60) / (fastest_FM['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': 'Full Marathon',
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
-    
-    # Longest run
-    longest_run = conn.execute(
-        '''SELECT id, name, distance, moving_time, start_date_local
-           FROM activities
-           WHERE type = 'Run'
-           ORDER BY distance DESC
-           LIMIT 1'''
-    ).fetchone()
-    
-    if longest_run:
-        date_str = datetime.strptime(longest_run['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = longest_run['moving_time'] // 60
-        seconds = longest_run['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
-        distance_km = round(longest_run['distance'] / 1000, 2)
-        pace = round((longest_run['moving_time'] / 60) / (longest_run['distance'] / 1000), 2)
-        
-        personal_records.append({
-            'distance': f"Longest Run: {distance_km}",
-            'time': time_str,
-            'pace': pace,
-            'date': date_str
-        })
 
     # Get shoe usage data
     shoes = conn.execute(
@@ -382,7 +396,6 @@ def statistics():
         pace_dates=pace_dates,
         # pace_dates=json.dumps(pace_dates),
         pace_values=json.dumps(pace_values),
-        personal_records=personal_records,
         shoes=shoe_data,
         recent_activities=activities_list,
         start_date = start_date
