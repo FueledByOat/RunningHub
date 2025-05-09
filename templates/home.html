@@ -20,7 +20,7 @@
 
   <main class="container">
     <div class="btn-container">
-      <a href="{{ url_for('activity') }}" class="btn">
+      <a href="{{ url_for('activity', id=activity) }}" class="btn">
         <i class="fas fa-running"></i> Latest Activity
       </a>
       <a href="{{ url_for('statistics') }}" class="btn">

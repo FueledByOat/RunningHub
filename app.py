@@ -7,93 +7,26 @@ import json
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for
 from dateutil.relativedelta import relativedelta
+import utils.db_utils as db_utils # custom utils
+import utils.format_utils as format_utils # custom utils
 
-app = Flask(__name__)
+# -------------------------------------
+# App setup and initialization
+# -------------------------------------
 
-def dict_factory(cursor, row):
-    """Convert database row objects to a dictionary"""
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+app = Flask(__name__) # Flask app
 
-def format_pace(distance_miles, total_seconds):
-        """
-        Calculates and formats the average pace per mile.
-
-        Args:
-            distance_miles (float): Total distance run in miles.
-            total_seconds (int): Total time taken in seconds.
-
-        Returns:
-            str: Formatted pace in minutes and seconds per mile (MM:SS).
-                Returns "Invalid input" if inputs are invalid.
-        """
-        if not isinstance(distance_miles, (int, float)) or not isinstance(total_seconds, int) or distance_miles <= 0 or total_seconds < 0:
-            return "Invalid input"
-
-        seconds_per_mile = total_seconds / distance_miles
-        minutes = int(seconds_per_mile // 60)
-        seconds = int(seconds_per_mile % 60)
-        return f"{minutes:02}:{seconds:02}"
-
-def format_time(total_seconds):
-        """
-        Calculates and formats the average pace per mile.
-
-        Args:
-            distance_miles (float): Total distance run in miles.
-            total_seconds (int): Total time taken in seconds.
-
-        Returns:
-            str: Formatted pace in minutes and seconds per mile (MM:SS).
-                Returns "Invalid input" if inputs are invalid.
-        """
-
-        minutes = int(total_seconds // 60)
-        seconds = int(total_seconds % 60)
-        return f"{minutes:02}:{seconds:02}"
-
-# Get polyline on startup to avoid race conditions
-def get_latest_activity():
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT id FROM activities ORDER BY start_date DESC LIMIT 1")
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else ""
-    except Exception as e:
-        print(f"Failed to get id: {e}")
-        return ""
-
-# Get polyline on startup to avoid race conditions
-def get_latest_polyline(activity_id_polyline):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cur = conn.cursor()
-        cur.execute(f"SELECT map_summary_polyline FROM activities WHERE id = {activity_id_polyline}")
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else ""
-    except Exception as e:
-        print(f"Failed to get polyline: {e}")
-        return ""
-
-DB_PATH = 'strava_data.db'
-activity_id = get_latest_activity()
-activity_id = 14393650080
-
-# Initialize Dash app
-create_dash_app(app, get_latest_polyline(activity_id), activity_id, DB_PATH)
+activity_id = db_utils.get_latest_activity() # load latest activity_id as default
+dash_app = create_dash_app(app) # Initialize Dash app
 
 @app.route("/")
 def home():
-    return render_template("home.html")
+    return render_template("home.html", activity = activity_id)
 
 @app.route("/activity/")
 def activity():
-    conn = sqlite3.connect(DB_PATH)
+    activity_id = request.args.get("id", type=int)
+    conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("SELECT * FROM activities ORDER BY start_date DESC LIMIT 1")
@@ -103,8 +36,8 @@ def activity():
     # print(activity.distance)
     
     activity['distance'] = round(activity['distance'] / 1609, 2)
-    activity['average_pace'] = format_pace(activity['distance'], activity['moving_time'])
-    activity['moving_time'] = format_time(activity['moving_time'])
+    activity['average_pace'] = format_utils.format_pace(activity['distance'], activity['moving_time'])
+    activity['moving_time'] = format_utils.format_time(activity['moving_time'])
     activity['moving_time_minutes'] = activity['moving_time']
     activity['average_cadence'] = int(round(activity['average_cadence'] * 2, 0))
     
@@ -138,9 +71,9 @@ def statistics():
         start_date = '2000-01-01'  # A date far in the past
         date_range = "All time"
     
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
-    conn.row_factory = dict_factory
+    conn.row_factory = db_utils.dict_factory
     
     # Count total activities in the period
     total_activities = conn.execute(
@@ -375,6 +308,10 @@ def statistics():
         shoes=shoe_data,
         recent_activities=activities_list
     )
+
+@app.route("/map/")
+def dashredirect():
+    return redirect(f"/map/?id={request.args.get('id')}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)

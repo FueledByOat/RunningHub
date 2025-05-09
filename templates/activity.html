@@ -14,7 +14,9 @@
 <body>
   <header class="site-header">
     <div class="container">
+      <a href="{{ url_for('home') }}">
       <h1 class="logo">RUNNING<span>HUB</span></h1>
+    </a>
       <p class="tagline">Detailed activity analysis</p>
     </div>
   </header>
@@ -96,7 +98,7 @@
     </div>
 
     <div class="map-container">
-        <iframe src="/map/" width="100%" height="100%" style="border:none;"></iframe>
+        <iframe src="{{ url_for('dashredirect') }}?id={{ activity['id'] }}" width="100%" height="100%" style="border:none;"></iframe>
     </div>
   </main>
   
