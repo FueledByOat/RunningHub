@@ -14,9 +14,9 @@ A modular, open-source project for runners and coaches to analyze running data, 
 
 | Feature           | Tool(s)                                                |
 | ----------------- | ------------------------------------------------------ |
-| Web Interface     | Flask or FastAPI                                       |
-| Dashboards        | Dash or Streamlit (for analytics), Grafana (for infra) |
-| Data Storage      | PostgreSQL + PostGIS                                   |
+| Web Interface     | Flask                                                  |
+| Dashboards        | Dash Leaflet                                           |
+| Data Storage      | SqLite + PostGIS                                   |
 | GPX Parsing       | `gpxpy`, `pandas`, `shapely`                           |
 | Metrics Analysis  | `pandas`, `scipy`, `plotly`, `numpy`                   |
 | ML Models         | `scikit-learn`, `ruptures`, `xgboost`                  |
