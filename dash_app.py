@@ -39,11 +39,12 @@ def create_dash_app(flask_app):
         decoded = dash_utils.decode_polyline(polyline_str)
         lat_lng = [{'lat': lat, 'lon': lon} for lat, lon in decoded]
 
-        distance, heartrate, altitude = dash_utils.get_streams_data(activity_id)
+        distance, heartrate, altitude, power = dash_utils.get_streams_data(activity_id)
         distance = [i / 1609 for i in distance]
         x_ref = np.linspace(0, max(distance) if distance else 1, num=500)
         hr_interp = dash_utils.interpolate_to_common_x(x_ref, heartrate, distance)
         alt_interp = dash_utils.interpolate_to_common_x(x_ref, altitude, distance)
+        power_interp = dash_utils.interpolate_to_common_x(x_ref, power, distance)
 
         map_component = dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=14,
                                 style={'width': '100%', 'height': '400px'}, children=[
@@ -62,6 +63,12 @@ def create_dash_app(flask_app):
                 figure=go.Figure(
                     data=[go.Scatter(x=x_ref, y=alt_interp, mode='lines', name='Altitude')],
                     layout=go.Layout(title='Altitude vs Distance', xaxis_title='Distance (mi)', yaxis_title='Meters')
+                )
+            ),
+            dcc.Graph(
+                figure=go.Figure(
+                    data=[go.Scatter(x=x_ref, y=power_interp, mode='lines', name='Power')],
+                    layout=go.Layout(title='Power (Watts) vs Distance', xaxis_title='Distance (mi)', yaxis_title='Power (Watts)')
                 )
             ),
         ])

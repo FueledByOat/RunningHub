@@ -31,15 +31,16 @@ def activity():
     conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
-    cur.execute("""SELECT a.*,  coalesce(g.model_name, a.gear_id) as gear_name
+    cur.execute("""SELECT a.*,  coalesce(concat(g.model_name, " ", g.nickname), a.gear_id) as gear_name
                 FROM activities as a
                 LEFT JOIN gear as g 
                 on a.gear_id = g.gear_id
-                WHERE a.gear_id IS NOT NULL AND a.gear_id != ''
+                WHERE a.id = ?
+                AND a.gear_id IS NOT NULL AND a.gear_id != ''
                 AND a.type in ('Run', 'Bike')
                 ORDER BY a.start_date 
-                DESC LIMIT 1""")
-
+                DESC LIMIT 1""", (activity_id,)
+    )
     activity = dict(cur.fetchone())
     # print(activity.distance)
     
@@ -53,7 +54,8 @@ def activity():
     activity['max_speed'] = round(activity['max_speed'], 1)
     activity['max_heartrate'] = round(activity['max_heartrate'])
     activity['average_heartrate'] = round(activity['average_heartrate'])
-    activity['kilojoules'] = round(activity['kilojoules'])        
+    activity['kilojoules'] = round(activity['kilojoules'])
+    activity['start_date'], activity['start_time'] = format_utils.date_format(activity['start_date'])
 
     return render_template("activity.html", activity=activity)
 
@@ -77,9 +79,7 @@ def trophy_room():
     
     if fastest_5k:
         date_str = datetime.strptime(fastest_5k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_5k['moving_time'] // 60
-        seconds = fastest_5k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(fastest_5k['moving_time'])
         pace = round((fastest_5k['moving_time'] / 60) / (fastest_5k['distance'] / 1000), 2)
         
         personal_records.append({
@@ -100,9 +100,7 @@ def trophy_room():
     
     if fastest_8k:
         date_str = datetime.strptime(fastest_8k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_8k['moving_time'] // 60
-        seconds = fastest_8k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(fastest_8k['moving_time'])
         pace = round((fastest_8k['moving_time'] / 60) / (fastest_8k['distance'] / 1000), 2)
         
         personal_records.append({
@@ -123,9 +121,7 @@ def trophy_room():
     
     if fastest_10k:
         date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_10k['moving_time'] // 60
-        seconds = fastest_10k['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(fastest_10k['moving_time'])
         pace = round((fastest_10k['moving_time'] / 60) / (fastest_10k['distance'] / 1000), 2)
         
         personal_records.append({
@@ -146,9 +142,7 @@ def trophy_room():
     
     if fastest_HM:
         date_str = datetime.strptime(fastest_HM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_HM['moving_time'] // 60
-        seconds = fastest_HM['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(fastest_HM['moving_time'])
         pace = round((fastest_HM['moving_time'] / 60) / (fastest_HM['distance'] / 1000), 2)
         
         personal_records.append({
@@ -169,9 +163,7 @@ def trophy_room():
     
     if fastest_FM:
         date_str = datetime.strptime(fastest_FM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = fastest_FM['moving_time'] // 60
-        seconds = fastest_FM['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(fastest_FM['moving_time'])
         pace = round((fastest_FM['moving_time'] / 60) / (fastest_FM['distance'] / 1000), 2)
         
         personal_records.append({
@@ -192,9 +184,7 @@ def trophy_room():
     
     if longest_run:
         date_str = datetime.strptime(longest_run['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
-        minutes = longest_run['moving_time'] // 60
-        seconds = longest_run['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+        time_str = format_utils.format_time(longest_run['moving_time'])
         distance_km = round(longest_run['distance'] / 1000, 2)
         pace = round((longest_run['moving_time'] / 60) / (longest_run['distance'] / 1000), 2)
         
@@ -317,7 +307,7 @@ def statistics():
 
     # Get shoe usage data
     shoes = conn.execute(
-        '''SELECT coalesce(g.model_name, a.gear_id) as gear_id, 
+        '''SELECT coalesce(concat(g.model_name, " ", g.nickname), a.gear_id) as gear_id, 
             COUNT(*) as activities,
            SUM(a.distance) as total_distance,
            MAX(start_date_local) as last_used
@@ -347,6 +337,7 @@ def statistics():
     recent_activities = conn.execute(
         '''SELECT id, name, distance, moving_time, start_date_local
            FROM activities
+           WHERE type in ("Run", "Bike")
            ORDER BY start_date_local DESC
            LIMIT 5'''
     ).fetchall()
@@ -358,10 +349,8 @@ def statistics():
     for activity in recent_activities:
         date_str = datetime.strptime(activity['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b')
         distance_km = round(activity['distance'] / 1000, 2)
-        
-        minutes = activity['moving_time'] // 60
-        seconds = activity['moving_time'] % 60
-        time_str = f"{minutes}:{seconds:02d}"
+
+        time_str = format_utils.format_time(activity['moving_time'])
         
         pace = round((activity['moving_time'] / 60) / (activity['distance'] / 1000), 2) if activity['distance'] > 0 else 0
         

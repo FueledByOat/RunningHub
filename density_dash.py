@@ -25,10 +25,14 @@ def get_latest_starting_coords(db_path):
     cur = conn.cursor()
     cur.execute("""SELECT start_latlng FROM activities 
                 WHERE start_latlng is not null
-                
-                order by start_date desc""")
+                and type in ("Run", "Bike")
+                order by start_date desc
+                limit 1""")
     rows = cur.fetchall()[0][0].strip("[]")
-    lat, lon = map(float, rows.split(",")) 
+    try:
+        lat, lon = map(float, rows.split(",")) 
+    except:
+        lat, lon = (35.6764, 139.6500)
     conn.close()
     return (lat, lon)
 
