@@ -37,7 +37,7 @@ def activity():
                 on a.gear_id = g.gear_id
                 WHERE a.id = ?
                 AND a.gear_id IS NOT NULL AND a.gear_id != ''
-                AND a.type in ('Run', 'Bike')
+                AND a.type in ('Run', 'Ride')
                 ORDER BY a.start_date 
                 DESC LIMIT 1""", (activity_id,)
     )
@@ -48,8 +48,10 @@ def activity():
     activity['average_pace'] = format_utils.format_pace(activity['distance'], activity['moving_time'])
     activity['moving_time'] = format_utils.format_time(activity['moving_time'])
     activity['moving_time_minutes'] = activity['moving_time']
-    activity['average_cadence'] = int(round(activity['average_cadence'] * 2, 0))
     
+    # Remove cadence for Rides
+    activity['average_cadence'] = 0 if activity['type'] == 'Ride' else activity['average_cadence']
+    activity['average_cadence'] = int(round(activity['average_cadence'] * 2, 0))
     activity['average_speed'] = round(activity['average_speed'], 1)
     activity['max_speed'] = round(activity['max_speed'], 1)
     activity['max_heartrate'] = round(activity['max_heartrate'])
@@ -337,7 +339,7 @@ def statistics():
     recent_activities = conn.execute(
         '''SELECT id, name, distance, moving_time, start_date_local
            FROM activities
-           WHERE type in ("Run", "Bike")
+           WHERE type in ("Run", "Ride")
            ORDER BY start_date_local DESC
            LIMIT 5'''
     ).fetchall()

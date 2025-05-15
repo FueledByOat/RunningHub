@@ -18,12 +18,12 @@ def dict_factory(cursor, row):
     return d
 
 def get_latest_activity(db_path = DB_PATH):
-    """Retrieves latest Run or Bike activity ID as int"""
+    """Retrieves latest Run or Ride activity ID as int"""
     try:
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
         cur.execute("""SELECT id FROM activities
-                    WHERE type in ("Run", "Bike")
+                    WHERE type in ("Run", "Ride")
                     ORDER BY start_date DESC LIMIT 1""")
         row = cur.fetchone()
         conn.close()

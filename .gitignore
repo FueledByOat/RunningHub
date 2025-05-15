@@ -4,3 +4,4 @@ secrets.env
 strava_data_pipeline.py
 /venv
 *.db
+*.bat
