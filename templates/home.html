@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
   <header class="site-header">
     <div class="container">
@@ -29,18 +32,23 @@
       <a href="{{ url_for('trophy_room') }}" class="btn btn-accent">
         <i class="fas fa-trophy"></i> Trophy Room
       </a>
+      <a href="{{ url_for('dashboard_redirect') }}" class="btn btn-accent">
+        <i class="fas fa-chart-line"></i> Dashboard
+      </a>
     </div>
 
     <div class="heatmap-container-home">
-      <iframe src="{{ url_for('density_redirect') }}?start_date={{ '2000-01-01' }}" width="100%" height="100%" style="border:none;">
-</iframe>
-  </div>
+      <iframe src="{{ url_for('density_redirect') }}?start_date={{ '2000-01-01' }}" width="100%" height="100%"
+        style="border:none;">
+      </iframe>
+    </div>
   </main>
-  
+
   <footer class="site-footer">
     <div class="container">
       <p>RunningHub &copy; 2025 | Your personal running analytics platform</p>
     </div>
   </footer>
 </body>
+
 </html>

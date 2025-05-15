@@ -1,5 +1,6 @@
 from flask import Flask, render_template
 import sqlite3
+from dash_dashboard_app.layout import create_dash_dashboard_app
 from dash_app import create_dash_app
 from density_dash import create_density_dash
 import pandas as pd
@@ -20,6 +21,7 @@ app = Flask(__name__) # Flask app
 LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
 dash_app = create_dash_app(app) # Initialize Dash activities page app
 create_density_dash(app, db_path=db_utils.DB_PATH)
+create_dash_dashboard_app(app, db_path=db_utils.DB_PATH)
 
 @app.route("/")
 def home():
@@ -419,6 +421,10 @@ def density_redirect():
     start_date = request.args.get("start_date", "2024-01-01")
     print(zoom)
     return redirect(f"/density_dash/?start_date={start_date}&zoom={zoom}")
+
+@app.route('/dashboard-redirect/')
+def dashboard_redirect():
+    return redirect('/dashboard/')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)
