@@ -314,3 +314,132 @@ def get_cadence_stability_data(db_path=DB_PATH):
     except Exception as e:
         print(f"Error in get_cadence_stability_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
+
+# def get_efficiency_data(db_path=DB_PATH):
+#     """
+    
+#     """
+#     try:
+#         conn = sqlite3.connect(db_path)
+        
+#         # Get streams data
+#         streams_df = pd.read_sql_query("""
+#             SELECT 
+#                 s.time_data,
+#                 s.distance_data,
+#                 s.heartrate_data
+#             FROM streams s
+#             limit 90
+#         """, conn)
+        
+#         conn.close()
+#         efficiency
+#         def calculate_cadence_stability(row):
+#             """
+#             Improved cadence stability calculation that:
+#             1. Filters out transition periods (acceleration/deceleration)
+#             2. Normalizes cadence relative to velocity
+#             3. Uses coefficient of variation as stability metric
+#             """
+#             if pd.isna(row['cadence_data']):
+#                 return pd.Series([0, 0, 0])
+                
+#             try:
+#                 cadence_data = json.loads(row['cadence_data'])
+#                 velocity_data = json.loads(row['velocity_smooth_data']) if not pd.isna(row['velocity_smooth_data']) else None
+                
+#                 # Filter out zero values
+#                 cadence_data = [c for c in cadence_data if c > 0]
+                
+#                 if not cadence_data:
+#                     return pd.Series([0, 0, 0])
+                
+#                 # If velocity data available, analyze cadence only during stable pace sections
+#                 if velocity_data and len(velocity_data) == len(cadence_data):
+#                     stable_indices = []
+                    
+#                     # Calculate velocity rolling average
+#                     window_size = min(5, len(velocity_data) - 1)
+#                     rolling_velocity = []
+                    
+#                     for i in range(len(velocity_data) - window_size + 1):
+#                         avg = sum(velocity_data[i:i+window_size]) / window_size
+#                         rolling_velocity.append(avg)
+                    
+#                     # Pad rolling velocity to match original length
+#                     rolling_velocity = [rolling_velocity[0]] * (window_size - 1) + rolling_velocity
+                    
+#                     # Find stable pace segments (velocity close to rolling average)
+#                     for i in range(len(velocity_data)):
+#                         if velocity_data[i] > 0 and abs(velocity_data[i] - rolling_velocity[i]) / rolling_velocity[i] < 0.1:
+#                             stable_indices.append(i)
+                    
+#                     if len(stable_indices) < 10:  # Not enough stable data points
+#                         # Fallback to using all non-zero data
+#                         filtered_cadence = cadence_data
+#                     else:
+#                         # Use only stable sections
+#                         filtered_cadence = [cadence_data[i] for i in stable_indices]
+#                 else:
+#                     filtered_cadence = cadence_data
+                
+#                 # Calculate statistics
+#                 avg_cadence = sum(filtered_cadence) / len(filtered_cadence)
+#                 variance = sum([(c - avg_cadence) ** 2 for c in filtered_cadence]) / len(filtered_cadence)
+#                 stdev = variance**0.5
+#                 cv = (stdev / avg_cadence * 100) if avg_cadence > 0 else 0
+                
+#                 return pd.Series([avg_cadence, stdev, cv])
+                
+#             except (json.JSONDecodeError, ValueError, TypeError, IndexError) as e:
+#                 print(f"Error processing cadence stability for activity {row['activity_id']}: {e}")
+#                 return pd.Series([0, 0, 0])
+        
+#         # Merge datasets and calculate cadence stability
+#         merged_df = activities_df.merge(streams_df, left_on='id', right_on='activity_id', how='left')
+#         merged_df[['avg_cadence', 'cadence_stdev', 'cadence_cv']] = merged_df.apply(calculate_cadence_stability, axis=1)
+#         merged_df['avg_pace_kmh'] = merged_df['average_speed'] * 3.6
+        
+#         # Clean up result dataframe
+#         result_df = merged_df[['id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv']]
+#         result_df = result_df.rename(columns={'id': 'activity_id'})
+        
+#         return result_df
+        
+#     except sqlite3.Error as e:
+#         print(f"Database error in get_cadence_stability_data: {e}")
+#         return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
+#     except Exception as e:
+#         print(f"Error in get_cadence_stability_data: {e}")
+#         return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
+
+def get_ctl_atl_tsb_data(db_path=DB_PATH):
+    """
+    Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        activities_df  = pd.read_sql_query("""
+        SELECT 
+            id,
+            moving_time,
+            weighted_average_watts,
+            kilojoules,
+            average_heartrate,
+            start_date
+        FROM activities
+        WHERE type = 'Run'
+        ORDER BY start_date DESC
+        LIMIT 90;
+        """, conn)
+        conn.close()
+        activities_df['training_load'] = activities_df['kilojoules']
+
+        # Compute CTL, ATL, TSB
+        activities_df['CTL'] = activities_df['training_load'].ewm(span=28).mean()
+        activities_df['ATL'] = activities_df['training_load'].ewm(span=7).mean()
+        activities_df['TSB'] = activities_df['CTL'] - activities_df['ATL']
+        return activities_df
+    except sqlite3.Error as e:
+        print(f"Database error in get_ctl_atl_tsb_data: {e}")
+        return pd.DataFrame(columns=['id', 'CTL', 'ATL', 'TSB'])

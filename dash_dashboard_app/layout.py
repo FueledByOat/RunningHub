@@ -92,10 +92,11 @@ def create_dash_dashboard_app(server, db_path):
         )
         
         value_text = f"{acwr_value:.2f}" if acwr_value is not None else "No data"
-        description = "Ratio of 7-day vs 28-day load.\nTarget: 0.8 - 1.3"
+        description = """\nACWR represents the ratio of 7-day (acute) to 28-day (chronic) workload.
+            Research suggests maintaining this ratio between 0.8-1.3 to minimize injury risk."""
         
         return metric_card(
-            "ACWR Trend", 
+            "Acute:Chronic Workload Ratio (ACWR) Trend", 
             value_text, 
             badge, 
             description, 
@@ -119,7 +120,9 @@ def create_dash_dashboard_app(server, db_path):
         )
         
         value_text = f"{hrd_value:.1f}%" if hrd_value is not None else "No data"
-        description = "Percent rise in HR over session.\nTarget: < 5%"
+        description = """\nHR drift measures the percentage increase in heart rate during a workout at constant intensity. R drift below 5% indicates good aerobic efficiency. 
+        Values between 5-10% suggest moderate fitness, while values above 10% 
+        indicate potential aerobic limitation or insufficient base training"""
         
         return metric_card(
             "Heart Rate Drift", 
@@ -146,7 +149,9 @@ def create_dash_dashboard_app(server, db_path):
         )
         
         value_text = f"{cv_value:.1f}%" if cv_value is not None else "No data"
-        description = "Coefficient of variation vs pace.\nTarget: < 4%"
+        description = """\nCadence stability measures the consistency of running cadence relative to pace.
+    Lower values indicate better running economy and neuromuscular control.
+    Values under 4% suggest excellent running form consistency."""
         
         return metric_card(
             "Cadence Stability", 
@@ -156,13 +161,100 @@ def create_dash_dashboard_app(server, db_path):
             trend_data,
             reference_line=4.0  # Reference line at the optimal threshold
         )
+    
+    def ctl_card(ctl_value, trend_data):
+        """
+            Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+        
+                Metrics:
+            - CTL (Chronic Training Load): 28-day exponentially weighted training load.
+                Calculation:
+            - Training Load is proxied by 'kilojoules' for now (can be refined).
+            - CTL = 28-day EMA of training load.
+            Thresholds:
+            - CTL: [50, 100] (Fitness Load)
+            Parameters:
+            - value: Latest value for the metric.
+            - trend_data: Historical trend data (list).
+            """
+        badge = status_badge(
+            ctl_value, 
+            [50, 100], 
+            ["Low Fitness", "Optimal Fitness", "High Load"],
+            ["warning", "success", "danger"]
+        )
+        
+        value_text = f"{ctl_value:.1f}%" if ctl_value is not None else "No data"
+        description = f"""{ctl_value} represents chronic load trends."""
+        
+        return metric_card(
+            "CTL", 
+            value_text, 
+            badge, 
+            description, 
+            trend_data,
+            reference_line=4.0  # Reference line at the optimal threshold
+        )
+    
+    def atl_card(atl_value, trend_data):
+            """
+                Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+            
+                """
+            badge = status_badge(
+                atl_value, 
+                [30, 80], 
+                ["Low Fatigue", "Optimal Load", "Overtrained"],
+                ["success", "warning", "danger"]
+            )
+            
+            value_text = f"{atl_value:.1f}%" if atl_value is not None else "No data"
+            description = f"""{atl_value} represents acute load trends."""
+            
+            return metric_card(
+                "ATL", 
+                value_text, 
+                badge, 
+                description, 
+                trend_data,
+                reference_line=4.0  # Reference line at the optimal threshold
+            )
+    
+    def tsb_card(tsb_value, trend_data):
+        """
+            Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+        
+            """
+        badge = status_badge(
+            tsb_value, 
+            [-10, 10], 
+            ["Deep Fatigue", "Balanced", "Fresh"],
+            ["danger", "success", "primary"]
+        )
+        
+        value_text = f"{tsb_value:.1f}%" if tsb_value is not None else "No data"
+        description = f"""{tsb_value} represents acute load trends."""
+        
+        return metric_card(
+            "TSB", 
+            value_text, 
+            badge, 
+            description, 
+            trend_data,
+            reference_line=4.0  # Reference line at the optimal threshold
+        )
 
-    def build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend):
+
+
+    def build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend, ctl_value, ctl_trend, atl_value, atl_trend, tsb_value, tsb_trend):
         """Build the complete dashboard row with all three metric cards"""
         return dbc.Row([
             dbc.Col(acwr_card(acwr_value, acwr_trend), md=4),
             dbc.Col(hrd_card(hrd_value, hrd_trend), md=4),
             dbc.Col(cadence_card(cv_value, cv_trend), md=4),
+            dbc.Col(ctl_card(ctl_value, ctl_trend), md=4),
+            dbc.Col(atl_card(atl_value, atl_trend), md=4),
+            dbc.Col(tsb_card(tsb_value, tsb_trend), md=4),
         ], className="mb-4")
  
     # --- Load and Process Data ---
@@ -173,6 +265,7 @@ def create_dash_dashboard_app(server, db_path):
         df_acwr = db_utils.get_acwr_data(db_path)
         df_hr_drift = db_utils.get_hr_drift_data(db_path)
         df_cadence = db_utils.get_cadence_stability_data(db_path)
+        df_ctl_atl_tsb = db_utils.get_ctl_atl_tsb_data(db_path)
         
         # Process ACWR data
         latest_acwr = df_acwr['acwr'].iloc[0] if not df_acwr.empty and 'acwr' in df_acwr.columns else None
@@ -186,6 +279,18 @@ def create_dash_dashboard_app(server, db_path):
         latest_cadence_cv = df_cadence['cadence_cv'].iloc[0] if not df_cadence.empty and 'cadence_cv' in df_cadence.columns else None
         cadence_cv_trend = df_cadence['cadence_cv'].head(14).tolist()[::-1] if not df_cadence.empty and 'cadence_cv' in df_cadence.columns else []
         
+        # Process CTL data
+        latest_ctl = df_ctl_atl_tsb['CTL'].iloc[0] if not df_ctl_atl_tsb.empty and 'CTL' in df_ctl_atl_tsb.columns else None
+        ctl_trend = df_ctl_atl_tsb['CTL'].head(14).tolist()[::-1] if not df_ctl_atl_tsb.empty and 'CTL' in df_ctl_atl_tsb.columns else []
+
+        # Process ATL data
+        latest_atl = df_ctl_atl_tsb['ATL'].iloc[0] if not df_ctl_atl_tsb.empty and 'ATL' in df_ctl_atl_tsb.columns else None
+        atl_trend = df_ctl_atl_tsb['ATL'].head(14).tolist()[::-1] if not df_ctl_atl_tsb.empty and 'ATL' in df_ctl_atl_tsb.columns else []
+
+        # Process TSB data
+        latest_tsb = df_ctl_atl_tsb['TSB'].iloc[0] if not df_ctl_atl_tsb.empty and 'TSB' in df_ctl_atl_tsb.columns else None
+        tsb_trend = df_ctl_atl_tsb['TSB'].head(14).tolist()[::-1] if not df_ctl_atl_tsb.empty and 'TSB' in df_ctl_atl_tsb.columns else []
+
         return {
             'acwr': {
                 'latest': latest_acwr,
@@ -201,8 +306,24 @@ def create_dash_dashboard_app(server, db_path):
                 'latest': latest_cadence_cv,
                 'trend': cadence_cv_trend,
                 'dataframe': df_cadence
+            },
+            'CTL': {
+                'latest': latest_ctl,
+                'trend': ctl_trend,
+                'dataframe': df_ctl_atl_tsb  
+            },
+            'ATL': {
+                'latest': latest_atl,
+                'trend': atl_trend,
+                'dataframe': df_ctl_atl_tsb  
+            },
+            'TSB': {
+                'latest': latest_tsb,
+                'trend': tsb_trend,
+                'dataframe': df_ctl_atl_tsb  
             }
         }
+        
 
     # --- Dashboard Component Building ---
 
@@ -220,9 +341,18 @@ def create_dash_dashboard_app(server, db_path):
         
         cv_value = dashboard_data['cadence']['latest'] or 0
         cv_trend = dashboard_data['cadence']['trend'] or [0] * 7
+
+        ctl_value = dashboard_data['CTL']['latest'] or 0
+        ctl_trend = dashboard_data['CTL']['trend'] or [0] * 7
+
+        atl_value = dashboard_data['ATL']['latest'] or 0
+        atl_trend = dashboard_data['ATL']['trend'] or [0] * 7
+
+        tsb_value = dashboard_data['TSB']['latest'] or 0
+        tsb_trend = dashboard_data['TSB']['trend'] or [0] * 7
         
         # Build dashboard cards
-        dashboard_cards = build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend)
+        dashboard_cards = build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend, ctl_value, ctl_trend, atl_value, atl_trend, tsb_value, tsb_trend)
 
         return dashboard_cards
     
