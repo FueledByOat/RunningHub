@@ -398,8 +398,6 @@ def statistics():
 def dashredirect():
     return redirect(f"/map/?id={request.args.get('id')}")
 
-
-
 @app.route("/density/")
 def density_redirect():
     # trying to route this and stats together for jinja changes

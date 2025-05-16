@@ -30,16 +30,17 @@ def create_dash_dashboard_app(server, db_path):
             config={'displayModeBar': False}
         )
 
-    def status_badge(value, thresholds, labels):
+    def status_badge_acr(value, thresholds, labels):
         if value < thresholds[0]:
-            return dbc.Badge(labels[0], color="danger")
+            return dbc.Badge(labels[0], color="warning")
         elif thresholds[0] <= value <= thresholds[1]:
-            return dbc.Badge(labels[1], color="warning")
+            return dbc.Badge(labels[1], color="success")
         else:
-            return dbc.Badge(labels[2], color="success")
+            return dbc.Badge(labels[2], color="danger")
+    
 
     def acwr_card(acwr_value, trend_data):
-        badge = status_badge(acwr_value, [0.8, 1.3], ["High Risk", "Caution", "Optimal"])
+        badge = status_badge_acr(acwr_value, [0.8, 1.3], ["High Risk", "Optimal", "Caution"])
         return dbc.Card([
             dbc.CardHeader("ACWR Trend"),
             dbc.CardBody([
@@ -50,27 +51,43 @@ def create_dash_dashboard_app(server, db_path):
             ])
         ], color="light", className="mb-3")
 
+    def status_badge_hrd(value, thresholds, labels):
+        if value < thresholds[0]:
+            return dbc.Badge(labels[0], color="success")
+        elif thresholds[0] <= value <= thresholds[1]:
+            return dbc.Badge(labels[1], color="warning")
+        else:
+            return dbc.Badge(labels[2], color="danger")
+
     def hrd_card(hrd_value, trend_data):
-        badge = status_badge(hrd_value, [5, 10], ["High Drift", "Elevated", "Good"])
+        badge = status_badge_hrd(hrd_value, [5, 10], ["High Drift", "Elevated", "Good"])
         return dbc.Card([
             dbc.CardHeader("Heart Rate Drift"),
             dbc.CardBody([
                 html.H3(f"{hrd_value:.1f}%", className="card-title"),
                 badge,
                 html.P("Percent rise in HR over session.\nTarget: < 5%"),
-                create_sparkline(trend_data, "#cc0000")
+                create_sparkline(trend_data, "#0c1559")
             ])
         ], color="light", className="mb-3")
 
+    def status_badge_cad(value, thresholds, labels):
+        if value < thresholds[0]:
+            return dbc.Badge(labels[0], color="success")
+        elif thresholds[0] <= value <= thresholds[1]:
+            return dbc.Badge(labels[1], color="warning")
+        else:
+            return dbc.Badge(labels[2], color="danger")
+        
     def cadence_card(cv_value, trend_data):
-        badge = status_badge(cv_value, [4, 6], ["Unstable", "Slightly Unstable", "Stable"]) # Changed thresholds
+        badge = status_badge_cad(cv_value, [4, 6], ["Unstable", "Slightly Unstable", "Stable"]) # Changed thresholds
         return dbc.Card([
             dbc.CardHeader("Cadence Stability"),
             dbc.CardBody([
                 html.H3(f"{cv_value:.1f}%", className="card-title"),
                 badge,
                 html.P("Coefficient of variation vs pace.\nTarget: < 4%"),
-                create_sparkline(trend_data, "#007700")
+                create_sparkline(trend_data, "#0c1559")
             ])
         ], color="light", className="mb-3")
 
@@ -125,6 +142,7 @@ def create_dash_dashboard_app(server, db_path):
     print(latest_acwr)
     print(latest_hr_drift)
     print(latest_cadence_cv)
+    print(cadence_cv_trend)
 
     dashboard_cards = build_dashboard_cards(
         latest_acwr,

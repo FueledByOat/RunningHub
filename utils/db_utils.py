@@ -7,6 +7,7 @@ import sqlite3
 from dotenv import load_dotenv
 import os
 import pandas as pd
+import json
 
 load_dotenv('secrets.env')
 DB_PATH = os.getenv("DATABASE")
@@ -48,6 +49,7 @@ def get_latest_polyline(activity_id_polyline, db_path = DB_PATH):
         return ""
     
 def get_acwr_data(db_path = DB_PATH):
+    """Ratio of 7-day to 28-day load; balance between acute and chronic load."""
     conn = sqlite3.connect(db_path)
     df = pd.read_sql_query("""
         WITH daily_load AS (
@@ -81,89 +83,99 @@ def get_acwr_data(db_path = DB_PATH):
     return df
 
 def get_hr_drift_data(db_path = DB_PATH):
-    conn = sqlite3.connect(db_path)
-    df = pd.read_sql_query("""
-        WITH activity_durations AS (
-        SELECT
-            activity_id,
-            MIN(CAST(time_data AS INTEGER)) AS min_time,
-            MAX(CAST(time_data AS INTEGER)) AS max_time,
-            (MAX(CAST(time_data AS INTEGER)) - MIN(CAST(time_data AS INTEGER))) AS total_duration
-        FROM streams
-        GROUP BY activity_id
-    ),
-    stream_segments AS (
-        SELECT
-            s.activity_id,
-            CAST(s.time_data AS INTEGER) AS time_data,
-            CAST(s.heartrate_data AS INTEGER) AS heartrate_data,
-            ad.total_duration,
-            CASE
-                WHEN CAST(s.time_data AS INTEGER) - ad.min_time <= ad.total_duration * 0.33 THEN 'first'
-                WHEN CAST(s.time_data AS INTEGER) - ad.min_time >= ad.total_duration * 0.66 THEN 'last'
-                ELSE 'middle'
-            END AS segment
-        FROM streams s
-        JOIN activity_durations ad ON s.activity_id = ad.activity_id
-    ),
-    segment_averages AS (
-        SELECT
-            activity_id,
-            AVG(CASE WHEN segment = 'first' THEN heartrate_data ELSE NULL END) AS hr_first,
-            AVG(CASE WHEN segment = 'last' THEN heartrate_data ELSE NULL END) AS hr_last
-        FROM stream_segments
-        GROUP BY activity_id
-    )
-    SELECT
-        a.id AS activity_id,
-        a.start_date,
-        CASE
-            WHEN sa.hr_first IS NULL OR sa.hr_last IS NULL THEN NULL  -- Handle NULL hr_first or hr_last
-            WHEN sa.hr_first = 0 THEN NULL  -- Handle hr_first being 0
-            ELSE ROUND((sa.hr_last - sa.hr_first) * 100.0 / sa.hr_first, 1)
-        END AS hr_drift_pct
-    FROM segment_averages sa
-    JOIN activities a ON sa.activity_id = a.id
-    WHERE a.moving_time >= 2700
-    AND a.type = 'Run'
-    ORDER BY a.start_date DESC
-    LIMIT 90;
-    """, conn)
-    conn.close()
-    return df
+    "Percentage HR increase during session; indicates aerobic efficiency."
+    try:
+        conn = sqlite3.connect(db_path)
+        df = pd.read_sql_query("SELECT id, start_date, moving_time FROM activities WHERE type = 'Run' LIMIT 90", conn)
+        streams_df = pd.read_sql_query("SELECT activity_id, time_data, heartrate_data FROM streams", conn)
+        conn.close()
+
+        def calculate_hr_drift(row):
+            if row['moving_time'] < 2700:
+                return None
+            if pd.isna(row['time_data']):
+                return None
+            time_data = json.loads(row['time_data']) if row['time_data'] else []
+            heartrate_data = json.loads(row['heartrate_data']) if row['heartrate_data'] else []
+
+            if not time_data or not heartrate_data or len(time_data) != len(heartrate_data):
+                return None
+
+            total_duration = time_data[-1] - time_data[0]
+            if total_duration == 0:
+                return None
+
+            first_segment_hr = []
+            last_segment_hr = []
+
+            for i in range(len(time_data)):
+                relative_time = time_data[i] - time_data[0]
+                if relative_time <= total_duration * 0.33:
+                    first_segment_hr.append(heartrate_data[i])
+                elif relative_time >= total_duration * 0.66:
+                    last_segment_hr.append(heartrate_data[i])
+
+            if not first_segment_hr or not last_segment_hr:
+                return None
+
+            avg_hr_first = sum(first_segment_hr) / len(first_segment_hr)
+            avg_hr_last = sum(last_segment_hr) / len(last_segment_hr)
+
+            if avg_hr_first == 0:
+                return None
+
+            return round((avg_hr_last - avg_hr_first) * 100.0 / avg_hr_first, 1)
+
+        merged_df = df.merge(streams_df, left_on='id', right_on='activity_id', how='left')
+        df['hr_drift_pct'] = merged_df.apply(calculate_hr_drift, axis=1)
+        df = df[['id', 'start_date', 'hr_drift_pct']].dropna()  # Keep relevant columns and drop NaNs
+        return df.rename(columns={'id': 'activity_id'})
+
+    except sqlite3.Error as e:
+        print(f"Database error in get_hr_drift_data: {e}")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error in get_hr_drift_data: {e}")
+        return pd.DataFrame()
 
 def get_cadence_stability_data(db_path = DB_PATH):
-    conn = sqlite3.connect(db_path)
-    df = pd.read_sql_query("""
-        SELECT
-        a.id AS activity_id,
-        a.average_speed * 3.6 AS avg_pace_kmh,
-        COALESCE(s.avg_cadence, 0) AS avg_cadence,  -- Handle NULL
-        COALESCE(s.cadence_stdev, 0) AS cadence_stdev,
-        COALESCE(
-            CASE  -- Calculate CV here
-                WHEN s.avg_cadence > 0 THEN (s.cadence_stdev * 100.0 / s.avg_cadence)
-                ELSE 0  -- Or NULL, depending on how you want to handle it
-            END,
-            0
-        ) AS cadence_cv
-    FROM activities a
+    "Coefficient of variation of cadence relative to pace; running economy."
+    try:
+        conn = sqlite3.connect(db_path)
+        df = pd.read_sql_query("SELECT id, average_speed, start_date FROM activities WHERE type = 'Run' LIMIT 90", conn)
+        streams_df = pd.read_sql_query("SELECT activity_id, cadence_data FROM streams", conn)
+        conn.close()
 
-    LEFT JOIN (  -- Use LEFT JOIN
-        SELECT
-            activity_id,
-            AVG(CAST(cadence_data AS INTEGER)) AS avg_cadence,
-            SUM(cadence_data) AS sum_cadence,
-            COUNT(cadence_data) AS count_cadence,
-            AVG(cadence_data * cadence_data) - AVG(cadence_data) * AVG(cadence_data) AS variance_cadence,
-            SQRT(ABS(AVG(cadence_data * cadence_data) - AVG(cadence_data) * AVG(cadence_data))) AS cadence_stdev  -- Use ABS
-        FROM streams
-        WHERE cadence_data IS NOT NULL  -- Use IS NOT NULL
-        GROUP BY activity_id
-    ) s ON a.id = s.activity_id
-    WHERE a.type = 'Run'
-    ORDER BY a.start_date DESC
-    LIMIT 90;
-    """, conn)
-    conn.close()
-    return df
+        def calculate_cadence_stats(row):
+            if pd.isna(row['cadence_data']):
+                return pd.Series([0, 0])
+            cadence_data = json.loads(row['cadence_data']) if row['cadence_data'] else []
+            cadence_data = [c for c in cadence_data if c > 0]  # Filter out 0s
+
+            if not cadence_data:
+                return pd.Series([0, 0])  # Or pd.Series([None, None]) if you prefer NULL
+
+            avg_cadence = sum(cadence_data) / len(cadence_data)
+            variance = sum([(c - avg_cadence) ** 2 for c in cadence_data]) / len(cadence_data)
+            stdev = variance**0.5
+
+            return pd.Series([avg_cadence, stdev])
+
+        merged_df = df.merge(streams_df, left_on='id', right_on='activity_id', how='left')
+        df[['avg_cadence', 'cadence_stdev']] = merged_df.apply(calculate_cadence_stats, axis=1)
+        df['avg_pace_kmh'] = df['average_speed'] * 3.6
+        df['cadence_cv'] = df.apply(
+            lambda row: (row['cadence_stdev'] / row['avg_cadence'] * 100 if row['avg_cadence'] > 0 else 0),
+            axis=1
+        )
+
+        return df[['id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv']].rename(
+            columns={'id': 'activity_id'}
+        )
+
+    except sqlite3.Error as e:
+        print(f"Database error in get_cadence_stability_data: {e}")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error in get_cadence_stability_data: {e}")
+        return pd.DataFrame()
