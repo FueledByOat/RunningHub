@@ -593,3 +593,144 @@ def get_ctl_atl_tsb_tss_data(db_path=DB_PATH, days_to_retrieve=180, athlete_thre
     except sqlite3.Error as e:
         print(f"Database error in get_ctl_atl_tsb_data: {e}")
         return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
+    
+def get_training_shape_data(db_path=DB_PATH):
+    """
+    Calculate Training Shape metrics from activity history.
+    
+    This function combines multiple metrics to create a composite view
+    of an athlete's fitness trajectory over time.
+    """
+    
+    conn = sqlite3.connect(db_path)
+    
+    # Get all running activities with key metrics
+    query = """
+    SELECT 
+        id,
+        distance,
+        moving_time,
+        average_heartrate,
+        max_heartrate,
+        average_speed,
+        average_cadence,
+        kilojoules,
+        start_date
+    FROM activities
+    WHERE 
+        type = 'Run' 
+        AND distance IS NOT NULL
+        AND moving_time IS NOT NULL
+    ORDER BY start_date ASC;
+    """
+    
+    activities_df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    if activities_df.empty:
+        return pd.DataFrame()
+    
+    # Convert start_date to datetime
+    activities_df['start_date'] = pd.to_datetime(activities_df['start_date'])
+    
+    # Extract date only
+    activities_df['date'] = activities_df['start_date'].dt.date
+    
+    # Calculate training metrics
+    
+    # 1. Speed (m/s)
+    activities_df['speed'] = activities_df['distance'] / activities_df['moving_time']
+    
+    # 2. EF (Efficiency Factor) where heart rate data exists
+    mask = activities_df['average_heartrate'].notna() & (activities_df['average_heartrate'] > 0)
+    activities_df.loc[mask, 'ef'] = (activities_df.loc[mask, 'speed'] * 60) / activities_df.loc[mask, 'average_heartrate']
+    
+    # 3. Calculate TSS (simplified version)
+    activities_df['intensity'] = activities_df['average_speed'] / activities_df['average_speed'].mean()
+    activities_df['duration_hours'] = activities_df['moving_time'] / 3600
+    activities_df['tss'] = activities_df['duration_hours'] * (activities_df['intensity'] ** 2) * 100
+    
+    # 4. Calculate weekly volumes
+    activities_df['week'] = activities_df['start_date'].dt.isocalendar().week
+    activities_df['year'] = activities_df['start_date'].dt.isocalendar().year
+    activities_df['year_week'] = activities_df['year'].astype(str) + '-' + activities_df['week'].astype(str).str.zfill(2)
+    
+    # Aggregate by week
+    weekly_df = activities_df.groupby('year_week').agg({
+        'start_date': 'min',  # First day of week
+        'distance': 'sum',
+        'moving_time': 'sum',
+        'tss': 'sum',
+        'ef': 'mean'
+    }).reset_index()
+    
+    # Calculate rolling metrics
+    weekly_df = weekly_df.sort_values('start_date')
+    
+    # TSS-based fitness (CTL)
+    weekly_df['ctl'] = weekly_df['tss'].rolling(window=6, min_periods=1).mean()
+    
+    # Speed trend
+    weekly_df['weekly_distance_km'] = weekly_df['distance'] / 1000
+    weekly_df['weekly_time_hours'] = weekly_df['moving_time'] / 3600
+    weekly_df['weekly_speed'] = weekly_df['weekly_distance_km'] / weekly_df['weekly_time_hours']
+    weekly_df['speed_trend'] = weekly_df['weekly_speed'].rolling(window=4, min_periods=1).mean()
+    
+    # EF trend
+    weekly_df['ef_trend'] = weekly_df['ef'].rolling(window=4, min_periods=1).mean()
+    
+    # Create composite Training Shape score (0-100 scale)
+    
+    # 1. Normalize each component to 0-100 scale
+    # Higher values are better for all metrics
+    
+    def min_max_normalize(series, min_val=None, max_val=None):
+        if min_val is None:
+            min_val = series.min()
+        if max_val is None:
+            max_val = series.max()
+        return 100 * (series - min_val) / (max_val - min_val)
+    
+    # Normalize CTL (use 20 as min and 100 as max for reasonable scale)
+    weekly_df['ctl_score'] = min_max_normalize(weekly_df['ctl'], min_val=20, max_val=100)
+    weekly_df['ctl_score'] = weekly_df['ctl_score'].clip(0, 100)
+    
+    # Normalize speed trend
+    weekly_df['speed_score'] = min_max_normalize(weekly_df['speed_trend'])
+    
+    # Normalize EF trend where available
+    if weekly_df['ef_trend'].notna().any():
+        weekly_df['ef_score'] = min_max_normalize(weekly_df['ef_trend'])
+        # Composite score with EF
+        weekly_df['training_shape'] = (weekly_df['ctl_score'] * 0.5 + 
+                                      weekly_df['speed_score'] * 0.3 + 
+                                      weekly_df['ef_score'] * 0.2)
+    else:
+        # Composite score without EF
+        weekly_df['training_shape'] = (weekly_df['ctl_score'] * 0.6 + 
+                                      weekly_df['speed_score'] * 0.4)
+    
+    # Fill any NaN values in final score
+    weekly_df['training_shape'] = weekly_df['training_shape'].fillna(method='ffill').fillna(0)
+    
+    # Add pacing data for visualization
+    week_dates = weekly_df['start_date'].tolist()
+    
+    # Get performance breakthroughs - best speeds at different distances
+    breakthrough_data = []
+    
+    # Get streams data for pace analysis (optional)
+    """
+    # This would be the ideal approach if you want to include detailed pace data
+    conn = sqlite3.connect(db_path)
+    for activity_id in activities_df['id'].unique():
+        query = "SELECT distance_data, time_data FROM streams WHERE activity_id = ?"
+        result = conn.execute(query, (activity_id,)).fetchone()
+        if result and result[0] and result[1]:
+            distance_data = json.loads(result[0])
+            time_data = json.loads(result[1])
+            # Process pace data...
+    conn.close()
+    """
+    
+    return weekly_df

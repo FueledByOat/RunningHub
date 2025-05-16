@@ -5,7 +5,23 @@ import plotly.graph_objs as go
 import sqlite3
 import pandas as pd
 import utils.db_utils as db_utils
+import plotly.io as pio
 
+
+brand_template = dict(
+    layout=dict(
+        font=dict(family="Arial, sans-serif", color="var(--text)"),
+        paper_bgcolor="var(--background)",
+        plot_bgcolor="var(--white)",
+        colorway=["var(--primary)", "var(--accent)", "var(--primary-light)", "var(--accent-light)"],
+        title=dict(font=dict(size=20, color="var(--primary)")),
+        xaxis=dict(gridcolor="var(--gray-light)", zerolinecolor="var(--gray-light)"),
+        yaxis=dict(gridcolor="var(--gray-light)", zerolinecolor="var(--gray-light)"),
+        legend=dict(font=dict(color="var(--text)"), bgcolor="var(--white)", bordercolor="var(--gray-light)")
+    )
+)
+pio.templates["brand"] = brand_template
+pio.templates.default = "brand"
 
 def create_dash_dashboard_app(server, db_path):
 
@@ -210,7 +226,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=80.0  # Reference line at the optimal threshold
         )
     
     def atl_card(atl_value, trend_data):
@@ -234,7 +250,7 @@ def create_dash_dashboard_app(server, db_path):
                 badge, 
                 description, 
                 trend_data,
-                reference_line=4.0  # Reference line at the optimal threshold
+                reference_line=70.0  # Reference line at the optimal threshold
             )
     
     def tsb_card(tsb_value, trend_data):
@@ -258,7 +274,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=0.0  # Reference line at the optimal threshold
         )
     
     def tss_card(tss_value, trend_data):
@@ -282,7 +298,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=100.0  # Reference line at the optimal threshold
         )
     
     def effidiency_index_card(efficiency_index_value, trend_data):
@@ -315,7 +331,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=0.30  # Reference line at the optimal threshold
         )
     
     def ef_7day_card(ef_7day_value, trend_data):
@@ -348,7 +364,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=0.30  # Reference line at the optimal threshold
         )
 
     def ef_90day_card(ef_90day_value, trend_data):
@@ -381,11 +397,162 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=4.0  # Reference line at the optimal threshold
+            reference_line=0.30 # Reference line at the optimal threshold
         )
     
-
-
+    def create_training_shape_chart():
+        """
+        Create a Plotly Dash chart showing training shape over time
+        """
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        
+        # Get the data
+        df = db_utils.get_training_shape_data(db_path)
+        
+        if df.empty:
+            # Return empty figure if no data
+            fig = go.Figure()
+            fig.update_layout(title="No training data available")
+            return fig
+        
+        # Create subplots with 2 rows
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.1,
+            subplot_titles=("Training Shape", "Weekly Distance (km)"),
+            row_heights=[0.7, 0.3]
+        )
+        
+        # Add Training Shape line
+        fig.add_trace(
+            go.Scatter(
+                x=df['start_date'],
+                y=df['training_shape'],
+                mode='lines',
+                name='Training Shape',
+                line=dict(color='rgb(26, 118, 255)', width=3),
+                hovertemplate='%{y:.1f}',
+            ),
+            row=1, col=1
+        )
+        
+        # Add weekly distance bars
+        fig.add_trace(
+            go.Bar(
+                x=df['start_date'],
+                y=df['weekly_distance_km'],
+                name='Weekly Distance',
+                marker_color='rgba(58, 71, 80, 0.6)',
+                hovertemplate='%{y:.1f} km',
+            ),
+            row=2, col=1
+        )
+        
+        # Add threshold lines for Training Shape
+        fig.add_shape(
+            type="line",
+            x0=df['start_date'].min(),
+            y0=80,
+            x1=df['start_date'].max(),
+            y1=80,
+            line=dict(
+                color="green",
+                width=2,
+                dash="dash",
+            ),
+            row=1, col=1
+        )
+        
+        fig.add_shape(
+            type="line",
+            x0=df['start_date'].min(),
+            y0=50,
+            x1=df['start_date'].max(),
+            y1=50,
+            line=dict(
+                color="orange",
+                width=2,
+                dash="dash",
+            ),
+            row=1, col=1
+        )
+        
+        # Add annotations for the threshold lines
+        fig.add_annotation(
+            x=df['start_date'].max(),
+            y=80,
+            text="Excellent",
+            showarrow=False,
+            xshift=10,
+            font=dict(color="green"),
+            row=1, col=1
+        )
+        
+        fig.add_annotation(
+            x=df['start_date'].max(),
+            y=50,
+            text="Good",
+            showarrow=False,
+            xshift=10,
+            font=dict(color="orange"),
+            row=1, col=1
+        )
+        
+        # Update layout
+        fig.update_layout(
+            title="Athlete Training Shape Over Time",
+            hovermode="x unified",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            plot_bgcolor='white',
+            height=600,
+        )
+        
+        # Update y-axes
+        fig.update_yaxes(
+            title_text="Training Shape (0-100)",
+            range=[0, 100],
+            gridcolor='lightgray',
+            row=1, col=1
+        )
+        
+        fig.update_yaxes(
+            title_text="Distance (km)",
+            gridcolor='lightgray',
+            row=2, col=1
+        )
+        
+        # Update x-axis
+        fig.update_xaxes(
+            title_text="Date",
+            gridcolor='lightgray',
+            row=2, col=1,
+            rangeslider_visible=False
+        )
+        
+        return fig
+    
+    def build_fitness_chart():
+        return dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Training Shape - Fitness Trajectory"),
+                dbc.CardBody([
+                    dcc.Graph(
+                        id='training-shape-chart',
+                        figure=create_training_shape_chart()
+                    )
+                            ])
+                        ])
+                    ])
+            ])
 
     def build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend, ctl_value, ctl_trend, atl_value, atl_trend, tsb_value, tsb_trend, tss_value, tss_trend):
         """Build the complete dashboard row with all metric cards"""
@@ -574,18 +741,70 @@ def create_dash_dashboard_app(server, db_path):
         return dashboard_cards
     
     app_layout = dbc.Container(
+     [
+        # Styled Header
+        html.Header(
+            dbc.Container(
         [
-            html.H1("Athlete Performance Dashboard - 90 Days", className="mb-4", style={'textAlign': 'center'}),
-            build_dashboard_layout(),
-            html.H2("Athlete Efficiency Metrics", className="mb-4", style={'textAlign': 'center'}),
-            build_dashboard_efficiency_layout(),
-            # Add more components here for detailed analysis/graphs
+            html.A(
+                [
+                    html.H1(
+                        ["RUNNING", html.Span("HUB")],
+                        className="logo"
+                    ),
+                    html.P(
+                        "Track, analyze, and improve your running performance",
+                        className="tagline"
+                    )
+                ],
+                href="/"  # <-- Link to your homepage
+            )
         ],
-        fluid=True,
-    )
+        className="container"
+    ),
+    className="site-header"
+),
+
+        # Dashboard Content
+        html.Main(
+            [
+                html.H2(
+                    "Athlete Performance Dashboard - 90 Days",
+                    className="mb-4",
+                    style={'textAlign': 'center'}
+                ),
+                build_dashboard_layout(),
+                html.H3(
+                    "Athlete Efficiency Metrics",
+                    className="mb-4",
+                    style={'textAlign': 'center'}
+                ),
+                build_dashboard_efficiency_layout(),
+                html.H3(
+                    "Fitness Trends",
+                    className="mb-4",
+                    style={'textAlign': 'center'}
+                ),
+                build_fitness_chart()
+            ],
+            className="dashboard-content"
+        ),
+    dbc.Button(
+    "🔝", 
+    href="/", 
+    className="back-button", 
+    title="Back to Dashboard", 
+    color="link",  # Bootstrap link button (so we style it ourselves)
+)],
+    fluid=True
+)
 
     # App Layout
-    dash_app = dash.Dash(__name__, server=server, url_base_pathname='/dashboard/', external_stylesheets=[dbc.themes.BOOTSTRAP])
+    external_stylesheets = [
+    dbc.themes.BOOTSTRAP,          # Bootstrap theme (can be CYBORG, FLATLY, etc.)
+    "/static/css/styles.css"        # Your custom CSS from Flask's static folder
+]
+    dash_app = dash.Dash(__name__, server=server, url_base_pathname='/dashboard/', external_stylesheets=external_stylesheets)
     dash_app.title = "Running Trends Dashboard"
     dash_app.layout = app_layout
 
