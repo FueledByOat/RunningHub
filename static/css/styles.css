@@ -25,15 +25,15 @@ body {
 .container {
   max-width: 1080px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 15px;
 }
 
 /* Header styling */
 .site-header {
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   color: var(--white);
-  padding: 30px 0;
-  margin-bottom: 40px;
+  padding: 15px 0;
+  margin-bottom: 10px;
   text-align: center;
   box-shadow: 0 4px 12px var(--shadow);
   border-bottom: 4px solid var(--accent);
@@ -184,7 +184,7 @@ body {
 
 /* Heatmap Section */
 .heatmap-container-home {
-  height: 500px;
+  height: 400px;
   margin: 30px 0;
   border-radius: 12px;
   overflow: hidden;
@@ -209,6 +209,30 @@ body {
   justify-content: center;
   margin: 20px 0 30px;
   flex-wrap: wrap;
+}
+
+.unit-selector {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0 30px;
+  flex-wrap: wrap;
+}
+
+.unit-btn {
+  padding: 8px 20px;
+  margin: 0 5px;
+  background-color: var(--white);
+  color: var(--primary);
+  border: 2px solid var(--primary);
+  border-radius: 30px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.unit-btn:hover, .unit-btn.active {
+  background-color: var(--primary);
+  color: var(--white);
 }
 
 .time-btn {
@@ -518,4 +542,8 @@ body {
 .back-button:active {
   transform: scale(0.95);
 }
-
+img {
+  display: block;
+  margin: auto;
+  width: 40%;
+}

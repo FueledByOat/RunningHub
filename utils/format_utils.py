@@ -4,10 +4,11 @@ end formatting of text values"""
 
 from datetime import datetime
 
-def format_pace(distance_miles, total_seconds):
+def format_pace(distance, total_seconds, units = 'miles'):
         """
         Calculates and formats the average pace per mile.
 
+        This function is not consistent with what it expects to take in or does take in.
         Args:
             distance_miles (float): Total distance run in miles.
             total_seconds (int): Total time taken in seconds.
@@ -16,13 +17,20 @@ def format_pace(distance_miles, total_seconds):
             str: Formatted pace in minutes and seconds per mile (MM:SS).
                 Returns "Invalid input" if inputs are invalid.
         """
-        if not isinstance(distance_miles, (int, float)) or not isinstance(total_seconds, int) or distance_miles <= 0 or total_seconds < 0:
+        if not isinstance(distance, (int, float)) or not isinstance(total_seconds, int) or distance <= 0 or total_seconds < 0:
             return "Invalid input"
-
-        seconds_per_mile = total_seconds / distance_miles
-        minutes = int(seconds_per_mile // 60)
-        seconds = int(seconds_per_mile % 60)
-        return f"{minutes:02}:{seconds:02}"
+        if units == 'miles' or units == 'mi':
+            seconds_per_mile = total_seconds / distance
+            minutes = int(seconds_per_mile // 60)
+            seconds = int(seconds_per_mile % 60)
+            return f"{minutes:02}:{seconds:02}"
+        elif units == 'kilometers' or units == 'km':
+            seconds_per_km = total_seconds / distance
+            minutes = int(seconds_per_km // 60)
+            seconds = int(seconds_per_km % 60)
+            return f"{minutes:02}:{seconds:02}"
+             
+             
 
 def format_time(total_seconds):
         """

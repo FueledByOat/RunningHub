@@ -22,7 +22,12 @@
             <p class="tagline">Performance analytics & insights</p>
         </div>
     </header>
-
+    <div class="unit-selector">
+        <a href="{{ url_for('trophy_room', units='mi') }}"
+            class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+        <a href="{{ url_for('trophy_room', units='km') }}"
+            class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
+    </div>
     <main class="container">
 
         <!-- Detailed Stats Tables -->
@@ -41,9 +46,9 @@
                     <tbody>
                         {% for record in personal_records %}
                         <tr>
-                            <td>{{ record.distance }} km</td>
+                            <td>{{ record.distance }}</td>
                             <td>{{ record.time }}</td>
-                            <td>{{ record.pace }} min/km</td>
+                            <td>{{ record.pace }} min/{{ units }}</td>
                             <td>{{ record.date }}</td>
                         </tr>
                         {% endfor %}

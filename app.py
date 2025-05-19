@@ -18,18 +18,20 @@ import utils.format_utils as format_utils # custom utils
 
 app = Flask(__name__) # Flask app
 
-LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
+
 dash_app = create_dash_app(app) # Initialize Dash activities page app
 create_density_dash(app, db_path=db_utils.DB_PATH)
 create_dash_dashboard_app(app, db_path=db_utils.DB_PATH)
 
 @app.route("/")
 def home():
+    LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
     return render_template("home.html", activity = LATEST_ACTIVITY_ID)
 
 @app.route("/activity/")
 def activity():
     activity_id = request.args.get("id", type=int)
+    units = request.args.get('units', 'mi')  # Default to miles
     conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -46,26 +48,26 @@ def activity():
     activity = dict(cur.fetchone())
     # print(activity.distance)
     
-    activity['distance'] = round(activity['distance'] / 1609, 2)
-    activity['average_pace'] = format_utils.format_pace(activity['distance'], activity['moving_time'])
+    activity['distance'] = round(activity['distance'] / 1609, 2) if units == 'mi' else round(activity['distance'] * .001, 2)
+    activity['average_pace'] = format_utils.format_pace(activity['distance'], activity['moving_time'], units = units)
     activity['moving_time'] = format_utils.format_time(activity['moving_time'])
     activity['moving_time_minutes'] = activity['moving_time']
     
     # Remove cadence for Rides
     activity['average_cadence'] = 0 if activity['type'] == 'Ride' else activity['average_cadence']
     activity['average_cadence'] = int(round(activity['average_cadence'] * 2, 0))
-    activity['average_speed'] = round(activity['average_speed'], 1)
-    activity['max_speed'] = round(activity['max_speed'], 1)
+    activity['average_speed'] = round(activity['average_speed'] * 2.237, 1)  if units == 'mi' else round(activity['average_speed'] * 3.6, 1) 
+    activity['max_speed'] = round(activity['max_speed'] * 2.237, 1) if units == 'mi' else round(activity['max_speed'] * 3.6, 1)
     activity['max_heartrate'] = round(activity['max_heartrate'])
     activity['average_heartrate'] = round(activity['average_heartrate'])
     activity['kilojoules'] = round(activity['kilojoules'])
     activity['start_date'], activity['start_time'] = format_utils.date_format(activity['start_date'])
 
-    return render_template("activity.html", activity=activity)
+    return render_template("activity.html", activity=activity, units=units)
 
 @app.route('/trophy_room/')
 def trophy_room():
-
+    units = request.args.get('units', 'mi')  # Default to miles
     conn = sqlite3.connect(db_utils.DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.row_factory = db_utils.dict_factory
@@ -84,7 +86,8 @@ def trophy_room():
     if fastest_5k:
         date_str = datetime.strptime(fastest_5k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(fastest_5k['moving_time'])
-        pace = round((fastest_5k['moving_time'] / 60) / (fastest_5k['distance'] / 1000), 2)
+        distance = round(fastest_5k['distance'] / 1000, 2) if units == 'km' else round(fastest_5k['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, fastest_5k['moving_time'], units = units)
         
         personal_records.append({
             'distance': '5K',
@@ -97,7 +100,7 @@ def trophy_room():
     fastest_8k = conn.execute(
         '''SELECT id, name, distance, moving_time, start_date_local
            FROM activities
-           WHERE type = 'Run' AND distance BETWEEN 760000 AND 8400
+           WHERE type = 'Run' AND distance BETWEEN 7600 AND 8400
            ORDER BY moving_time ASC
            LIMIT 1'''
     ).fetchone()
@@ -105,7 +108,8 @@ def trophy_room():
     if fastest_8k:
         date_str = datetime.strptime(fastest_8k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(fastest_8k['moving_time'])
-        pace = round((fastest_8k['moving_time'] / 60) / (fastest_8k['distance'] / 1000), 2)
+        distance = round(fastest_8k['distance'] / 1000, 2) if units == 'km' else round(fastest_8k['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, fastest_8k['moving_time'], units = units)
         
         personal_records.append({
             'distance': '8K',
@@ -126,7 +130,8 @@ def trophy_room():
     if fastest_10k:
         date_str = datetime.strptime(fastest_10k['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(fastest_10k['moving_time'])
-        pace = round((fastest_10k['moving_time'] / 60) / (fastest_10k['distance'] / 1000), 2)
+        distance = round(fastest_10k['distance'] / 1000, 2) if units == 'km' else round(fastest_10k['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, fastest_10k['moving_time'], units = units)
         
         personal_records.append({
             'distance': '10K',
@@ -147,7 +152,8 @@ def trophy_room():
     if fastest_HM:
         date_str = datetime.strptime(fastest_HM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(fastest_HM['moving_time'])
-        pace = round((fastest_HM['moving_time'] / 60) / (fastest_HM['distance'] / 1000), 2)
+        distance = round(fastest_HM['distance'] / 1000, 2) if units == 'km' else round(fastest_HM['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, fastest_HM['moving_time'], units = units)
         
         personal_records.append({
             'distance': 'Half Marathon',
@@ -168,7 +174,8 @@ def trophy_room():
     if fastest_FM:
         date_str = datetime.strptime(fastest_FM['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(fastest_FM['moving_time'])
-        pace = round((fastest_FM['moving_time'] / 60) / (fastest_FM['distance'] / 1000), 2)
+        distance = round(fastest_FM['distance'] / 1000, 2) if units == 'km' else round(fastest_FM['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, fastest_FM['moving_time'], units = units)
         
         personal_records.append({
             'distance': 'Full Marathon',
@@ -189,23 +196,23 @@ def trophy_room():
     if longest_run:
         date_str = datetime.strptime(longest_run['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b %Y')
         time_str = format_utils.format_time(longest_run['moving_time'])
-        distance_km = round(longest_run['distance'] / 1000, 2)
-        pace = round((longest_run['moving_time'] / 60) / (longest_run['distance'] / 1000), 2)
+        distance = round(longest_run['distance'] / 1000, 2) if units == 'km' else round(longest_run['distance'] / 1609, 2)
+        pace = format_utils.format_pace(distance, longest_run['moving_time'], units = units)
         
         personal_records.append({
-            'distance': f"Longest Run: {distance_km}",
+            'distance': f"Longest Run: {distance}" + units,
             'time': time_str,
             'pace': pace,
             'date': date_str
         })
-    return render_template("trophy_room.html", personal_records=personal_records)
+    return render_template("trophy_room.html", personal_records=personal_records, units = units)
 
 
-@app.route('/statistics/')
+@app.route('/statistics/', methods=['GET'])
 def statistics():
     """Render the statistics page with data from the database"""
     period = request.args.get('period', 'week')  # Default to week view
-    
+    units = request.args.get('units', 'miles')  # Default to miles
     # Get current date
     now = datetime.now()
     
@@ -229,20 +236,20 @@ def statistics():
     
     # Count total activities in the period
     total_activities = conn.execute(
-        'SELECT COUNT(*) as count FROM activities WHERE start_date >= ?', 
+        "SELECT COUNT(*) as count FROM activities WHERE start_date >= ? AND type = 'Run'", 
         (start_date,)
     ).fetchone()['count']
     
     # Calculate total distance in km
     total_distance_result = conn.execute(
-        'SELECT SUM(distance) as total FROM activities WHERE start_date >= ?', 
+        "SELECT SUM(distance) as total FROM activities WHERE start_date >= ? AND type = 'Run'", 
         (start_date,)
     ).fetchone()
-    total_distance = round(total_distance_result['total'] / 1000, 2) if total_distance_result['total'] else 0
+    total_distance = round(total_distance_result['total'] / 1000, 2) if units == 'km' else round(total_distance_result['total'] / 1609, 2)
     
     # Calculate total moving time
     total_time_result = conn.execute(
-        'SELECT SUM(moving_time) as total FROM activities WHERE start_date >= ?', 
+        "SELECT SUM(moving_time) as total FROM activities WHERE start_date >= ? AND type = 'Run'", 
         (start_date,)
     ).fetchone()
     
@@ -253,7 +260,7 @@ def statistics():
     
     # Estimate total calories (kilojoules / 4.184 is approximately calories)
     total_calories_result = conn.execute(
-        'SELECT SUM(kilojoules) as total FROM activities WHERE start_date >= ?', 
+        "SELECT SUM(kilojoules) as total FROM activities WHERE start_date >= ? AND type = 'Run'", 
         (start_date,)
     ).fetchone()
     total_calories = round(total_calories_result['total'] / 4.184) if total_calories_result['total'] else 0
@@ -269,6 +276,7 @@ def statistics():
         '''SELECT start_date_local, distance 
            FROM activities 
            WHERE start_date_local >= ? 
+           AND type = 'Run'
            ORDER BY start_date_local''',
         (seven_days_ago.strftime('%Y-%m-%d'),)
     ).fetchall()
@@ -341,7 +349,7 @@ def statistics():
     recent_activities = conn.execute(
         '''SELECT id, name, distance, moving_time, start_date_local
            FROM activities
-           WHERE type in ("Run", "Ride")
+           WHERE type in ("Run")
            ORDER BY start_date_local DESC
            LIMIT 5'''
     ).fetchall()
@@ -352,17 +360,17 @@ def statistics():
     activities_list = []
     for activity in recent_activities:
         date_str = datetime.strptime(activity['start_date_local'].split('T')[0], '%Y-%m-%d').strftime('%d %b')
-        distance_km = round(activity['distance'] / 1000, 2)
+        distance_recent_activities = round(activity['distance'] / 1000, 2) if units == 'km' else round(activity['distance'] / 1609, 2)
 
         time_str = format_utils.format_time(activity['moving_time'])
         
-        pace = round((activity['moving_time'] / 60) / (activity['distance'] / 1000), 2) if activity['distance'] > 0 else 0
+        pace = format_utils.format_pace(distance_recent_activities, activity['moving_time'], units=units) if activity['distance'] > 0 else 0
         
         activities_list.append({
             'id': activity['id'],
             'name': activity['name'],
             'date': date_str,
-            'distance': distance_km,
+            'distance': distance_recent_activities,
             'time': time_str,
             'pace': pace
         })
@@ -381,6 +389,7 @@ def statistics():
     return render_template(
         'statistics.html',
         period=period,
+        units=units,
         date_range=date_range,
         total_activities=total_activities,
         total_distance=total_distance,
