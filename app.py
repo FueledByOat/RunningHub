@@ -239,6 +239,11 @@ def statistics():
         "SELECT COUNT(*) as count FROM activities WHERE start_date >= ? AND type = 'Run'", 
         (start_date,)
     ).fetchone()['count']
+
+    total_elevation = conn.execute(
+        "SELECT SUM(total_elevation_gain) as count FROM activities WHERE start_date >= ? AND type = 'Run'", 
+        (start_date,)
+    ).fetchone()['count']
     
     # Calculate total distance in km
     total_distance_result = conn.execute(
@@ -380,7 +385,8 @@ def statistics():
         'total_distance': total_distance,
         'total_time': total_time,
         'total_calories': total_calories,
-        'total_activities': total_activities
+        'total_activities': total_activities,
+        'total_elevation' : total_elevation
     }
     
     conn.close()

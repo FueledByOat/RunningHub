@@ -47,12 +47,17 @@
             <a href="{{ url_for('statistics', period='year', units=units) }}"
                 class="time-btn {{ 'active' if period == 'year' }}">Year</a>
             <a href="{{ url_for('statistics', period='all', units=units) }}"
-                class="time-btn {{ 'active' if period == 'all' }}">All Time</a> 
-                
+                class="time-btn {{ 'active' if period == 'all' }}">All Time</a>
+
         </div>
 
         <!-- Summary Stats -->
         <div class="summary-stats">
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-running"></i></div>
+                <div class="stats-value">{{ stats.total_activities }}</div>
+                <div class="stats-label">Activities</div>
+            </div>
             <div class="stats-card">
                 <div class="stats-icon"><i class="fas fa-route"></i></div>
                 <div class="stats-value">{{ stats.total_distance }} {{ units }}</div>
@@ -66,16 +71,18 @@
             </div>
 
             <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-mountain"></i></div>
+                <div class="stats-value">{{ stats.total_elevation }} m</div>
+                <div class="stats-label">Total Elevation</div>
+            </div>
+
+            <div class="stats-card">
                 <div class="stats-icon"><i class="fas fa-fire"></i></div>
                 <div class="stats-value">{{ stats.total_calories }} kcal</div>
                 <div class="stats-label">Total Calories</div>
             </div>
 
-            <div class="stats-card">
-                <div class="stats-icon"><i class="fas fa-running"></i></div>
-                <div class="stats-value">{{ stats.total_activities }}</div>
-                <div class="stats-label">Activities</div>
-            </div>
+
         </div>
 
         <!-- Charts Section -->
@@ -92,29 +99,29 @@
         </div>
 
 
-            <div class="table-wrapper">
-                <h3><i class="fas fa-shoe-prints"></i> Shoe Usage</h3>
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Shoe</th>
-                            <th>Distance</th>
-                            <th>Activities</th>
-                            <th>Last Used</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for shoe in shoes %}
-                        <tr>
-                            <td>{{ shoe.name }}</td>
-                            <td>{{ shoe.distance }} {{ units }}</td>
-                            <td>{{ shoe.activities }}</td>
-                            <td>{{ shoe.last_used }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-wrapper">
+            <h3><i class="fas fa-shoe-prints"></i> Shoe Usage</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Shoe</th>
+                        <th>Distance</th>
+                        <th>Activities</th>
+                        <th>Last Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shoe in shoes %}
+                    <tr>
+                        <td>{{ shoe.name }}</td>
+                        <td>{{ shoe.distance }} {{ units }}</td>
+                        <td>{{ shoe.activities }}</td>
+                        <td>{{ shoe.last_used }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         </div>
 
         <!-- Heatmap -->
