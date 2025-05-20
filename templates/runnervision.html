@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="runnervision">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>RUNNERVISION | Analysis Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+
+<body class="runnervision">
+    <header class="runnervision-header">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='images/RunnerVisionLogo_transparent.png') }}"
+                alt="RUNNERVISION Logo" class="runnervision-logo" />
+        </a>
+    </header>
+
+    <div class="video-section">
+        <div class="video-container">
+            <video controls src="{{ url_for('static', filename='videos/left_video.mp4') }}"></video>
+            <a class="video-link" href="{{ url_for('static', filename='reports/left_video_report.html') }}"
+                target="_blank">View Report</a>
+        </div>
+
+        <div class="video-container">
+            <video controls src="{{ url_for('static', filename='videos/right_video.mp4') }}"></video>
+            <a class="video-link" href="{{ url_for('static', filename='reports/right_video_report.html') }}"
+                target="_blank">View Report</a>
+        </div>
+    </div>
+
+    <button class="run-analysis-button" onclick="runAnalysis()">Run Analysis</button>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        Running analysis...
+    </div>
+
+    <script>
+        function runAnalysis() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+
+            fetch('/run_biomechanic_analysis', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    console.log('Analysis complete', data);
+                    window.location.reload();
+                })
+                .catch(err => {
+                    alert("Analysis failed.");
+                    console.error(err);
+                })
+                .finally(() => {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                });
+        }
+    </script>
+</body>
+
+</html>

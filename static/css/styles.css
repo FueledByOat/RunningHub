@@ -637,3 +637,108 @@ body {
 .styled-table tbody tr:hover {
   background-color: var(--accent-light);
 }
+/* Begin RunnerVision Section */
+:root {
+  --rv-primary: #110721;
+  --rv-accent: #0fbfe8;
+  --rv-secondary: #3d42a3;
+  --rv-highlight: #781389;
+  --rv-white: #fff;
+  --rv-shadow: rgba(15, 191, 232, 0.3);
+  --rv-background: #1a102d;
+}
+
+body.runnervision {
+  background: linear-gradient(to right, #300836, #110721); /* Haiti to Gigas */
+  color: var(--rv-white);
+  font-family: 'Montserrat', 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.runnervision-header {
+  text-align: center;
+  padding: 2rem 0;
+  background-color: transparent; /* optional, keep gradient visible */
+}
+
+.runnervision-logo {
+  max-width: 300px;
+  height: auto;
+  filter: drop-shadow(0 2px 5px var(--rv-shadow));
+  animation: fadeIn 2.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.video-section {
+  display: flex;
+  justify-content: space-between;
+  padding: 2rem;
+  gap: 2rem;
+}
+
+.video-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+video {
+  width: 100%;
+  max-width: 100%;
+  border: 3px solid var(--rv-accent);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px var(--rv-shadow);
+}
+
+.video-link {
+  margin-top: 1rem;
+  color: var(--rv-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.video-link:hover {
+  text-decoration: underline;
+}
+
+.run-analysis-button {
+  display: block;
+  margin: 3rem auto;
+  padding: 1rem 2rem;
+  background-color: var(--rv-accent);
+  border: none;
+  border-radius: 8px;
+  color: var(--rv-primary);
+  font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.run-analysis-button:hover {
+  background-color: var(--rv-highlight);
+  /* color: var(--rv-white); */
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(17, 7, 33, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: var(--rv-accent);
+  font-size: 2rem;
+  z-index: 1000;
+  display: none;
+}

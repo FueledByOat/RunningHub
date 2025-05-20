@@ -112,6 +112,15 @@ def run_ai_query():
     return render_template('query.html', columns=columns, rows=rows, error=error, request=request, sql_query = sql_query)
 
 
+@app.route('/runnervision')
+def runnervision():
+    return render_template('runnervision.html')
+
+@app.route('/run_biomechanic_analysis', methods=['POST'])
+def run_analysis():
+    # Simulate or run long analysis process
+    result = perform_video_analysis()  # Your logic here
+    return jsonify({"status": "complete", "message": "Analysis finished!"})
 
 @app.route("/activity/")
 def activity():
