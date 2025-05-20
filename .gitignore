@@ -5,3 +5,5 @@ strava_data_pipeline.py
 /venv
 *.db
 *.bat
+*.txt
+*.log
