@@ -11,9 +11,10 @@ from flask import Flask, render_template, request, redirect, url_for
 from dateutil.relativedelta import relativedelta
 import utils.db_utils as db_utils # custom utils
 import utils.format_utils as format_utils # custom utils
+import utils.language_model_utils as lm_utils # custom utils
 
 # -------------------------------------
-# App setup and initialization
+# Flask and Dash App setup and initialization
 # -------------------------------------
 
 app = Flask(__name__) # Flask app
@@ -23,10 +24,94 @@ dash_app = create_dash_app(app) # Initialize Dash activities page app
 create_density_dash(app, db_path=db_utils.DB_PATH)
 create_dash_dashboard_app(app, db_path=db_utils.DB_PATH)
 
+# -------------------------------------
+# Home Page Endpoints
+# -------------------------------------
+
+
 @app.route("/")
 def home():
     LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
     return render_template("home.html", activity = LATEST_ACTIVITY_ID)
+
+@app.route("/runnervision/")
+def runnervision_home():
+    LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
+    return render_template("home.html", activity = LATEST_ACTIVITY_ID)
+
+# -------------------------------------
+# Simple Web Page Endpoints
+# -------------------------------------
+
+@app.route('/query/', methods=['GET', 'POST'])
+def query():
+    error = None
+    columns = []
+    rows = []
+    sql_query = ''
+    param_input = ''
+
+    if request.method == 'POST':
+        sql_query = request.form.get('sql_query', '')
+        param_input = request.form.get('params', '{}')
+        
+
+        try:
+            if not sql_query.strip().lower().startswith("select"):
+                raise Exception("Only SELECT queries allowed in dev mode.")
+
+            # Try to parse parameters as JSON
+            param_input = param_input.strip() or '{}'
+            params = json.loads(param_input)
+            assert isinstance(params, dict)
+
+            with sqlite3.connect(db_utils.DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute(sql_query, params)
+
+                if sql_query.strip().lower().startswith('select'):
+                    columns = [desc[0] for desc in cursor.description]
+                    rows = cursor.fetchall()
+                else:
+                    conn.commit()
+        except json.JSONDecodeError:
+            error = "Invalid JSON format in parameters."
+        except Exception as e:
+            error = str(e)
+
+    return render_template('query.html',
+                           columns=columns,
+                           rows=rows,
+                           error=error,
+                           request=request,
+                           sql_query = sql_query)
+
+@app.route('/ai_query', methods=['POST'])
+def run_ai_query():
+    user_question = request.form.get('user_question', '')
+    columns = []
+    rows = []
+    error = None
+    sql_query = ''
+
+    try:
+        query_prompt_generator = lm_utils.generate_sql_from_natural_language(user_question)
+        sql_query = lm_utils.extract_sql_query(query_prompt_generator)
+        # For now, use empty params for simplicity
+        with sqlite3.connect(db_utils.DB_PATH) as conn:
+            cursor = conn.cursor()
+            cursor.execute(sql_query)
+            columns = [desc[0] for desc in cursor.description]
+            rows = cursor.fetchall()
+        print(columns)
+        print(rows)
+
+    except Exception as e:
+        error = f"Failed to process question: {str(e)}, Query Generated: {sql_query}"
+
+    return render_template('query.html', columns=columns, rows=rows, error=error, request=request, sql_query = sql_query)
+
+
 
 @app.route("/activity/")
 def activity():
@@ -408,6 +493,10 @@ def statistics():
         recent_activities=activities_list,
         start_date = start_date
     )
+# -------------------------------------
+# Dash Pages and Redirect Endpoints
+# -------------------------------------
+
 
 @app.route("/map/")
 def dashredirect():

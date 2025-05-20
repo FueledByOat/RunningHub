@@ -50,5 +50,6 @@ def interpolate_to_common_x(x_ref, y_raw, x_raw):
     """Interpolates y_raw over x_ref, assuming x_raw and y_raw are aligned."""
     if len(x_raw) < 2 or len(x_ref) < 2:
         return [None] * len(x_ref)
-    return np.interp(x_ref, x_raw, y_raw).tolist()
+    y_interp = np.interp(x_ref, x_raw, y_raw, left=np.nan, right=np.nan)
+    return [None if np.isnan(y) else y for y in y_interp]
 

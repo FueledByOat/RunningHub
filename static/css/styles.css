@@ -184,7 +184,7 @@ body {
 
 /* Heatmap Section */
 .heatmap-container-home {
-  height: 400px;
+  height: 450px;
   margin: 30px 0;
   border-radius: 12px;
   overflow: hidden;
@@ -550,10 +550,90 @@ body {
 
 #runner_vision_img {
   float: left;
-  width: 40%;
+  width: 30%;
 }
 
 #run_strong_img {
   float: right;
-  width: 40%;
+  width: 30%;
+}
+
+ .query-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    margin: 2rem 0;
+  }
+
+  .query-form, .nlp-form {
+    width: 45%;
+  }
+
+  .or-divider {
+    display: flex;
+    align-items: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
+
+  textarea {
+    width: 100%;
+  }
+
+  .results {
+    margin-top: 2rem;
+  }
+
+  .error {
+    color: red;
+    margin-bottom: 1rem;
+  }
+
+  .query-results {
+  margin: 2rem auto;
+  padding: 1rem;
+  background-color: var(--white);
+  border: 1px solid var(--gray-light);
+  border-radius: 8px;
+  box-shadow: 0 2px 5px var(--shadow);
+  max-width: 90%;
+}
+
+.query-results h3 {
+  color: var(--primary);
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.table-wrapper-sql {
+  overflow-x: auto;
+}
+
+.styled-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  background-color: var(--white);
+  color: var(--text);
+}
+
+.styled-table thead {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.styled-table th,
+.styled-table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--gray-light);
+  text-align: left;
+}
+
+.styled-table tbody tr:nth-child(even) {
+  background-color: var(--background);
+}
+
+.styled-table tbody tr:hover {
+  background-color: var(--accent-light);
 }
