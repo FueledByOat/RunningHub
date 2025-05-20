@@ -42,16 +42,37 @@ def create_dash_app(flask_app):
         lat_lng = [{'lat': lat, 'lon': lon} for lat, lon in decoded]
 
         distance, heartrate, altitude, power, time = dash_utils.get_streams_data(activity_id)
-        pace_ms = [(time[i + 1] - time[i]) / (distance[i + 1] - distance[i]) for i in range(len(distance) - 1)]
         distance = [i / 1609 for i in distance] # now in units of second to parts of a mile
         x_ref = np.linspace(0, max(distance) if distance else 1, num=500)
         hr_interp = dash_utils.interpolate_to_common_x(x_ref, heartrate, distance)
         alt_interp = dash_utils.interpolate_to_common_x(x_ref, altitude, distance)
         power_interp = dash_utils.interpolate_to_common_x(x_ref, power, distance)
-        time_interp = dash_utils.interpolate_to_common_x(x_ref, time, distance)
 
-        pace = [((time_interp[i + 1] - time_interp[i])*len(x_ref)) / ((x_ref[i + 1] - x_ref[i]) * len(x_ref)) for i in range(len(x_ref) - 1)]
-        # print(pace)
+        # pace section 
+        # Ensure inputs are numpy arrays
+        distance_miles = np.array(distance)
+        time_sec = np.array(time)  # This is the original list of time in seconds
+
+        # Compute deltas
+        delta_distance = np.diff(distance_miles)      # miles per second
+        delta_time = np.diff(time_sec)                # usually 1 sec, but safe to use diff
+
+        # Avoid divide-by-zero
+        with np.errstate(divide='ignore', invalid='ignore'):
+            pace_per_mile_sec = delta_time / delta_distance  # seconds per mile
+            pace_per_mile_min = pace_per_mile_sec / 60       # minutes per mile
+            pace_per_mile_min = np.clip(pace_per_mile_min, 2, 12)  # reasonable range, clip anything absurd     
+
+        # Midpoints for pace values (since they are between distance[i] and distance[i+1])
+        x_mid = (distance_miles[1:] + distance_miles[:-1]) / 2
+
+        def moving_average(y, window_size=10):
+            return np.convolve(y, np.ones(window_size)/window_size, mode='same')
+
+        # Use your interpolation function
+        pace_interp = dash_utils.interpolate_to_common_x(x_ref, pace_per_mile_min, x_mid)
+
+        pace_interp_smooth = moving_average(np.array(pace_interp), window_size=10)
 
         map_component = dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=14,
                                 style={'width': '100%', 'height': '400px'}, children=[
@@ -80,8 +101,8 @@ def create_dash_app(flask_app):
             ),
             dcc.Graph(
                 figure=go.Figure(
-                    data=[go.Scatter(x=x_ref, y=pace, mode='lines', name='Pace Chart')],
-                    layout=go.Layout(title='Pace Chart', xaxis_title='Distance (mi)', yaxis_title='Pace')
+                    data=[go.Scatter(x=x_ref, y=pace_interp_smooth, mode='lines', name='Pace Chart')],
+                    layout=go.Layout(title='Pace Chart', xaxis_title='Distance (mi)', yaxis=dict(autorange='reversed'), yaxis_title='Pace')
                 )
             ),
         ])

@@ -174,7 +174,6 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Get data from backend
 
-            // Claude code bad
             const weeklyDistances = JSON.parse('{{ weekly_distances|tojson }}' || '[0, 0, 0, 0, 0, 0, 0]');
             const paceDates = JSON.parse('{{ pace_dates|tojson }}' || '["Jan", "Feb", "Mar", "Apr", "May"]');
             const paceValues = JSON.parse('{{ pace_values|tojson }}' || '[5.2, 5.1, 5.3, 5.0, 4.9]');

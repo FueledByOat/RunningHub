@@ -212,7 +212,7 @@ def trophy_room():
 def statistics():
     """Render the statistics page with data from the database"""
     period = request.args.get('period', 'week')  # Default to week view
-    units = request.args.get('units', 'miles')  # Default to miles
+    units = request.args.get('units', 'mi')  # Default to miles
     # Get current date
     now = datetime.now()
     
@@ -345,7 +345,7 @@ def statistics():
             
             shoe_data.append({
                 'name': shoe['gear_id'],  # Ideally, you'd have a mapping of gear_id to shoe names
-                'distance': round(shoe['total_distance'] / 1000, 2),  # Convert to km
+                'distance': round(shoe['total_distance'] / 1000, 2) if units == 'km' else round(shoe['total_distance'] / 1609, 2), 
                 'activities': shoe['activities'],
                 'last_used': last_used_date
             })

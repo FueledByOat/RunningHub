@@ -542,8 +542,18 @@ body {
 .back-button:active {
   transform: scale(0.95);
 }
-img {
-  display: block;
-  margin: auto;
+
+.image-container {
+  width: 100%; /* Ensure the container spans the full width */
+  overflow: auto; /* Clear the floats */
+}
+
+#runner_vision_img {
+  float: left;
+  width: 40%;
+}
+
+#run_strong_img {
+  float: right;
   width: 40%;
 }
