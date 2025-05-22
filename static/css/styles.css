@@ -716,7 +716,7 @@ body.runnervision {
 
 .run-analysis-button:hover {
     background-color: var(--rv-highlight);
-    color: var(--rv-white);
+    color: var(--rv-primary);
 }
 
 .loading-overlay {
