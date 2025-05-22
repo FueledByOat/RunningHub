@@ -5,55 +5,44 @@
     <meta charset="UTF-8" />
     <title>RUNNERVISION | Analysis Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="{{ url_for('static', filename='js/runnervision_home.js') }}" defer></script>
 </head>
 
 <body class="runnervision">
-    <header class="runnervision-header">
+    <div class="runnervision-header">
         <a href="{{ url_for('home') }}">
             <img src="{{ url_for('static', filename='images/RunnerVisionLogo_transparent.png') }}"
-                alt="RUNNERVISION Logo" class="runnervision-logo" />
+                alt="RunnerVision Logo" class="runnervision-logo" />
         </a>
-    </header>
-
-    <div class="video-section">
-        <div class="video-container">
-            <video controls src="{{ url_for('static', filename='videos/left_video.mp4') }}"></video>
-            <a class="video-link" href="{{ url_for('static', filename='reports/left_video_report.html') }}"
-                target="_blank">View Report</a>
+    </div>
+    <div class="upload-section">
+        <h2>Upload Rear and/or Side Videos</h2>
+        <div id="drop-zone" class="drop-zone">
+            <p>Drop videos here or click to browse</p>
+            <input type="file" id="file-input" name="videos" multiple accept="video/*" style="display: none;" />
         </div>
+    </div>
+    <button id="run-btn" class="run-analysis-button">Run Analysis</button>
 
-        <div class="video-container">
-            <video controls src="{{ url_for('static', filename='videos/right_video.mp4') }}"></video>
-            <a class="video-link" href="{{ url_for('static', filename='reports/right_video_report.html') }}"
-                target="_blank">View Report</a>
+    <div id="overlay" class="loading-overlay">
+        <div class="progress-container">
+            <div id="progress-bar-outer" class="progress-bar-outer">
+                <div id="progress-bar-inner" class="progress-bar-inner"></div>
+            </div>
+            <p>Analyzing...</p>
         </div>
     </div>
 
-    <button class="run-analysis-button" onclick="runAnalysis()">Run Analysis</button>
-
-    <div id="loadingOverlay" class="loading-overlay">
-        Running analysis...
+    <div id="results" class="video-section" style="display: none;">
+        <div class="video-container">
+            <video id="rear-video" type="video/mp4" controls></video>
+            <a id="rear-report" class="video-link" target="_blank">View Rear Report</a>
+        </div>
+        <div class="video-container">
+            <video id="side-video" type="video/mp4" controls></video>
+            <a id="side-report" class="video-link" target="_blank">View Side Report</a>
+        </div>
     </div>
-
-    <script>
-        function runAnalysis() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-
-            fetch('/run_biomechanic_analysis', { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    console.log('Analysis complete', data);
-                    window.location.reload();
-                })
-                .catch(err => {
-                    alert("Analysis failed.");
-                    console.error(err);
-                })
-                .finally(() => {
-                    document.getElementById('loadingOverlay').style.display = 'none';
-                });
-        }
-    </script>
 </body>
 
 </html>

@@ -553,6 +553,11 @@ body {
   width: 30%;
 }
 
+#coach-g-img {
+  float: center;
+  width: 20%;
+}
+
 #run_strong_img {
   float: right;
   width: 30%;
@@ -639,106 +644,211 @@ body {
 }
 /* Begin RunnerVision Section */
 :root {
-  --rv-primary: #110721;
-  --rv-accent: #0fbfe8;
-  --rv-secondary: #3d42a3;
-  --rv-highlight: #781389;
-  --rv-white: #fff;
-  --rv-shadow: rgba(15, 191, 232, 0.3);
-  --rv-background: #1a102d;
+    --rv-primary: #110721;
+    --rv-accent: #0fbfe8;
+    --rv-secondary: #3d42a3;
+    --rv-highlight: #781389;
+    --rv-white: #fff;
+    --rv-shadow: rgba(15, 191, 232, 0.3);
+    --rv-background: #1a102d;
 }
 
 body.runnervision {
-  background: linear-gradient(to right, #300836, #110721); /* Haiti to Gigas */
-  color: var(--rv-white);
-  font-family: 'Montserrat', 'Segoe UI', sans-serif;
-  margin: 0;
-  padding: 0;
-  min-height: 100vh;
+    background: linear-gradient(to right, #300836, #110721);
+    color: var(--rv-white);
+    font-family: 'Montserrat', 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
 }
 
 .runnervision-header {
-  text-align: center;
-  padding: 2rem 0;
-  background-color: transparent; /* optional, keep gradient visible */
+    text-align: center;
+    padding: 2rem 0;
 }
 
 .runnervision-logo {
-  max-width: 300px;
-  height: auto;
-  filter: drop-shadow(0 2px 5px var(--rv-shadow));
-  animation: fadeIn 2.5s ease-out;
+    max-width: 300px;
+    height: auto;
+    filter: drop-shadow(0 2px 5px var(--rv-shadow));
+    animation: fadeIn 2.5s ease-out;
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.video-section {
-  display: flex;
-  justify-content: space-between;
-  padding: 2rem;
-  gap: 2rem;
+.upload-section {
+    text-align: center;
+    margin: 2rem auto;
+    width: 60%;
 }
 
-.video-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.drop-zone {
+    border: 2px dashed var(--rv-accent);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
 
-video {
-  width: 100%;
-  max-width: 100%;
-  border: 3px solid var(--rv-accent);
-  border-radius: 10px;
-  box-shadow: 0 4px 10px var(--rv-shadow);
-}
-
-.video-link {
-  margin-top: 1rem;
-  color: var(--rv-accent);
-  text-decoration: none;
-  font-weight: 600;
-}
-
-.video-link:hover {
-  text-decoration: underline;
+.drop-zone.dragover {
+    background-color: rgba(15, 191, 232, 0.1);
+    border-color: var(--rv-highlight);
 }
 
 .run-analysis-button {
-  display: block;
-  margin: 3rem auto;
-  padding: 1rem 2rem;
-  background-color: var(--rv-accent);
-  border: none;
-  border-radius: 8px;
-  color: var(--rv-primary);
-  font-weight: bold;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+    display: block;
+    margin: 2rem auto;
+    padding: 1rem 2rem;
+    background-color: var(--rv-accent);
+    border: none;
+    border-radius: 8px;
+    color: var(--rv-primary);
+    font-weight: bold;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.6s ease;
 }
 
 .run-analysis-button:hover {
-  background-color: var(--rv-highlight);
-  /* color: var(--rv-white); */
+    background-color: var(--rv-highlight);
+    color: var(--rv-white);
 }
 
 .loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(17, 7, 33, 0.85);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: var(--rv-accent);
-  font-size: 2rem;
-  z-index: 1000;
-  display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(17, 7, 33, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: var(--rv-accent);
+    font-size: 1.5rem;
+    z-index: 1000;
+    display: none;
+    flex-direction: column;
+}
+
+.progress-container {
+    width: 60%;
+    text-align: center;
+}
+
+.progress-bar-outer {
+    width: 100%;
+    height: 20px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.progress-bar-inner {
+    height: 100%;
+    width: 0;
+    background-color: var(--rv-accent);
+    transition: width 0.3s ease;
+}
+
+.video-section {
+    display: flex;
+    justify-content: space-between;
+    padding: 2rem;
+    gap: 2rem;
+}
+
+.video-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+video {
+    width: 100%;
+    max-width: 100%;
+    max-height: 400px; /* or any height you want */
+    height: auto;
+    object-fit: contain;
+    border: 3px solid var(--rv-accent);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px var(--rv-shadow);
+}
+
+.video-link {
+    margin-top: 1rem;
+    color: var(--rv-accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.video-link:hover {
+    text-decoration: underline;
+    color: var(--rv-highlight);
+}
+/* Report overlay styles */
+.report-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(17, 7, 33, 0.95);
+    z-index: 2000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.report-iframe {
+    width: 90%;
+    height: 85%;
+    border: 3px solid var(--rv-accent);
+    border-radius: 10px;
+    background-color: white;
+}
+
+.close-report-btn {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    font-size: 2rem;
+    background: none;
+    border: none;
+    color: var(--rv-accent);
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.close-report-btn:hover {
+    color: var(--rv-highlight);
+}
+
+/* Update video element to specify MIME type */
+video {
+    width: 100%;
+    max-width: 100%;
+    border: 3px solid var(--rv-accent);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px var(--rv-shadow);
+}
+
+/* Make sure links stand out */
+.video-link {
+    margin-top: 1rem;
+    color: var(--rv-accent);
+    text-decoration: none;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.video-link:hover {
+    text-decoration: underline;
+    color: var(--rv-highlight);
 }

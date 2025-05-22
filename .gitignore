@@ -7,3 +7,15 @@ strava_data_pipeline.py
 *.bat
 *.txt
 *.log
+/data
+/processed
+/reports
+/uploads
+/videos
+*.MP4
+*.MOV
+*.mp4
+*.mov
+*.csv
+dev.ipynb
+/__pycache__

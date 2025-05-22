@@ -1,4 +1,5 @@
 from flask import Flask, render_template
+from werkzeug.utils import secure_filename, safe_join
 import sqlite3
 from dash_dashboard_app.layout import create_dash_dashboard_app
 from dash_app import create_dash_app
@@ -6,23 +7,29 @@ from density_dash import create_density_dash
 import pandas as pd
 import datetime
 import json
+import os
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, flash, jsonify
 from dateutil.relativedelta import relativedelta
+import mimetypes
 import utils.db_utils as db_utils # custom utils
 import utils.format_utils as format_utils # custom utils
 import utils.language_model_utils as lm_utils # custom utils
+import utils.RunnerVision.runnervision_utils as rv_utils # custom utils
 
 # -------------------------------------
 # Flask and Dash App setup and initialization
 # -------------------------------------
 
 app = Flask(__name__) # Flask app
-
+app.secret_key = os.urandom(24).hex()
 
 dash_app = create_dash_app(app) # Initialize Dash activities page app
 create_density_dash(app, db_path=db_utils.DB_PATH)
 create_dash_dashboard_app(app, db_path=db_utils.DB_PATH)
+VIDEO_FOLDER = os.path.join(app.root_path, 'videos')
+UPLOAD_FOLDER = os.path.join(app.root_path, 'uploads')  # You can name this 'upload' or 'uploads'
+ALLOWED_EXTENSIONS = {'mp4'}
 
 # -------------------------------------
 # Home Page Endpoints
@@ -34,10 +41,91 @@ def home():
     LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
     return render_template("home.html", activity = LATEST_ACTIVITY_ID)
 
-@app.route("/runnervision/")
-def runnervision_home():
-    LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
-    return render_template("home.html", activity = LATEST_ACTIVITY_ID)
+# @app.route("/runnervision/")
+# def runnervision_home():
+#     LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
+#     return render_template("home.html", activity = LATEST_ACTIVITY_ID)
+
+# -------------------------------------
+# RunnerVision Serve Endpoints
+# -------------------------------------
+
+@app.route('/reports/<path:filename>')
+def serve_report(filename):
+    safe_path = safe_join('reports', filename)
+    if not safe_path:
+        abort(403)
+
+    try:
+        return send_from_directory('reports', filename)
+    except FileNotFoundError:
+        abort(404)
+
+# @app.route('/reports/<path:filename>')
+# def serve_report(filename):
+#     reports_dir = os.path.join(app.root_path, 'reports')
+    
+#     # Prevent directory traversal attacks
+#     if '..' in filename or filename.startswith('/'):
+#         abort(403)
+    
+#     try:
+#         return send_from_directory(reports_dir, filename)
+#     except FileNotFoundError:
+#         abort(404)
+
+@app.route('/videos/<path:filename>')
+def serve_video(filename):
+    # Basic path safety check
+    if '..' in filename or filename.startswith('/'):
+        abort(403)
+
+    # Full file path
+    filepath = os.path.join(VIDEO_FOLDER, filename)
+    if not os.path.isfile(filepath):
+        abort(404)
+
+    # Serve with correct mimetype
+    return send_from_directory(VIDEO_FOLDER, filename, mimetype='video/mp4')
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/upload', methods=['POST'])
+def upload_files():
+    if 'videos' not in request.files:
+        return jsonify({"error": "No files part in the request"}), 400
+    
+    files = request.files.getlist('videos')
+    if not files or all(file.filename == '' for file in files):
+        return jsonify({"error": "No selected files"}), 400
+    
+    saved_files = []
+    errors = []
+    
+    for file in files:
+        if file and file.filename != '' and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            if 'run' not in filename.lower():
+                filename = f"run_{filename}"  # Add keyword if missing
+            
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(save_path)
+            saved_files.append(filename)
+        else:
+            errors.append(f"Invalid file: {file.filename}")
+    
+    # Handle errors but still proceed with valid files
+    if errors and not saved_files:
+        return jsonify({"error": ", ".join(errors)}), 400
+    
+    return jsonify({
+        "success": True,
+        "message": f"Uploaded: {', '.join(saved_files)}",
+        "files": saved_files,
+        "warnings": errors if errors else None
+    }), 200
 
 # -------------------------------------
 # Simple Web Page Endpoints
@@ -114,13 +202,32 @@ def run_ai_query():
 
 @app.route('/runnervision')
 def runnervision():
-    return render_template('runnervision.html')
+    report_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'html')
+    report_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'html')
+    video_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'mp4')
+    video_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'mp4')
+    print(report_rear)
+
+    return render_template(
+        'runnervision.html',
+        report_rear=report_rear,
+        report_side=report_side.replace("static/", "") if report_side else None,
+        video_rear=video_rear.replace("static/", "") if video_rear else None,
+        video_side=video_side.replace("static/", "") if video_side else None
+    )
 
 @app.route('/run_biomechanic_analysis', methods=['POST'])
 def run_analysis():
     # Simulate or run long analysis process
-    result = perform_video_analysis()  # Your logic here
-    return jsonify({"status": "complete", "message": "Analysis finished!"})
+    result = rv_utils.run_analysis()
+    print(result)
+    return jsonify({"status": "complete", 
+                    "message": "Analysis finished!",
+                    "rear_report_path": result[0]  ,
+                    "rear_video_path":  result[1] ,
+                    "side_report_path": result[2]  ,
+                    "side_video_path": result[3]
+                    })
 
 @app.route("/activity/")
 def activity():
