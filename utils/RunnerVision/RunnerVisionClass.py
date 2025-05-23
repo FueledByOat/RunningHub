@@ -12,6 +12,7 @@ import numpy as np
 import mediapipe as mp
 import matplotlib.pyplot as plt
 import pandas as pd
+from collections import deque
 
 
 class RunnerVisionAnalyzer:
@@ -30,6 +31,8 @@ class RunnerVisionAnalyzer:
         
         # Define key pose landmarks for running analysis
         self.key_points = {
+            'left_ear': self.mp_pose.PoseLandmark.LEFT_EAR,
+            'right_ear': self.mp_pose.PoseLandmark.RIGHT_EAR,
             'nose': self.mp_pose.PoseLandmark.NOSE,
             'left_shoulder': self.mp_pose.PoseLandmark.LEFT_SHOULDER,
             'right_shoulder': self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
@@ -84,7 +87,16 @@ class RunnerVisionAnalyzer:
             'stride_confidence' : [],
             'stance_phase_detected': [],  # boolean for whether foot is on ground
             'stance_foot' : [],
-            'stance_confidence' : []
+            'stance_confidence' : [],
+            # 'ground_contact_time' : [],
+            # 'flight_time' : [],
+            # 'duty_factor' : [],
+            # 'peak_knee_flexion_during_stance' : [],
+            # 'knee_flexion_at_foot_strike' : [],
+            # 'hip_extension_at_toe_off' : [],
+            # 'anke_dorsiflextion_mid_stance' : [],
+            # 'saggital_pelvic_rotation' : [],
+            # 'ship_ankle_at_foot_strike' : [],
         }
         # Rear Metrics storage
         self.rear_metrics = {
@@ -215,18 +227,26 @@ class RunnerVisionAnalyzer:
     def extract_side_metrics(self, landmarks, frame_number, timestamp):
         """Extract running biomechanics metrics from a single frame
         for a video shot from the side of a runner, AKA the sagittal plane."""
+
         # Get normalized landmark positions
         landmark_coords = {}
         for name, landmark_id in self.key_points.items():
             landmark = landmarks.landmark[landmark_id]
             landmark_coords[name] = (landmark.x, landmark.y, landmark.z, landmark.visibility)
         
+        # Instantiate Stance Class
+        # Detect stance phase
+        stance_phase = self.detect_stance_phase_side(landmark_coords)
+        self.side_metrics['stance_phase_detected'].append(stance_phase['is_stance_phase'])
+        self.side_metrics['stance_foot'].append(stance_phase['stance_foot'])
+        self.side_metrics['stance_confidence'].append(stance_phase['confidence'])
+
         # Store basic timestamp data
         self.side_metrics['timestamp'].append(timestamp)
         self.side_metrics['frame_number'].append(frame_number)
         
         # Calculate foot strike metrics
-        foot_strike = self.calculate_foot_strike(landmark_coords)
+        foot_strike = self.calculate_foot_strike(landmark_coords, stance_phase = stance_phase)
         self.side_metrics['strike_pattern'].append(foot_strike['strike_pattern'])
         self.side_metrics['strike_confidence'].append(foot_strike['confidence'])
         self.side_metrics['vertical_difference'].append(foot_strike['vertical_difference'])
@@ -235,7 +255,7 @@ class RunnerVisionAnalyzer:
         self.side_metrics['strike_landing_stiffness'].append(foot_strike['landing_stiffness'])
         
         # Calculate foot landing position relative to center of mass
-        foot_position = self.calculate_foot_landing_position(landmark_coords)
+        foot_position = self.calculate_foot_landing_position(landmark_coords, stance_phase = stance_phase)
         self.side_metrics['foot_landing_position_category'].append(foot_position['position_category'])
         self.side_metrics['foot_landing_distance_from_center_in_cm'].append(foot_position['distance_cm'])
         self.side_metrics['foot_landing_is_under_center_of_mass'].append(foot_position['is_under_com'])
@@ -274,13 +294,9 @@ class RunnerVisionAnalyzer:
         self.side_metrics['stride_confidence'].append(stride_length['confidence'])
 
 
-        # Detect stance phase
-        stance_phase = self.detect_stance_phase_side(landmark_coords)
-        self.side_metrics['stance_phase_detected'].append(stance_phase['is_stance_phase'])
-        self.side_metrics['stance_foot'].append(stance_phase['is_stance_phase'])
-        self.side_metrics['stance_confidence'].append(stance_phase['confidence'])
 
-    def calculate_foot_strike(self, landmarks):
+
+    def calculate_foot_strike(self, landmarks, stance_phase):
         """
         Determine foot strike pattern (heel, midfoot, forefoot) from side view.
         
@@ -298,10 +314,16 @@ class RunnerVisionAnalyzer:
         --------
         dict
             Analysis of foot strike pattern with classification and measurements
+            "strike_pattern": strike_pattern,
+            "confidence": confidence,
+            "vertical_difference": vertical_difference,
+            "foot_angle": foot_angle,
+            "ankle_angle": ankle_angle,
+            "landing_stiffness": stiffness
         """
 
         # Check if in stance phase
-        stance_info = self.detect_stance_phase_side(landmarks)
+        stance_info = stance_phase
         
         if not stance_info['is_stance_phase']:
             return {
@@ -383,7 +405,7 @@ class RunnerVisionAnalyzer:
             "landing_stiffness": stiffness
         }
     
-    def calculate_foot_landing_position(self, landmarks, tolerance_cm=5.0):
+    def calculate_foot_landing_position(self, landmarks, stance_phase, tolerance_cm=5.0):
         """
         Calculate horizontal distance from foot landing to center of mass.
         
@@ -402,7 +424,7 @@ class RunnerVisionAnalyzer:
         hip_center_x = (landmarks['left_hip'][0] + landmarks['right_hip'][0]) / 2
         
         # Check if in stance phase
-        stance_info = self.detect_stance_phase_side(landmarks)
+        stance_info = stance_phase
         
         if not stance_info['is_stance_phase']:
             return {
@@ -1716,142 +1738,225 @@ class RunnerVisionAnalyzer:
         
         return assessment
     
-    class StancePhaseDetector:
-        def __init__(self):
-            """Initialize the stance phase detector."""
-            # Variables for ground level detection
-            self.calibration_frames = 90  # Number of frames to use for calibration
+    class StancePhaseDetectorSide:
+        def __init__(self, calibration_frames=90, stance_threshold_ratio=0.018, visibility_threshold=0.5):
+            """Initialize the stance phase detector.
+            Args:
+                calibration_frames (int): Number of frames for ground and runner height calibration.
+                stance_threshold_ratio (float): Threshold for stance detection, as a ratio of the
+                                                runner's apparent height in normalized coordinates.
+                                                (e.g., 0.04 means 4% of runner's apparent height).
+                visibility_threshold (float): Minimum visibility score for a landmark to be considered.
+            """
+            self.calibration_frames = calibration_frames
+            self.stance_threshold_ratio = stance_threshold_ratio
+            self.visibility_threshold = visibility_threshold
             self.frame_count = 0
-            self.ground_y_values = []
-            self.ground_level = None
-            self.stance_threshold = 0.05  # Threshold distance from ground (as fraction of image height)
+
+            self.ground_y_samples_normalized = []
+            self.runner_height_samples_normalized = [] # Store normalized runner height during calibration
+
+            self.ground_level_normalized = None
+            self.avg_runner_height_normalized = None # Runner's height in normalized [0,1] coordinates
+
+            # For optional velocity calculation
+            self.foot_y_history = {'left': [], 'right': []}
+            self.max_history_len = 3 # Frames for velocity calculation buffer
+            self.foot_velocity_threshold_normalized = 0.01 # Normalized velocity; tune this
             
+            self.foot_landmark_names = {
+                'right': ['right_heel', 'right_foot_index', 'right_ankle'], # Ankle for reference
+                'left': ['left_heel', 'left_foot_index', 'left_ankle']
+            }
+            self.head_landmark_names = ['right_ear', 'left_ear', 'nose']
+
+
+        def _collect_calibration_data(self, landmarks):
+            """Collects data for ground level and runner's apparent height during calibration."""
+            
+            # 1. Collect ground y-coordinates (lowest point of any visible foot)
+            lowest_foot_y_this_frame = []
+            for side in ['left', 'right']:
+                for lm_name in self.foot_landmark_names[side][:2]: # Heel and foot_index
+                    if lm_name in landmarks and landmarks[lm_name][3] >= self.visibility_threshold:
+                        lowest_foot_y_this_frame.append(landmarks[lm_name][1])
+            
+            if lowest_foot_y_this_frame:
+                self.ground_y_samples_normalized.append(max(lowest_foot_y_this_frame))
+
+            # 2. Collect runner's apparent height (ears/nose to lowest foot)
+            head_y_candidates = []
+            for lm_name in self.head_landmark_names:
+                if lm_name in landmarks and landmarks[lm_name][3] >= self.visibility_threshold:
+                    head_y_candidates.append(landmarks[lm_name][1])
+            
+            if not head_y_candidates or not lowest_foot_y_this_frame:
+                return # Not enough data in this frame
+
+            min_head_y_normalized = min(head_y_candidates)
+            max_foot_y_normalized = max(lowest_foot_y_this_frame) # Use the already found lowest foot y
+
+            runner_height_normalized_this_frame = max_foot_y_normalized - min_head_y_normalized
+            if runner_height_normalized_this_frame > 0.1: # Basic sanity check (runner is at least 10% of image height)
+                self.runner_height_samples_normalized.append(runner_height_normalized_this_frame)
+
+        def _finalize_calibration(self):
+            """Calculates ground level and average runner height from collected samples."""
+            if self.ground_y_samples_normalized:
+                # Using median or percentile for robustness
+                self.ground_level_normalized = np.percentile(self.ground_y_samples_normalized, 85) # e.g., 85th percentile
+                print(f"Calibrated ground_level_normalized: {self.ground_level_normalized:.3f}")
+            else:
+                print("Warning: Could not calibrate ground level.")
+                # Fallback or raise error if critical
+                self.ground_level_normalized = 0.9 # Default if no data
+
+            if self.runner_height_samples_normalized:
+                self.avg_runner_height_normalized = np.median(self.runner_height_samples_normalized)
+                print(f"Calibrated avg_runner_height_normalized: {self.avg_runner_height_normalized:.3f}")
+            else:
+                print("Warning: Could not calibrate runner's apparent height.")
+                self.avg_runner_height_normalized = 0.7 # Default (runner occupies 70% of frame height)
+                
+        def _get_foot_vertical_velocity(self, side, current_lowest_y):
+            """Estimates vertical velocity of the foot (normalized units per frame)."""
+            self.foot_y_history[side].append(current_lowest_y)
+            if len(self.foot_y_history[side]) > self.max_history_len:
+                self.foot_y_history[side].pop(0)
+
+            if len(self.foot_y_history[side]) < 2:
+                return 0.0 # Not enough history
+
+            # Simple difference; more advanced could be slope of linear regression over history
+            velocity = self.foot_y_history[side][-1] - self.foot_y_history[side][-2]
+            return velocity
+
         def detect_stance_phase_side(self, landmarks):
             """
-            Detect if a runner is in stance phase based on foot landmarks.
-            Uses ground level calibration from initial frames.
-            
-            Args:
-                landmarks: Dictionary containing landmark positions 
-                        with keys like 'right_ankle', 'left_heel', etc.
-                        Each landmark is [x, y, z] coordinate
-            
-            Returns:
-                dict: Contains 'is_stance_phase' (boolean), 'stance_foot' (string), 
-                    and 'confidence' (float 0-1)
+            Detect if a runner is in stance phase from side view landmarks.
+            Relies on normalized coordinates from BlazePose.
             """
-            # Check if we have foot landmarks
-            foot_landmarks = {
-                'right': ['right_heel', 'right_foot_index'],
-                'left': ['left_heel', 'left_foot_index']
-            }
-            
-            # Get image height (for normalization)
-            image_height = getattr(self, 'image_height', 1.0)
-            
-            # If we're still in calibration phase, collect ground level data
             if self.frame_count < self.calibration_frames:
-                self._collect_ground_data(landmarks, foot_landmarks)
+                self._collect_calibration_data(landmarks)
                 self.frame_count += 1
-                
-                # If this is the last calibration frame, calculate ground level
                 if self.frame_count == self.calibration_frames:
-                    self._calculate_ground_level()
-                    
-                # During calibration, assume no stance phase
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0}
-            
-            # If ground level is not established yet, return no stance
-            if self.ground_level is None:
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0}
-            
-            # Check each foot to see if it's in stance phase
-            right_in_stance, right_confidence = self._check_foot_stance(landmarks, 'right', foot_landmarks['right'])
-            left_in_stance, left_confidence = self._check_foot_stance(landmarks, 'left', foot_landmarks['left'])
-            
-            # Determine if either foot is in stance phase
-            if right_in_stance and (not left_in_stance or right_confidence >= left_confidence):
-                return {'is_stance_phase': True, 'stance_foot': 'right', 'confidence': right_confidence}
-            elif left_in_stance:
-                return {'is_stance_phase': True, 'stance_foot': 'left', 'confidence': left_confidence}
-            else:
-                # Neither foot is in stance phase
-                highest_conf = max(right_confidence, left_confidence)
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': highest_conf}
-                
-        def _collect_ground_data(self, landmarks, foot_landmarks):
-            """Collect ground level data during calibration phase."""
-            # Find the lowest y-coordinate of any foot landmark
-            lowest_y = 0
-            
-            for side, lms in foot_landmarks.items():
-                for lm in lms:
-                    if lm in landmarks:
-                        y_value = landmarks[lm][1]
-                        if y_value > lowest_y:  # Remember that y increases downward
-                            lowest_y = y_value
-            
-            # Only add non-zero values to our collection
-            if lowest_y > 0:
-                self.ground_y_values.append(lowest_y)
-        
-        def _calculate_ground_level(self):
-            """Calculate the ground level from collected data."""
-            if not self.ground_y_values:
-                return
-                
-            # Use the 90th percentile as our ground level to filter out outliers
-            # This is more robust than using the maximum value
-            self.ground_y_values.sort()
-            index = int(len(self.ground_y_values) * 0.9)
-            self.ground_level = self.ground_y_values[min(index, len(self.ground_y_values) - 1)]
-            
-        def _check_foot_stance(self, landmarks, side, foot_landmarks_list):
-            """Check if a specific foot is in stance phase."""
-            # If we don't have the landmarks, return not in stance
-            if not all(lm in landmarks for lm in foot_landmarks_list):
-                return False, 0.0
-                
-            # Calculate the lowest point of this foot
-            lowest_y = 0
-            for lm in foot_landmarks_list:
-                y_value = landmarks[lm][1]
-                if y_value > lowest_y:
-                    lowest_y = y_value
-                    
-            # Calculate distance from ground (normalized by image height)
-            image_height = getattr(self, 'image_height', 1.0)
-            distance_from_ground = abs(self.ground_level - lowest_y) / image_height
-            
-            # If within threshold, the foot is in stance phase
-            is_stance = distance_from_ground <= self.stance_threshold
-            
-            # Calculate confidence (1.0 at ground level, decreasing as distance increases)
-            confidence = max(0.0, 1.0 - (distance_from_ground / (self.stance_threshold * 2)))
-            
-            return is_stance, confidence
+                    self._finalize_calibration()
+                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug_info': "calibrating"}
 
-    def detect_stance_phase_side(self, landmarks):
-        """
-        Wrapper function that creates or uses an existing StancePhaseDetector instance.
-        
-        Args:
-            landmarks: Dictionary containing landmark positions
+            if self.ground_level_normalized is None or self.avg_runner_height_normalized is None:
+                # This case should ideally be handled by forcing calibration or having robust defaults
+                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug_info': "calibration_not_complete"}
+
+            # Calculate dynamic stance threshold based on runner's apparent height
+            # This threshold is in normalized units
+            dynamic_stance_threshold_normalized = self.avg_runner_height_normalized * self.stance_threshold_ratio
             
-        Returns:
-            dict: Contains 'is_stance_phase' (boolean), 'stance_foot' (string), 
-                and 'confidence' (float 0-1)
-        """
-        # Create detector instance if it doesn't exist
-        if not hasattr(self, '_stance_detector'):
-            self._stance_detector = self.StancePhaseDetector()
+            stance_candidates = []
+
+            for side in ['left', 'right']:
+                foot_points_y = []
+                relevant_landmarks = self.foot_landmark_names[side][:2] # Heel and foot_index
+
+                all_landmarks_visible_for_side = True
+                for lm_name in relevant_landmarks:
+                    if not (lm_name in landmarks and landmarks[lm_name][3] >= self.visibility_threshold):
+                        all_landmarks_visible_for_side = False
+                        break
+                    foot_points_y.append(landmarks[lm_name][1])
+                
+                if not all_landmarks_visible_for_side or not foot_points_y:
+                    stance_candidates.append({'side': side, 'in_stance': False, 'confidence': 0.0, 'lowest_y': float('inf')})
+                    continue
+
+                lowest_y_of_foot = max(foot_points_y) # Max because Y increases downwards (normalized)
+                distance_from_ground_normalized = abs(self.ground_level_normalized - lowest_y_of_foot)
+                
+                # Check 1: Proximity to ground
+                is_near_ground = distance_from_ground_normalized <= dynamic_stance_threshold_normalized
+                
+                # Check 2: Low vertical velocity (optional, but recommended)
+                # vertical_velocity = self._get_foot_vertical_velocity(side, lowest_y_of_foot)
+                # is_stable_vertically = abs(vertical_velocity) < self.foot_velocity_threshold_normalized
+                # is_in_stance = is_near_ground and is_stable_vertically
+                
+                is_in_stance = is_near_ground # Keeping it simpler for now, add velocity later if needed
+
+                confidence = 0.0
+                if dynamic_stance_threshold_normalized > 1e-6: # Avoid division by zero
+                    confidence = max(0.0, 1.0 - (distance_from_ground_normalized / (dynamic_stance_threshold_normalized * 2)))
+                
+                if not is_in_stance: # If not in stance by primary criteria, confidence should be low reflecting that
+                    confidence *= 0.5 
+
+                stance_candidates.append({
+                    'side': side, 
+                    'in_stance': is_in_stance, 
+                    'confidence': confidence, 
+                    'lowest_y': lowest_y_of_foot,
+                    # 'debug_vel': vertical_velocity # if using
+                })
+
+            # Determine overall stance phase and foot
+            # This logic prioritizes a single stance foot, which is typical for running.
+            left_candidate = next(c for c in stance_candidates if c['side'] == 'left')
+            right_candidate = next(c for c in stance_candidates if c['side'] == 'right')
+
+            is_stance_phase = False
+            stance_foot = None
+            final_confidence = 0.0
+            # debug_info = {'left': left_candidate, 'right': right_candidate, 'threshold': dynamic_stance_threshold_normalized}
+
+
+            if left_candidate['in_stance'] and right_candidate['in_stance']:
+                # Both detected in stance: choose based on which is lower (more planted) or higher confidence
+                # This is rare in running (should be flight or single stance)
+                # Could indicate walking, start/stop, or error. For pure running, one should be chosen.
+                if left_candidate['lowest_y'] > right_candidate['lowest_y']: # Left is lower
+                    if left_candidate['confidence'] > right_candidate['confidence'] * 0.8: # Bias for the lower one
+                        stance_foot = 'left'
+                        final_confidence = left_candidate['confidence']
+                    else:
+                        stance_foot = 'right'
+                        final_confidence = right_candidate['confidence']
+                else: # Right is lower or same height
+                    if right_candidate['confidence'] > left_candidate['confidence'] * 0.8:
+                        stance_foot = 'right'
+                        final_confidence = right_candidate['confidence']
+                    else:
+                        stance_foot = 'left'
+                        final_confidence = left_candidate['confidence']
+                is_stance_phase = True # If both in stance, phase is true.
+            elif left_candidate['in_stance']:
+                is_stance_phase = True
+                stance_foot = 'left'
+                final_confidence = left_candidate['confidence']
+            elif right_candidate['in_stance']:
+                is_stance_phase = True
+                stance_foot = 'right'
+                final_confidence = right_candidate['confidence']
+            else:
+                # No stance phase, confidence is how close the closest foot was (max of non-stance confidences)
+                final_confidence = max(left_candidate['confidence'], right_candidate['confidence'])
+
+            return {
+                'is_stance_phase': is_stance_phase, 
+                'stance_foot': stance_foot, 
+                'confidence': final_confidence,
+                # 'debug_info': debug_info # For inspecting values
+            }
+    
+    def detect_stance_phase_side(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+    
+        if not hasattr(self, '_stance_detector_side'):
+            self._stance_detector_side = self.StancePhaseDetectorSide()
             # Pass image height if available
-            if hasattr(self, 'image_height'):
-                self._stance_detector.image_height = self.image_height
+            # if hasattr(self, 'image_height'):
+            #     self._stance_detector.image_height = self.image_height
         
         # Use the detector to determine stance phase
-        return self._stance_detector.detect_stance_phase_side(landmarks)
-    
+        return self._stance_detector_side.detect_stance_phase_side(landmarks)
+
     def draw_side_analysis(self, image, landmarks, frame_number):
         """Draw pose landmarks and metrics on image."""
         # Draw skeleton
@@ -1870,10 +1975,10 @@ class RunnerVisionAnalyzer:
             "FOOT STRIKE AND LANDING METRICS",
             f"Foot Strike: {self.side_metrics['strike_pattern'][-1]}",
             f"Foot Strike Confidence: {self.side_metrics['strike_confidence'][-1]}",
-            f"Foot Strike Foot Angle: {self.side_metrics['strike_foot_angle'][-1]:.2f}",
-            f"Foot Strike Ankle Angle: {self.side_metrics['strike_ankle_angle'][-1]:.2f}",
-            f"Foot Strike Landing Stiffness: {self.side_metrics['strike_landing_stiffness'][-1]}",
-            f"Foot Landing Category: {self.side_metrics['foot_landing_position_category'][-1]:}",
+            # f"Foot Strike Foot Angle: {self.side_metrics['strike_foot_angle'][-1]:.2f}",
+            # f"Foot Strike Ankle Angle: {self.side_metrics['strike_ankle_angle'][-1]:.2f}",
+            # f"Foot Strike Landing Stiffness: {self.side_metrics['strike_landing_stiffness'][-1]}",
+            # f"Foot Landing Category: {self.side_metrics['foot_landing_position_category'][-1]:}",
             f"Foot Landing Under CoM: {self.side_metrics['foot_landing_is_under_center_of_mass'][-1]:.1f}",
             f"Foot Distance in cm: {self.side_metrics['foot_landing_distance_from_center_in_cm'][-1]:.2f} cm",
             "",
@@ -1897,6 +2002,9 @@ class RunnerVisionAnalyzer:
             f"Hand Position: {self.side_metrics['hand_position'][-1]}",
             f"Arm Swing Amplitude: {self.side_metrics['arm_swing_amplitude'][-1]}",
             f"Arm Swing Symmetry: {self.side_metrics['arm_swing_symmetry'][-1]}",
+            "",
+            "STANCE METRICS",
+            f"Stance Detected: {self.side_metrics['stance_phase_detected'][-1]}",
     
         ]
         
@@ -1938,6 +2046,12 @@ class RunnerVisionAnalyzer:
             landmark = landmarks.landmark[landmark_id]
             landmark_coords[name] = (landmark.x, landmark.y, landmark.z, landmark.visibility)
         
+        # Detect stance phase rear
+        stance_phase_rear = self.detect_stance_phase_rear(landmark_coords)
+        self.rear_metrics['stance_phase_detected'].append(stance_phase_rear['is_stance_phase'])
+        self.rear_metrics['stance_foot'].append(stance_phase_rear['stance_foot'])
+        self.rear_metrics['stance_confidence'].append(stance_phase_rear['confidence'])
+
         # Store basic timestamp data
         self.rear_metrics['timestamp'].append(timestamp)
         self.rear_metrics['frame_number'].append(frame_number)
@@ -2008,12 +2122,6 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['left_wrist_crossover'].append(arm_swing_mechanics['left_wrist_crossover'])
         self.rear_metrics['right_wrist_crossover'].append(arm_swing_mechanics['right_wrist_crossover'])
         self.rear_metrics['shoulder_rotation'].append(arm_swing_mechanics['shoulder_rotation'])
-    
-        # Detect stance phase rear
-        stance_phase_rear = self.detect_stance_phase_rear(landmark_coords)
-        self.rear_metrics['stance_phase_detected'].append(stance_phase_rear['is_stance_phase'])
-        self.rear_metrics['stance_foot'].append(stance_phase_rear['stance_foot'])
-        self.rear_metrics['stance_confidence'].append(stance_phase_rear['confidence'])
 
     def calculate_foot_crossover(self, landmarks, threshold=0.25):
         """
@@ -2474,91 +2582,203 @@ class RunnerVisionAnalyzer:
             "shoulder_rotation": "stable" if normalized_shoulder_diff < 0.03 else "excessive",
         }
     
-    def detect_stance_phase_rear(self, landmarks):
-        """
-        Very simple stance phase detector based solely on foot height.
-        Detects when either foot is near the estimated ground level.
-        
-        Args:
-            landmarks: Dictionary of MediaPipe pose landmarks with named keys
+    class StancePhaseDetectorRear:
+        def __init__(self, calibration_frames_total=90, 
+                    ground_zone_percentage=0.15, # Defines the bottom X% of foot's RoM as ground zone
+                    visibility_threshold=0.5,
+                    foot_landmarks_to_use=None): # Allows customization of landmarks
+            """
+            Initializes the rear-view stance phase detector.
+
+            Args:
+                calibration_frames_total (int): Number of frames to use for calibration.
+                ground_zone_percentage (float): The bottom percentage of the foot's observed vertical 
+                                            range of motion that defines the ground contact zone.
+                                            (e.g., 0.3 means bottom 30%).
+                visibility_threshold (float): Minimum landmark visibility to be considered.
+                foot_landmarks_to_use (dict, optional): Specify which landmarks define the 'bottom'
+                                                        of each foot. Defaults to heel and foot_index.
+                                                        Example: {'left': ['left_ankle'], 'right': ['right_ankle']}
+            """
+            self.calibration_frames_total = calibration_frames_total
+            self.ground_zone_percentage = ground_zone_percentage
+            self.visibility_threshold = visibility_threshold
             
-        Returns:
-            dict: Contains stance phase status, which foot, and confidence score
-        """
-        try:
-            # First initialize properties if they don't exist yet
-            if not hasattr(self, 'max_foot_height'):
-                self.max_foot_height = 0
-                self.min_foot_height = 1.0
-                self.calibration_frames = 0
-                
-            # Get foot landmarks
-            l_foot = landmarks['left_foot_index'][1]
-            r_foot = landmarks['right_foot_index'][1]
-            l_heel = landmarks['left_heel'][1]
-            r_heel = landmarks['right_heel'][1]
+            self.frames_calibrated = 0
             
-            # Get the lowest point of each foot
-            left_lowest = max(l_foot, l_heel)   # Remember y increases downward in image coordinates
-            right_lowest = max(r_foot, r_heel)
-            current_max = max(left_lowest, right_lowest)
-            current_min = min(left_lowest, right_lowest)
+            # Stores all observed lowest Y positions of all visible feet during calibration
+            self._foot_y_samples_normalized = [] 
             
-            # Update height range during calibration period
-            # This helps establish ground level and flight level
-            if self.calibration_frames < 60:  # Use first 60 frames for calibration
-                self.max_foot_height = max(self.max_foot_height, current_max)
-                self.min_foot_height = min(self.min_foot_height, current_min)
-                self.calibration_frames += 1
-                
-                # During calibration, assume no stance phase
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0}
-                
-            # Calculate the ground threshold
-            # Ground is defined as the bottom 25% of the height range
-            height_range = self.max_foot_height - self.min_foot_height
-            ground_threshold = self.max_foot_height - (height_range * 0.3)
-            
-            # VERY IMPORTANT: Generate debug info to see what's happening
-            # Comment out in production
-            # print(f"Max: {self.max_foot_height:.3f}, Min: {self.min_foot_height:.3f}, Threshold: {ground_threshold:.3f}")
-            # print(f"Left: {left_lowest:.3f}, Right: {right_lowest:.3f}")
-            
-            # Detect stance phase - extremely simple approach
-            # If either foot is in bottom 25% of height range, it's in stance phase
-            left_stance = (left_lowest >= ground_threshold)
-            right_stance = (right_lowest >= ground_threshold)
-            
-            if left_stance or right_stance:
-                is_stance_phase = True
-                
-                # Determine which foot is in stance
-                if left_stance and right_stance:
-                    # Both feet near ground, choose the lower one
-                    stance_foot = 'left' if left_lowest > right_lowest else 'right'
-                else:
-                    stance_foot = 'left' if left_stance else 'right'
-                    
-                # Simple confidence calculation
-                if stance_foot == 'left':
-                    confidence = min(0.9, 0.5 + (left_lowest - ground_threshold) / (self.max_foot_height - ground_threshold) * 0.4)
-                else:
-                    confidence = min(0.9, 0.5 + (right_lowest - ground_threshold) / (self.max_foot_height - ground_threshold) * 0.4)
+            self.calibrated_overall_max_y = None # Lowest point any foot reached (ground plane proxy)
+            self.calibrated_overall_min_y = None # Highest point any foot reached (peak swing proxy)
+            self.ground_contact_entry_threshold_y = None # Y value above which foot is considered in stance zone
+
+            if foot_landmarks_to_use is None:
+                self.foot_landmarks_to_check = {
+                    'left': ['left_foot_index', 'left_heel'],
+                    'right': ['right_foot_index', 'right_heel']
+                }
             else:
-                # Neither foot is near ground
-                is_stance_phase = False
-                stance_foot = None
-                confidence = 0.7
-                
-            # Output stance phase info with debug message
-            # print(f"STANCE: {is_stance_phase}, FOOT: {stance_foot}, CONF: {confidence:.2f}")
+                self.foot_landmarks_to_check = foot_landmarks_to_use
             
-            return {'is_stance_phase': is_stance_phase, 'stance_foot': stance_foot, 'confidence': confidence}
+            # Optional: For velocity checks (can be added later for more robustness)
+            # self._foot_y_history = {'left': [], 'right': []}
+            # self._max_velocity_history = 3
+            # self._velocity_threshold_normalized = 0.008 # Needs tuning
+
+        def _get_lowest_point_of_foot(self, landmarks, side_key):
+            """Gets the lowest Y coordinate for a given foot, considering visibility."""
+            foot_y_values = []
+            if side_key not in self.foot_landmarks_to_check:
+                return None
+
+            for lm_name in self.foot_landmarks_to_check[side_key]:
+                if lm_name in landmarks and landmarks[lm_name][3] >= self.visibility_threshold: # landmarks[lm_name] = (x,y,z,visibility)
+                    foot_y_values.append(landmarks[lm_name][1])
             
-        except (KeyError, AttributeError) as e:
-            # print(f"Error in stance detection: {e}")
-            return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0}
+            if not foot_y_values:
+                return None 
+            return max(foot_y_values) # Max Y is lowest on screen (normalized 0-1, 1 is bottom)
+
+        def _collect_calibration_data(self, landmarks):
+            """Collects the lowest Y position of each visible foot in the current frame."""
+            left_lowest_y = self._get_lowest_point_of_foot(landmarks, 'left')
+            right_lowest_y = self._get_lowest_point_of_foot(landmarks, 'right')
+
+            if left_lowest_y is not None:
+                self._foot_y_samples_normalized.append(left_lowest_y)
+            if right_lowest_y is not None:
+                self._foot_y_samples_normalized.append(right_lowest_y)
+
+        def _finalize_calibration(self):
+            """Calculates calibration parameters from the collected foot Y samples."""
+            if not self._foot_y_samples_normalized or len(self._foot_y_samples_normalized) < self.calibration_frames_total * 0.5: # Require at least half of calibration frames to have some data
+                print("Warning: Insufficient data for rear stance detection calibration. Using broad defaults.")
+                self.calibrated_overall_max_y = 0.90 # Assumed ground
+                self.calibrated_overall_min_y = 0.50 # Assumed peak swing
+            else:
+                # Use percentiles for robustness against extreme outliers
+                self.calibrated_overall_max_y = np.percentile(self._foot_y_samples_normalized, 95) # Robust lowest point
+                self.calibrated_overall_min_y = np.percentile(self._foot_y_samples_normalized, 5)  # Robust highest point
+
+            # Ensure max_y (ground) is actually lower than min_y (peak swing)
+            if self.calibrated_overall_max_y <= self.calibrated_overall_min_y + 0.05: # Add small buffer
+                print("Warning: Rear stance calibration issue - foot motion range too small or ground not lower than peak swing. Adjusting.")
+                # If very little motion or inverted, use the most extreme sample for max_y and estimate min_y
+                if self._foot_y_samples_normalized:
+                    self.calibrated_overall_max_y = max(self._foot_y_samples_normalized)
+                    self.calibrated_overall_min_y = min(self.calibrated_overall_max_y - 0.1, min(self._foot_y_samples_normalized)) # Ensure some range
+                else: # No samples at all
+                    self.calibrated_overall_max_y = 0.90
+                    self.calibrated_overall_min_y = 0.50
+
+
+            height_range = self.calibrated_overall_max_y - self.calibrated_overall_min_y
+            
+            if height_range <= 0.02: # If very small range (e.g., standing still, or bad calibration)
+                print("Warning: Very small foot motion range detected in rear view calibration. Threshold may be sensitive.")
+                # Set threshold very close to the detected "ground"
+                self.ground_contact_entry_threshold_y = self.calibrated_overall_max_y - 0.015 
+            else:
+                # The stance zone starts this much *above* the lowest point (max_y)
+                # Or, equivalently, (1 - ground_zone_percentage) of the range from the highest point (min_y)
+                self.ground_contact_entry_threshold_y = self.calibrated_overall_max_y - (height_range * self.ground_zone_percentage)
+
+            print(f"Rear Stance Calibrated: OverallMaxY={self.calibrated_overall_max_y:.3f} (Ground), "
+                f"OverallMinY={self.calibrated_overall_min_y:.3f} (Peak Swing), "
+                f"ContactEntryThresholdY={self.ground_contact_entry_threshold_y:.3f}")
+
+        def detect_stance_phase(self, landmarks):
+            """
+            Detects stance phase from rear view landmarks.
+
+            Args:
+                landmarks (dict): Dictionary of landmark coordinates (x,y,z,visibility).
+            
+            Returns:
+                dict: {'is_stance_phase': bool, 'stance_foot': str|None, 'confidence': float}
+            """
+            if self.frames_calibrated < self.calibration_frames_total:
+                self._collect_calibration_data(landmarks)
+                self.frames_calibrated += 1
+                if self.frames_calibrated == self.calibration_frames_total:
+                    self._finalize_calibration()
+                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "calibrating"}
+
+            if self.ground_contact_entry_threshold_y is None: # Calibration failed or not yet run
+                print("Error: Rear stance detector not calibrated.")
+                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "not_calibrated"}
+
+            left_lowest_y = self._get_lowest_point_of_foot(landmarks, 'left')
+            right_lowest_y = self._get_lowest_point_of_foot(landmarks, 'right')
+
+            is_stance_phase = False
+            stance_foot = None
+            confidence = 0.0 # Default confidence for no stance / flight
+
+            # Check for missing landmarks for either foot
+            if left_lowest_y is None and right_lowest_y is None:
+                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "no_foot_data"}
+
+            # Determine if each foot is in the stance zone
+            # A foot is in stance if its Y value is at or below the entry threshold
+            left_in_stance = (left_lowest_y is not None) and (left_lowest_y >= self.ground_contact_entry_threshold_y)
+            right_in_stance = (right_lowest_y is not None) and (right_lowest_y >= self.ground_contact_entry_threshold_y)
+            
+            # Determine overall phase and stance foot
+            if left_in_stance and right_in_stance:
+                is_stance_phase = True
+                # Both feet in stance zone (double support or error) - choose the truly lower one
+                stance_foot = 'left' if left_lowest_y > right_lowest_y else 'right'
+                # Calculate confidence based on how deep the chosen foot is in the stance zone
+                active_foot_y = left_lowest_y if stance_foot == 'left' else right_lowest_y
+            elif left_in_stance:
+                is_stance_phase = True
+                stance_foot = 'left'
+                active_foot_y = left_lowest_y
+            elif right_in_stance:
+                is_stance_phase = True
+                stance_foot = 'right'
+                active_foot_y = right_lowest_y
+            
+            # Calculate confidence
+            if is_stance_phase and active_foot_y is not None:
+                # Zone for confidence: from ground_contact_entry_threshold_y to calibrated_overall_max_y
+                stance_zone_height = self.calibrated_overall_max_y - self.ground_contact_entry_threshold_y
+                if stance_zone_height > 1e-5: # Avoid division by zero if threshold is at max_y
+                    depth_ratio = (active_foot_y - self.ground_contact_entry_threshold_y) / stance_zone_height
+                    confidence = 0.5 + min(max(depth_ratio, 0), 1) * 0.49 # Scale from 0.5 (at threshold) to 0.99 (at max_y)
+                else: # Foot is at the threshold which is also the max_y
+                    confidence = 0.6 # Reasonably confident it's on the exact line
+            else: # No stance phase (flight)
+                # Confidence for flight: how far is the *highest* of the two feet from the stance threshold?
+                # (Higher foot is min_y of the two)
+                if left_lowest_y is not None or right_lowest_y is not None:
+                    highest_current_foot_y = min(left_lowest_y if left_lowest_y is not None else float('inf'), 
+                                                right_lowest_y if right_lowest_y is not None else float('inf'))
+                    if highest_current_foot_y < self.ground_contact_entry_threshold_y: # If it's above the stance threshold
+                        flight_zone_height = self.ground_contact_entry_threshold_y - self.calibrated_overall_min_y
+                        if flight_zone_height > 1e-5:
+                            clearance_ratio = (self.ground_contact_entry_threshold_y - highest_current_foot_y) / flight_zone_height
+                            confidence = 0.5 + min(max(clearance_ratio, 0), 1) * 0.49 # Confident it's in flight
+                        else:
+                            confidence = 0.6 # Clearly in flight, but small range
+                    else:
+                        confidence = 0.2 # Near threshold but not in stance
+                else:
+                    confidence = 0.1 # No foot data but not in stance
+
+            return {'is_stance_phase': is_stance_phase, 'stance_foot': stance_foot, 'confidence': round(confidence, 3)}
+    
+    def detect_stance_phase_rear(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+
+        if not hasattr(self, '_stance_detector_rear'):
+            self._stance_detector_rear = self.StancePhaseDetectorRear()
         
+        return self._stance_detector_rear.detect_stance_phase(landmarks)
+
+
     def draw_rear_analysis(self, image, landmarks, frame_number):
         """Draw pose landmarks and metrics on image."""
         # Draw skeleton

@@ -37,7 +37,7 @@ def create_dash_app(flask_app):
             return html.Div("No activity ID provided."), html.Div()
 
         # Fetch data
-        polyline_str = db_utils.get_latest_polyline(activity_id)
+        polyline_str = db_utils.get_activity_polyline(activity_id)
         decoded = dash_utils.decode_polyline(polyline_str)
         lat_lng = [{'lat': lat, 'lon': lon} for lat, lon in decoded]
 
@@ -75,25 +75,44 @@ def create_dash_app(flask_app):
         # Clip unrealistic pace values
         pace_min_per_mile = np.clip(pace_min_per_mile, 3, 20)
 
-        def moving_average(data, window_size=10):
-            """Applies moving average with NaN-handling."""
+        def adaptive_moving_average(data, window_size=10):
+            """Applies moving average with adaptive window size at edges."""
             data = np.array(data, dtype=np.float32)
             nan_mask = np.isnan(data)
             data[nan_mask] = 0
-            smoothed = np.convolve(data, np.ones(window_size) / window_size, mode='same')
-
-            # Reapply NaNs where data was originally missing
-            count_valid = np.convolve(~nan_mask, np.ones(window_size), mode='same')
-            smoothed[count_valid < window_size // 2] = np.nan
-
+            
+            smoothed = np.zeros_like(data)
+            
+            for i in range(len(data)):
+                # Calculate adaptive window boundaries
+                half_window = window_size // 2
+                start_idx = max(0, i - half_window)
+                end_idx = min(len(data), i + half_window + 1)
+                
+                # Extract window data
+                window_data = data[start_idx:end_idx]
+                window_nan_mask = nan_mask[start_idx:end_idx]
+                
+                # Count valid values in window
+                valid_count = np.sum(~window_nan_mask)
+                
+                if valid_count > 0:
+                    # Calculate average of valid values only
+                    smoothed[i] = np.sum(window_data[~window_nan_mask]) / valid_count
+                else:
+                    smoothed[i] = np.nan
+            
+            # Reapply NaNs where original data was missing
+            smoothed[nan_mask] = np.nan
+            
             return smoothed.tolist()
 
         # Use your interpolation function
         pace_interp = dash_utils.interpolate_to_common_x(x_ref, pace_min_per_mile, x_mid)
 
-        pace_smoothed = moving_average(np.array(pace_interp), window_size=10)
+        pace_smoothed = adaptive_moving_average(np.array(pace_interp), window_size=10)
 
-        map_component = dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=14,
+        map_component = dl.Map(center=[lat_lng[0]['lat'], lat_lng[0]['lon']], zoom=13,
                                 style={'width': '100%', 'height': '400px'}, children=[
                                     dl.TileLayer(),
                                     dl.Polyline(positions=[[p['lat'], p['lon']] for p in lat_lng], color='blue')
@@ -108,6 +127,12 @@ def create_dash_app(flask_app):
             ),
             dcc.Graph(
                 figure=go.Figure(
+                    data=[go.Scatter(x=x_ref, y=pace_smoothed, mode='lines', name='Pace Chart')],
+                    layout=go.Layout(title='Pace Chart', xaxis_title='Distance (mi)', yaxis=dict(autorange='reversed'), yaxis_title='Pace')
+                )
+            ),
+            dcc.Graph(
+                figure=go.Figure(
                     data=[go.Scatter(x=x_ref, y=alt_interp, mode='lines', name='Altitude')],
                     layout=go.Layout(title='Altitude vs Distance', xaxis_title='Distance (mi)', yaxis_title='Meters')
                 )
@@ -116,12 +141,6 @@ def create_dash_app(flask_app):
                 figure=go.Figure(
                     data=[go.Scatter(x=x_ref, y=power_interp, mode='lines', name='Power')],
                     layout=go.Layout(title='Power (Watts) vs Distance', xaxis_title='Distance (mi)', yaxis_title='Power (Watts)')
-                )
-            ),
-            dcc.Graph(
-                figure=go.Figure(
-                    data=[go.Scatter(x=x_ref, y=pace_smoothed, mode='lines', name='Pace Chart')],
-                    layout=go.Layout(title='Pace Chart', xaxis_title='Distance (mi)', yaxis=dict(autorange='reversed'), yaxis_title='Pace')
                 )
             ),
         ])

@@ -1,56 +1,220 @@
 # db_utils.py
-"""Storing functions relating to database
-cursor setup as well as queries to keep main app
-clean of stray functions. """
+"""Database utilities for activity data queries and connection management."""
 
-import sqlite3
-from dotenv import load_dotenv
-import os
-import pandas as pd
-import numpy as np
 import json
+import logging
+import sqlite3
+from contextlib import contextmanager
+from typing import Optional, Dict, Any, List
 import datetime
+from threading import Lock
+from queue import Queue, Empty
 
-load_dotenv('secrets.env')
-DB_PATH = os.getenv("DATABASE")
+import pandas as pd
 
-def dict_factory(cursor, row):
-    """Convert database row objects to a dictionary"""
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+from config import Config
+from utils import exception_utils
 
-def get_latest_activity(db_path = DB_PATH):
-    """Retrieves latest Run or Ride activity ID as int"""
-    try:
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute("""SELECT id FROM activities
-                    WHERE type in ("Run", "Ride")
-                    ORDER BY start_date DESC LIMIT 1""")
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else ""
-    except Exception as e:
-        print(f"Failed to get id: {e}")
-        return ""
+logger = logging.getLogger(__name__)
+
+class ConnectionPool:
+    """Thread-safe SQLite connection pool."""
     
-# Get polyline on startup to avoid race conditions
-def get_latest_polyline(activity_id_polyline, db_path = DB_PATH):
-    """Retreives a polyline for the latest activity id"""
-    try:
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute(f"SELECT map_summary_polyline FROM activities WHERE id = {activity_id_polyline}")
-        row = cur.fetchone()
-        conn.close()
-        return row[0] if row else ""
-    except Exception as e:
-        print(f"Failed to get polyline: {e}")
-        return ""
+    def __init__(self, db_path: str, max_connections: int = 10):
+        self.db_path = db_path
+        self.pool = Queue(maxsize=max_connections)
+        self.lock = Lock()
+        
+    def _create_connection(self):
+        """Create a new database connection."""
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.row_factory = dict_factory
+        return conn
     
-def get_acwr_data(db_path=DB_PATH):
+    @contextmanager
+    def get_connection(self):
+        """Get connection from pool or create new one."""
+        try:
+            conn = self.pool.get_nowait()
+        except Empty:
+            conn = self._create_connection()
+            
+        try:
+            yield conn
+        except sqlite3.Error as e:
+            logger.error(f"Database operation failed: {e}")
+            conn.rollback()
+            raise exception_utils.DatabaseError(f"Database error: {e}") from e
+        finally:
+            try:
+                self.pool.put_nowait(conn)
+            except:
+                conn.close()
+
+
+# Global connection pool
+_connection_pool = None
+
+def get_connection_pool(db_path: str = Config.DB_PATH) -> ConnectionPool:
+    """Get or create global connection pool."""
+    global _connection_pool
+    if _connection_pool is None:
+        if not db_path:
+            raise exception_utils.DatabaseError("Database path not configured")
+        _connection_pool = ConnectionPool(db_path)
+    return _connection_pool
+
+
+@contextmanager
+def get_db_connection(db_path: str = Config.DB_PATH):
+    """Context manager for pooled database connections."""
+    pool = get_connection_pool(db_path)
+    with pool.get_connection() as conn:
+        yield conn
+
+
+def dict_factory(cursor: sqlite3.Cursor, row: sqlite3.Row) -> Dict[str, Any]:
+    """Convert database row objects to a dictionary.
+    
+    Args:
+        cursor: Database cursor
+        row: Database row
+        
+    Returns:
+        Dictionary representation of the row
+    """
+    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
+
+
+def get_latest_activity(activity_types: List[str] = None, db_path: str = Config.DB_PATH) -> Optional[int]:
+    """Retrieve latest activity ID by type.
+    
+    Args:
+        activity_types: List of activity types to filter by (default: ["Run", "Ride"])
+        db_path: Database file path
+        
+    Returns:
+        Latest activity ID or None if not found
+        
+    Raises:
+        DatabaseError: If database query fails
+    """
+    if activity_types is None:
+        activity_types = ["Run", "Ride"]
+    
+    placeholders = ",".join("?" * len(activity_types))
+    query = f"""
+        SELECT id FROM activities
+        WHERE type IN ({placeholders})
+        ORDER BY start_date DESC 
+        LIMIT 1
+    """
+    
+    try:
+        with get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, activity_types)
+            row = cur.fetchone()
+            
+            if row:
+                return row['id']
+            else:
+                logger.warning(f"No activities found for types: {activity_types}")
+                return None
+                
+    except exception_utils.DatabaseError:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting latest activity: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get latest activity: {e}") from e
+
+
+def get_activity_polyline(activity_id: int, db_path: str = Config.DB_PATH) -> Optional[str]:
+    """Retrieve polyline for specified activity.
+    
+    Args:
+        activity_id: Activity identifier
+        db_path: Database file path
+        
+    Returns:
+        Polyline string or None if not found
+        
+    Raises:
+        DatabaseError: If database query fails
+    """
+    query = "SELECT map_summary_polyline FROM activities WHERE id = ?"
+    
+    try:
+        with get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, (activity_id,))
+            row = cur.fetchone()
+            
+            if row:
+                return row['map_summary_polyline']
+            else:
+                logger.warning(f"No polyline found for activity {activity_id}")
+                return None
+                
+    except exception_utils.DatabaseError:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting polyline for activity {activity_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get polyline: {e}") from e
+
+
+def get_activity_by_id(activity_id: int, db_path: str = Config.DB_PATH) -> Optional[Dict[str, Any]]:
+    """Retrieve complete activity record by ID.
+    
+    Args:
+        activity_id: Activity identifier
+        db_path: Database file path
+        
+    Returns:
+        Activity dictionary or None if not found
+    """
+    query = "SELECT * FROM activities WHERE id = ?"
+    
+    try:
+        with get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, (activity_id,))
+            return cur.fetchone()
+            
+    except Exception as e:
+        logger.error(f"Failed to get activity {activity_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get activity: {e}") from e
+
+
+def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = Config.DB_PATH) -> List[Dict[str, Any]]:
+    """Retrieve activities by type.
+    
+    Args:
+        activity_type: Type of activity to retrieve
+        limit: Maximum number of activities to return
+        db_path: Database file path
+        
+    Returns:
+        List of activity dictionaries
+    """
+    query = """
+        SELECT * FROM activities 
+        WHERE type = ? 
+        ORDER BY start_date DESC 
+        LIMIT ?
+    """
+    
+    try:
+        with get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, (activity_type, limit))
+            return cur.fetchall()
+            
+    except Exception as e:
+        logger.error(f"Failed to get activities of type {activity_type}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get activities: {e}") from e
+    
+def get_acwr_data(db_path=Config.DB_PATH):
     """
     Calculate Acute:Chronic Workload Ratio (ACWR)
     
@@ -93,7 +257,7 @@ def get_acwr_data(db_path=DB_PATH):
         print(f"Database error in get_acwr_data: {e}")
         return pd.DataFrame(columns=['date', 'acute_load', 'chronic_load', 'acwr'])
 
-def get_hr_drift_data(db_path=DB_PATH):
+def get_hr_drift_data(db_path=Config.DB_PATH):
     """
     Calculate Heart Rate Drift
     
@@ -210,7 +374,7 @@ def get_hr_drift_data(db_path=DB_PATH):
         print(f"Error in get_hr_drift_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date', 'hr_drift_pct'])
 
-def get_cadence_stability_data(db_path=DB_PATH):
+def get_cadence_stability_data(db_path=Config.DB_PATH):
     """
     Calculate Cadence Stability (using coefficient of variation)
     
@@ -317,7 +481,7 @@ def get_cadence_stability_data(db_path=DB_PATH):
         print(f"Error in get_cadence_stability_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
 
-def get_efficiency_index(db_path=DB_PATH):
+def get_efficiency_index(db_path=Config.DB_PATH):
     """
     Efficiency Factor (EF) Calculation and Usage
 
@@ -487,7 +651,7 @@ def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=No
     
     return tss
 
-def get_ctl_atl_tsb_tss_data(db_path=DB_PATH, days_to_retrieve=180, athlete_threshold_hr=None):
+def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athlete_threshold_hr=None):
     """
     Calculate CTL (Chronic Training Load), ATL (Acute Training Load), and TSB (Training Stress Balance)
     using proper time-based exponential decay.
@@ -594,7 +758,7 @@ def get_ctl_atl_tsb_tss_data(db_path=DB_PATH, days_to_retrieve=180, athlete_thre
         print(f"Database error in get_ctl_atl_tsb_data: {e}")
         return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
     
-def get_training_shape_data(db_path=DB_PATH):
+def get_training_shape_data(db_path=Config.DB_PATH):
     """
     Calculate Training Shape metrics from activity history.
     
