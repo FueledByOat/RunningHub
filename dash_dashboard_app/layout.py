@@ -408,8 +408,8 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = db_utils.get_training_shape_data(db_path)
-        
+        df = db_utils.get_enhanced_training_shape_data(db_path)
+
         if df.empty:
             # Return empty figure if no data
             fig = go.Figure()
@@ -433,6 +433,19 @@ def create_dash_dashboard_app(server, db_path):
                 mode='lines',
                 name='Training Shape',
                 line=dict(color='rgb(26, 118, 255)', width=3),
+                hovertemplate='%{y:.1f}',
+            ),
+            row=1, col=1
+        )
+
+        # Add Training Shape line
+        fig.add_trace(
+            go.Scatter(
+                x=df['start_date'],
+                y=df['freshness_score'],
+                mode='lines',
+                name='Freshness Score',
+                line=dict(color='rgb(0, 64, 0)', width=1, dash='dashdot'),
                 hovertemplate='%{y:.1f}',
             ),
             row=1, col=1
@@ -512,7 +525,7 @@ def create_dash_dashboard_app(server, db_path):
                 x=1
             ),
             plot_bgcolor='white',
-            height=600,
+            height=800,
         )
         
         # Update y-axes
@@ -539,6 +552,45 @@ def create_dash_dashboard_app(server, db_path):
         
         return fig
     
+    def create_cumulative_training_shape_chart():
+        """
+        Create a Plotly Dash chart showing training shape over time
+        """
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        
+        # Get the data
+        df = db_utils.get_cumulative_training_shape_data(db_path)
+
+        if df.empty:
+            # Return empty figure if no data
+            fig = go.Figure()
+            fig.update_layout(title="No training data available")
+            return fig
+        
+        # Create subplots with 2 rows
+        fig = make_subplots(
+            rows=1, cols=1,
+            vertical_spacing=0.1,
+            subplot_titles=("Cumulative Training Shape"),
+            row_heights=[1]
+        )
+        
+        # Add Training Shape line
+        fig.add_trace(
+            go.Scatter(
+                x=df['start_date'],
+                y=df['fitness_score'],
+                mode='lines',
+                name='Cumulative Fitness Score',
+                line=dict(color='rgb(26, 118, 255)', width=3),
+                hovertemplate='%{y:.1f}',
+            ),
+            row=1, col=1
+        )
+
+        return fig
+    
     def build_fitness_chart():
         return dbc.Row([
         dbc.Col([
@@ -548,6 +600,21 @@ def create_dash_dashboard_app(server, db_path):
                     dcc.Graph(
                         id='training-shape-chart',
                         figure=create_training_shape_chart()
+                    )
+                            ])
+                        ])
+                    ])
+            ])
+    
+    def build_cumulative_fitness_chart():
+        return dbc.Row([
+        dbc.Col([
+            dbc.Card([
+                dbc.CardHeader("Training Shape - Fitness Trajectory"),
+                dbc.CardBody([
+                    dcc.Graph(
+                        id='cumulative-shape-chart',
+                        figure=create_cumulative_training_shape_chart()
                     )
                             ])
                         ])
@@ -590,28 +657,28 @@ def create_dash_dashboard_app(server, db_path):
         acwr_trend = df_acwr['acwr'].head(90).tolist()[::-1] if not df_acwr.empty and 'acwr' in df_acwr.columns else []
         
         # Process HR drift data
-        latest_hr_drift = df_hr_drift['hr_drift_pct'].iloc[0] if not df_hr_drift.empty and 'hr_drift_pct' in df_hr_drift.columns else None
+        latest_hr_drift = df_hr_drift['hr_drift_pct'].head(90).mean() if not df_hr_drift.empty and 'hr_drift_pct' in df_hr_drift.columns else None
         hr_drift_trend = df_hr_drift['hr_drift_pct'].head(90).tolist()[::-1] if not df_hr_drift.empty and 'hr_drift_pct' in df_hr_drift.columns else []
         
         # Process cadence data
-        latest_cadence_cv = df_cadence['cadence_cv'].iloc[0] if not df_cadence.empty and 'cadence_cv' in df_cadence.columns else None
+        latest_cadence_cv = df_cadence['cadence_cv'].head(90).mean() if not df_cadence.empty and 'cadence_cv' in df_cadence.columns else None
         cadence_cv_trend = df_cadence['cadence_cv'].head(90).tolist()[::-1] if not df_cadence.empty and 'cadence_cv' in df_cadence.columns else []
         
         # Process CTL data
-        latest_ctl = df_ctl_atl_tsb_tss['CTL'].iloc[0] if not df_ctl_atl_tsb_tss.empty and 'CTL' in df_ctl_atl_tsb_tss.columns else None
-        ctl_trend = df_ctl_atl_tsb_tss['CTL'].head(90).tolist()[::-1] if not df_ctl_atl_tsb_tss.empty and 'CTL' in df_ctl_atl_tsb_tss.columns else []
+        latest_ctl = df_ctl_atl_tsb_tss['CTL'].iloc[-1] if not df_ctl_atl_tsb_tss.empty and 'CTL' in df_ctl_atl_tsb_tss.columns else None
+        ctl_trend = df_ctl_atl_tsb_tss['CTL'].tail(90).tolist()[::1] if not df_ctl_atl_tsb_tss.empty and 'CTL' in df_ctl_atl_tsb_tss.columns else []
 
         # Process ATL data
-        latest_atl = df_ctl_atl_tsb_tss['ATL'].iloc[0] if not df_ctl_atl_tsb_tss.empty and 'ATL' in df_ctl_atl_tsb_tss.columns else None
-        atl_trend = df_ctl_atl_tsb_tss['ATL'].head(90).tolist()[::-1] if not df_ctl_atl_tsb_tss.empty and 'ATL' in df_ctl_atl_tsb_tss.columns else []
+        latest_atl = df_ctl_atl_tsb_tss['ATL'].iloc[-1] if not df_ctl_atl_tsb_tss.empty and 'ATL' in df_ctl_atl_tsb_tss.columns else None
+        atl_trend = df_ctl_atl_tsb_tss['ATL'].tail(90).tolist()[::1] if not df_ctl_atl_tsb_tss.empty and 'ATL' in df_ctl_atl_tsb_tss.columns else []
 
         # Process TSB data
-        latest_tsb = df_ctl_atl_tsb_tss['TSB'].iloc[0] if not df_ctl_atl_tsb_tss.empty and 'TSB' in df_ctl_atl_tsb_tss.columns else None
-        tsb_trend = df_ctl_atl_tsb_tss['TSB'].head(90).tolist()[::-1] if not df_ctl_atl_tsb_tss.empty and 'TSB' in df_ctl_atl_tsb_tss.columns else []
+        latest_tsb = df_ctl_atl_tsb_tss['TSB'].iloc[-1] if not df_ctl_atl_tsb_tss.empty and 'TSB' in df_ctl_atl_tsb_tss.columns else None
+        tsb_trend = df_ctl_atl_tsb_tss['TSB'].tail(90).tolist()[::1] if not df_ctl_atl_tsb_tss.empty and 'TSB' in df_ctl_atl_tsb_tss.columns else []
 
-        # Process TSB data
-        latest_tss = df_ctl_atl_tsb_tss['tss'].iloc[0] if not df_ctl_atl_tsb_tss.empty and 'tss' in df_ctl_atl_tsb_tss.columns else None
-        tss_trend = df_ctl_atl_tsb_tss['tss'].head(90).tolist()[::-1] if not df_ctl_atl_tsb_tss.empty and 'tss' in df_ctl_atl_tsb_tss.columns else []
+        # Process TSS data
+        latest_tss = df_ctl_atl_tsb_tss['tss'].iloc[-1] if not df_ctl_atl_tsb_tss.empty and 'tss' in df_ctl_atl_tsb_tss.columns else None
+        tss_trend = df_ctl_atl_tsb_tss['tss'].tail(90).tolist()[::1] if not df_ctl_atl_tsb_tss.empty and 'tss' in df_ctl_atl_tsb_tss.columns else []
         
         return {
             'acwr': {
@@ -656,16 +723,16 @@ def create_dash_dashboard_app(server, db_path):
         efficiency = db_utils.get_efficiency_index(db_path)
 
         # Process  data
-        latest_efficiency_index = efficiency['efficiency_index'].iloc[0] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
-        efficiency_index_trend = efficiency['efficiency_index'].tolist()[::-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else []
+        latest_efficiency_index = efficiency['flat_efficiency_factor'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
+        efficiency_index_trend = efficiency['flat_efficiency_factor'].tolist()[::1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else []
     
         _7day_ef = efficiency.dropna(subset=['ef_7day'])
-        latest_ef_7day = _7day_ef['ef_7day'].iloc[0] if not _7day_ef.empty and 'ef_7day' in _7day_ef.columns else None
-        ef_7day_trend = _7day_ef['ef_7day'].head(7).tolist()[::-1] if not _7day_ef.empty and 'ef_7day' in _7day_ef.columns else []
+        latest_ef_7day = _7day_ef['ef_7day'].iloc[-1] if not _7day_ef.empty and 'ef_7day' in _7day_ef.columns else None
+        ef_7day_trend = _7day_ef['ef_7day'].tail(7).tolist()[::1] if not _7day_ef.empty and 'ef_7day' in _7day_ef.columns else []
     
         _90day_ef = efficiency.dropna(subset=['ef_90day'])
-        latest_ef_90day = _90day_ef['ef_90day'].iloc[0] if not _90day_ef.empty and 'ef_90day' in _90day_ef.columns else None
-        ef_90day_trend = _90day_ef['ef_90day'].head(90).tolist()[::-1] if not _90day_ef.empty and 'ef_90day' in _90day_ef.columns else []
+        latest_ef_90day = _90day_ef['ef_90day'].iloc[-1] if not _90day_ef.empty and 'ef_90day' in _90day_ef.columns else None
+        ef_90day_trend = _90day_ef['ef_90day'].tail(90).tolist()[::1] if not _90day_ef.empty and 'ef_90day' in _90day_ef.columns else []
     
     
         return {
@@ -773,6 +840,11 @@ def create_dash_dashboard_app(server, db_path):
                     className="mb-4",
                     style={'textAlign': 'center'}
                 ),
+                html.H4(
+                    "These are general metrics where the displayed value is a 90 day average, and the sparklines show point in time calculations for a single activity or day",
+                    className="mb-4",
+                    style={'textAlign': 'center'}
+                ),
                 build_dashboard_layout(),
                 html.H3(
                     "Athlete Efficiency Metrics",
@@ -785,7 +857,8 @@ def create_dash_dashboard_app(server, db_path):
                     className="mb-4",
                     style={'textAlign': 'center'}
                 ),
-                build_fitness_chart()
+                build_fitness_chart(),
+                # build_cumulative_fitness_chart()
             ],
             className="dashboard-content"
         ),

@@ -11,6 +11,7 @@ from threading import Lock
 from queue import Queue, Empty
 
 import pandas as pd
+import numpy as np
 
 from config import Config
 from utils import exception_utils
@@ -605,16 +606,16 @@ def get_efficiency_index(db_path=Config.DB_PATH):
 
     
     # Calculate rolling averages (7-day, 30-day, 90-day)
-    df['ef_7day'] = df['efficiency_factor'].rolling(window=7, min_periods=3).mean()
-    df['ef_30day'] = df['efficiency_factor'].rolling(window=30, min_periods=7).mean()
-    df['ef_90day'] = df['efficiency_factor'].rolling(window=90, min_periods=14).mean()
+    df.set_index('start_date', inplace=True)
+    df.sort_index(inplace=True)
+    df['ef_7day'] = df['efficiency_factor'].rolling('7D', min_periods=3).mean()
+    df['ef_30day'] = df['efficiency_factor'].rolling('30D', min_periods=7).mean()
+    df['ef_90day'] = df['efficiency_factor'].rolling('90D', min_periods=14).mean()
     
     # Calculate Efficiency Index (normalized for pace)
     # This helps compare EF across different paces
-    df['norm_pace'] = 1000 / df['average_speed']  # Pace in seconds per km
-    pace_factor = df['norm_pace'] / 300  # Normalize against a 5:00/km pace (300 seconds)
-    df['efficiency_index'] = df['efficiency_factor'] * pace_factor
-    
+    df['efficiency_index'] = (df['efficiency_factor'] - df['efficiency_factor'].mean()) / df['efficiency_factor'].std()
+
     return df
 
 def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=None):
@@ -637,7 +638,7 @@ def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=No
     hours = moving_time / 3600
     
     # If we have heart rate data and threshold heart rate
-    if avg_hr and threshold_hr:
+    if avg_hr is not None and threshold_hr:
         # Calculate heart rate as percentage of threshold
         hr_ratio = avg_hr / threshold_hr
         # Calculate intensity factor based on heart rate ratio
@@ -651,7 +652,7 @@ def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=No
     
     return tss
 
-def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athlete_threshold_hr=None):
+def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athlete_threshold_hr=172):
     """
     Calculate CTL (Chronic Training Load), ATL (Acute Training Load), and TSB (Training Stress Balance)
     using proper time-based exponential decay.
@@ -701,24 +702,25 @@ def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athle
         
         # Get date range covering all activities plus buffer days
         if not activities_df.empty:
-            start_date = activities_df['start_date'].min().date() - datetime.timedelta(days=42)
-            end_date = activities_df['start_date'].max().date() + datetime.timedelta(days=7)
-            
-            # Create a continuous date range dataframe
-            date_range = pd.date_range(start=start_date, end=end_date)
+            # Remove timezone and floor to day
+            activities_df['date'] = activities_df['start_date'].dt.tz_localize(None).dt.floor('D')
+
+            # Group by date
+            daily_tss = activities_df.groupby('date')['tss'].sum()
+
+            # Build full date range using Timestamp values
+            start_date = activities_df['date'].min() - datetime.timedelta(days=42)
+            end_date = activities_df['date'].max() + datetime.timedelta(days=7)
+            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+
+            # Create a daily DataFrame with datetime index
             daily_df = pd.DataFrame(index=date_range)
             daily_df.index.name = 'date'
-            
-            # Group activities by day and sum TSS
-            activities_df['date'] = activities_df['start_date'].dt.date
-            daily_tss = activities_df.groupby('date')['tss'].sum().reset_index()
-            daily_tss['date'] = pd.to_datetime(daily_tss['date'])
-            daily_tss = daily_tss.set_index('date')
-            
-            # Merge into daily dataframe
-            daily_df = daily_df.join(daily_tss)
+
+            # Merge on aligned datetime indices
+            daily_df = daily_df.merge(daily_tss, left_index=True, right_index=True, how='left')
             daily_df['tss'].fillna(0, inplace=True)
-            
+
             # Time constants (in days)
             ctl_time_constant = 42
             atl_time_constant = 7
@@ -726,9 +728,11 @@ def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athle
             # Calculate CTL and ATL using proper exponential decay
             # CTL formula: Today's CTL = Yesterday's CTL + (Today's TSS - Yesterday's CTL) / CTL time constant
             # ATL formula: Today's ATL = Yesterday's ATL + (Today's TSS - Yesterday's ATL) / ATL time constant
-            
-            daily_df['CTL'] = 0
-            daily_df['ATL'] = 0
+
+            daily_df['CTL'] = daily_tss.iloc[-1]
+            daily_df['ATL'] = daily_tss.iloc[-1]
+
+            print(daily_tss.iloc[0])
             
             for i in range(1, len(daily_df)):
                 yesterday = daily_df.index[i-1]
@@ -749,42 +753,58 @@ def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athle
             # Calculate TSB (Form) = CTL - ATL
             daily_df['TSB'] = daily_df['CTL'] - daily_df['ATL']
             
+            today = pd.Timestamp.today().normalize()
+            start_date = today - datetime.timedelta(days=90)
+
+            # Filter from start_date up to and including today
+            last_90_days = daily_df.loc[start_date:today]
+
             # Return only the most recent N days to keep the result set manageable
-            return daily_df.tail(90).reset_index()
+            return last_90_days.reset_index()
         else:
             return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
             
     except sqlite3.Error as e:
         print(f"Database error in get_ctl_atl_tsb_data: {e}")
         return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
-    
-def get_training_shape_data(db_path=Config.DB_PATH):
+
+def get_enhanced_training_shape_data(db_path: str = Config.DB_PATH) -> pd.DataFrame:
     """
-    Calculate Training Shape metrics from activity history.
+    Calculate enhanced Training Shape metrics from running activity history.
     
-    This function combines multiple metrics to create a composite view
-    of an athlete's fitness trajectory over time.
+    Combines fitness (CTL), fatigue (ATL), form (TSB), speed trends, and efficiency 
+    into a composite training readiness score. Uses proper TSS calculation with 
+    intensity factors and exponential weighted moving averages.
+    
+    Args:
+        db_path (str): Path to SQLite database containing activities table
+        
+    Returns:
+        pd.DataFrame: Weekly aggregated data with columns:
+            - training_shape (float): Composite score 0-100
+            - ctl (float): Chronic Training Load (fitness)  
+            - atl (float): Acute Training Load (fatigue)
+            - tsb (float): Training Stress Balance (form)
+            - readiness (str): 'Fresh', 'Neutral', or 'Fatigued'
+            - fitness_trend (float): 4-week fitness change
+            - weekly_distance_km (float): Weekly volume
+            - start_date (datetime): Week start date
+            
+    Notes:
+        - Requires activities table with Run type entries
+        - TSS calculated using heart rate or pace intensity factors
+        - Uses 6-week CTL and 1-week ATL exponential averages
+        - Adaptive normalization based on personal performance ranges
     """
     
     conn = sqlite3.connect(db_path)
     
-    # Get all running activities with key metrics
     query = """
     SELECT 
-        id,
-        distance,
-        moving_time,
-        average_heartrate,
-        max_heartrate,
-        average_speed,
-        average_cadence,
-        kilojoules,
-        start_date
+        id, distance, moving_time, average_heartrate, max_heartrate,
+        average_speed, average_cadence, kilojoules, start_date
     FROM activities
-    WHERE 
-        type = 'Run' 
-        AND distance IS NOT NULL
-        AND moving_time IS NOT NULL
+    WHERE type = 'Run' AND distance IS NOT NULL AND moving_time IS NOT NULL
     ORDER BY start_date ASC;
     """
     
@@ -794,107 +814,348 @@ def get_training_shape_data(db_path=Config.DB_PATH):
     if activities_df.empty:
         return pd.DataFrame()
     
-    # Convert start_date to datetime
     activities_df['start_date'] = pd.to_datetime(activities_df['start_date'])
-    
-    # Extract date only
     activities_df['date'] = activities_df['start_date'].dt.date
     
-    # Calculate training metrics
+    # Enhanced TSS calculation
+    activities_df['pace_per_km'] = activities_df['moving_time'] / (activities_df['distance'] / 1000)
     
-    # 1. Speed (m/s)
-    activities_df['speed'] = activities_df['distance'] / activities_df['moving_time']
+    # Use heart rate zones if available, otherwise pace-based intensity
+    if activities_df['average_heartrate'].notna().sum() > len(activities_df) * 0.5:
+        # HR-based TSS (requires user's threshold HR - could be estimated)
+        threshold_hr = activities_df['average_heartrate'].quantile(0.85)  # Rough estimate
+        activities_df['intensity_factor'] = activities_df['average_heartrate'] / threshold_hr
+    else:
+        # Pace-based intensity using critical pace concept
+        # Use best 5km equivalent pace as threshold
+        best_5k_pace = activities_df[activities_df['distance'].between(4000, 6000)]['pace_per_km'].min()
+        if pd.isna(best_5k_pace):
+            best_5k_pace = activities_df['pace_per_km'].quantile(0.1)  # Fastest 10%
+        
+        activities_df['intensity_factor'] = best_5k_pace / activities_df['pace_per_km']
     
-    # 2. EF (Efficiency Factor) where heart rate data exists
-    mask = activities_df['average_heartrate'].notna() & (activities_df['average_heartrate'] > 0)
-    activities_df.loc[mask, 'ef'] = (activities_df.loc[mask, 'speed'] * 60) / activities_df.loc[mask, 'average_heartrate']
-    
-    # 3. Calculate TSS (simplified version)
-    activities_df['intensity'] = activities_df['average_speed'] / activities_df['average_speed'].mean()
+    # Calculate TSS with proper intensity factor
     activities_df['duration_hours'] = activities_df['moving_time'] / 3600
-    activities_df['tss'] = activities_df['duration_hours'] * (activities_df['intensity'] ** 2) * 100
+    activities_df['tss'] = activities_df['duration_hours'] * (activities_df['intensity_factor'] ** 2) * 100
+    activities_df['tss'] = activities_df['tss'].clip(0, 500)  # Cap extreme values
     
-    # 4. Calculate weekly volumes
-    activities_df['week'] = activities_df['start_date'].dt.isocalendar().week
-    activities_df['year'] = activities_df['start_date'].dt.isocalendar().year
-    activities_df['year_week'] = activities_df['year'].astype(str) + '-' + activities_df['week'].astype(str).str.zfill(2)
+    # Enhanced efficiency factor
+    mask = (activities_df['average_heartrate'].notna() & 
+            (activities_df['average_heartrate'] > 0) & 
+            (activities_df['distance'] > 1000))  # Only for runs > 1km
     
-    # Aggregate by week
+    activities_df.loc[mask, 'ef'] = (
+        (activities_df.loc[mask, 'distance'] / 1000) / 
+        (activities_df.loc[mask, 'moving_time'] / 3600) / 
+        activities_df.loc[mask, 'average_heartrate'] * 60
+    )
+    
+    # Weekly aggregation
+    activities_df['year_week'] = (activities_df['start_date'].dt.isocalendar().year.astype(str) + 
+                                 '-' + activities_df['start_date'].dt.isocalendar().week.astype(str).str.zfill(2))
+    
     weekly_df = activities_df.groupby('year_week').agg({
-        'start_date': 'min',  # First day of week
+        'start_date': 'min',
         'distance': 'sum',
         'moving_time': 'sum',
         'tss': 'sum',
-        'ef': 'mean'
+        'ef': 'mean',
+        'intensity_factor': 'mean'
     }).reset_index()
     
-    # Calculate rolling metrics
     weekly_df = weekly_df.sort_values('start_date')
     
-    # TSS-based fitness (CTL)
-    weekly_df['ctl'] = weekly_df['tss'].rolling(window=6, min_periods=1).mean()
+    # Performance Management Chart metrics
+    weekly_df['ctl'] = weekly_df['tss'].ewm(span=42, adjust=False).mean()  # 6-week exponential
+    weekly_df['atl'] = weekly_df['tss'].ewm(span=7, adjust=False).mean()   # 1-week exponential  
+    weekly_df['tsb'] = weekly_df['ctl'] - weekly_df['atl']  # Training Stress Balance
     
-    # Speed trend
+    # Speed and efficiency trends
     weekly_df['weekly_distance_km'] = weekly_df['distance'] / 1000
     weekly_df['weekly_time_hours'] = weekly_df['moving_time'] / 3600
-    weekly_df['weekly_speed'] = weekly_df['weekly_distance_km'] / weekly_df['weekly_time_hours']
-    weekly_df['speed_trend'] = weekly_df['weekly_speed'].rolling(window=4, min_periods=1).mean()
+    weekly_df['weekly_speed_kmh'] = weekly_df['weekly_distance_km'] / weekly_df['weekly_time_hours']
     
-    # EF trend
-    weekly_df['ef_trend'] = weekly_df['ef'].rolling(window=4, min_periods=1).mean()
-    
-    # Create composite Training Shape score (0-100 scale)
-    
-    # 1. Normalize each component to 0-100 scale
-    # Higher values are better for all metrics
-    
-    def min_max_normalize(series, min_val=None, max_val=None):
-        if min_val is None:
-            min_val = series.min()
-        if max_val is None:
-            max_val = series.max()
+    # Adaptive normalization based on personal ranges
+    def adaptive_normalize(series, percentile_range=(5, 95)):
+        min_val = series.quantile(percentile_range[0] / 100)
+        max_val = series.quantile(percentile_range[1] / 100)
         return 100 * (series - min_val) / (max_val - min_val)
     
-    # Normalize CTL (use 20 as min and 100 as max for reasonable scale)
-    weekly_df['ctl_score'] = min_max_normalize(weekly_df['ctl'], min_val=20, max_val=100)
-    weekly_df['ctl_score'] = weekly_df['ctl_score'].clip(0, 100)
+    # Component scores
+    weekly_df['fitness_score'] = adaptive_normalize(weekly_df['ctl']).clip(0, 100)
+    weekly_df['speed_score'] = adaptive_normalize(weekly_df['weekly_speed_kmh']).clip(0, 100)
+    weekly_df['freshness_score'] = adaptive_normalize(weekly_df['tsb']).clip(0, 100)
     
-    # Normalize speed trend
-    weekly_df['speed_score'] = min_max_normalize(weekly_df['speed_trend'])
-    
-    # Normalize EF trend where available
-    if weekly_df['ef_trend'].notna().any():
-        weekly_df['ef_score'] = min_max_normalize(weekly_df['ef_trend'])
-        # Composite score with EF
-        weekly_df['training_shape'] = (weekly_df['ctl_score'] * 0.5 + 
-                                      weekly_df['speed_score'] * 0.3 + 
-                                      weekly_df['ef_score'] * 0.2)
+    if weekly_df['ef'].notna().sum() > 5:  # Need minimum data points
+        weekly_df['efficiency_score'] = adaptive_normalize(weekly_df['ef']).clip(0, 100)
+        # Composite with all components
+        weekly_df['training_shape'] = (
+            weekly_df['fitness_score'] * 0.4 + 
+            weekly_df['speed_score'] * 0.25 + 
+            weekly_df['efficiency_score'] * 0.2 +
+            weekly_df['freshness_score'] * 0.15
+        )
     else:
-        # Composite score without EF
-        weekly_df['training_shape'] = (weekly_df['ctl_score'] * 0.6 + 
-                                      weekly_df['speed_score'] * 0.4)
+        # Without efficiency
+        weekly_df['training_shape'] = (
+            weekly_df['fitness_score'] * 0.5 + 
+            weekly_df['speed_score'] * 0.35 + 
+            weekly_df['freshness_score'] * 0.15
+        )
     
-    # Fill any NaN values in final score
-    weekly_df['training_shape'] = weekly_df['training_shape'].fillna(method='ffill').fillna(0)
+    # Add readiness indicator
+    weekly_df['readiness'] = np.where(
+        weekly_df['tsb'] > 5, 'Fresh',
+        np.where(weekly_df['tsb'] < -10, 'Fatigued', 'Neutral')
+    )
     
-    # Add pacing data for visualization
-    week_dates = weekly_df['start_date'].tolist()
-    
-    # Get performance breakthroughs - best speeds at different distances
-    breakthrough_data = []
-    
-    # Get streams data for pace analysis (optional)
-    """
-    # This would be the ideal approach if you want to include detailed pace data
-    conn = sqlite3.connect(db_path)
-    for activity_id in activities_df['id'].unique():
-        query = "SELECT distance_data, time_data FROM streams WHERE activity_id = ?"
-        result = conn.execute(query, (activity_id,)).fetchone()
-        if result and result[0] and result[1]:
-            distance_data = json.loads(result[0])
-            time_data = json.loads(result[1])
-            # Process pace data...
-    conn.close()
-    """
+    # Add trend indicators
+    window = min(4, len(weekly_df))
+    weekly_df['fitness_trend'] = weekly_df['fitness_score'].diff(window).fillna(0)
+    weekly_df['form_trend'] = weekly_df['training_shape'].diff(window).fillna(0)
     
     return weekly_df
+
+
+def add_risk_indicators(weekly_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add injury risk and consistency indicators to weekly training data.
+    
+    Args:
+        weekly_df (pd.DataFrame): Output from get_enhanced_training_shape_data()
+        
+    Returns:
+        pd.DataFrame: Enhanced dataframe with additional columns:
+            - volume_change_pct (float): Week-over-week distance change
+            - injury_risk_flag (bool): True if >30% volume increase
+            - load_ratio (float): ATL/CTL ratio for overreaching detection
+            - consistency_streak (int): Consecutive weeks with training
+    """
+    df = weekly_df.copy()
+    
+    # Volume change indicators
+    df['volume_change_pct'] = df['weekly_distance_km'].pct_change() * 100
+    df['injury_risk_flag'] = df['volume_change_pct'] > 30
+    
+    # Load ratio for overreaching
+    df['load_ratio'] = df['atl'] / df['ctl']
+    
+    # Consistency streak
+    df['has_training'] = df['weekly_distance_km'] > 0
+    df['consistency_streak'] = df['has_training'].cumsum() - df['has_training'].cumsum().where(~df['has_training']).ffill().fillna(0)
+    
+    return df
+
+
+def get_dashboard_summary(weekly_df: pd.DataFrame) -> dict:
+    """
+    Generate summary statistics for dashboard display.
+    
+    Args:
+        weekly_df (pd.DataFrame): Weekly training data
+        
+    Returns:
+        dict: Summary metrics for dashboard cards/indicators
+    """
+    if weekly_df.empty:
+        return {}
+    
+    latest = weekly_df.iloc[-1]
+    last_4_weeks = weekly_df.tail(4)
+    
+    return {
+        'current_training_shape': round(latest['training_shape'], 1),
+        'fitness_trend': 'Improving' if latest['fitness_trend'] > 2 else 'Declining' if latest['fitness_trend'] < -2 else 'Stable',
+        'readiness': latest['readiness'],
+        'avg_weekly_distance': round(last_4_weeks['weekly_distance_km'].mean(), 1),
+        'injury_risk_weeks': (last_4_weeks['volume_change_pct'] > 30).sum(),
+        'consistency_rate': round((weekly_df['weekly_distance_km'] > 0).mean() * 100, 1),
+        'peak_fitness': round(weekly_df['training_shape'].max(), 1),
+        'current_vs_peak': round((latest['training_shape'] / weekly_df['training_shape'].max()) * 100, 1)
+    }
+
+def get_cumulative_training_shape_data(db_path: str = Config.DB_PATH) -> pd.DataFrame:
+    """
+    Calculate cumulative Training Shape metrics representing lifetime fitness gains.
+    
+    Unlike current form (CTL/ATL), this tracks accumulated training adaptations
+    with decay over time but no complete reset. Represents overall fitness capacity
+    built through consistent training over months/years.
+    
+    Args:
+        db_path (str): Path to SQLite database containing activities table
+        
+    Returns:
+        pd.DataFrame: Weekly data with cumulative metrics:
+            - cumulative_fitness (float): Lifetime fitness accumulation
+            - training_consistency (float): Long-term adherence score
+            - cumulative_volume (float): Total distance logged
+            - fitness_bank (float): Composite cumulative score 0-100
+            - experience_factor (float): Training maturity multiplier
+    """
+    
+    conn = sqlite3.connect(db_path)
+    
+    query = """
+    SELECT 
+        id, distance, moving_time, average_heartrate, max_heartrate,
+        average_speed, start_date
+    FROM activities
+    WHERE type = 'Run' AND distance IS NOT NULL AND moving_time IS NOT NULL
+    ORDER BY start_date ASC;
+    """
+    
+    activities_df = pd.read_sql_query(query, conn)
+    conn.close()
+    
+    if activities_df.empty:
+        return pd.DataFrame()
+    
+    activities_df['start_date'] = pd.to_datetime(activities_df['start_date'])
+    
+    # Calculate training value for each activity
+    activities_df['pace_per_km'] = activities_df['moving_time'] / (activities_df['distance'] / 1000)
+    activities_df['duration_hours'] = activities_df['moving_time'] / 3600
+    
+    # Estimate intensity factor
+    if activities_df['average_heartrate'].notna().sum() > len(activities_df) * 0.3:
+        threshold_hr = activities_df['average_heartrate'].quantile(0.85)
+        activities_df['intensity_factor'] = activities_df['average_heartrate'] / threshold_hr
+    else:
+        best_pace = activities_df['pace_per_km'].quantile(0.1)
+        activities_df['intensity_factor'] = best_pace / activities_df['pace_per_km']
+    
+    activities_df['intensity_factor'] = activities_df['intensity_factor'].clip(0.3, 2.0)
+    
+    # Training Impulse (TRIMP) - represents training stimulus
+    activities_df['trimp'] = (activities_df['duration_hours'] * 
+                             activities_df['intensity_factor'] * 
+                             60)  # Scale to reasonable range
+    
+    # Weekly aggregation
+    activities_df['year_week'] = (activities_df['start_date'].dt.isocalendar().year.astype(str) + 
+                                 '-' + activities_df['start_date'].dt.isocalendar().week.astype(str).str.zfill(2))
+    
+    weekly_df = activities_df.groupby('year_week').agg({
+        'start_date': 'min',
+        'distance': 'sum',
+        'moving_time': 'sum',
+        'trimp': 'sum',
+        'intensity_factor': 'mean'
+    }).reset_index()
+    
+    weekly_df = weekly_df.sort_values('start_date').reset_index(drop=True)
+    
+    # Calculate weeks since start for experience factor
+    start_date = weekly_df['start_date'].min()
+    weekly_df['weeks_training'] = ((weekly_df['start_date'] - start_date).dt.days / 7).astype(int) + 1
+    
+    # Cumulative metrics with slow decay
+    decay_rate = 0.998  # 2% annual decay (very slow)
+    
+    # Initialize cumulative fitness
+    weekly_df['cumulative_fitness'] = 0.0
+    weekly_df['cumulative_volume'] = weekly_df['distance'].cumsum() / 1000  # km
+    
+    # Calculate cumulative fitness with decay
+    for i in range(len(weekly_df)):
+        if i == 0:
+            weekly_df.loc[i, 'cumulative_fitness'] = weekly_df.loc[i, 'trimp']
+        else:
+            weeks_gap = (weekly_df.loc[i, 'start_date'] - weekly_df.loc[i-1, 'start_date']).days / 7
+            decay_factor = decay_rate ** weeks_gap
+            
+            previous_fitness = weekly_df.loc[i-1, 'cumulative_fitness'] * decay_factor
+            current_stimulus = weekly_df.loc[i, 'trimp']
+            
+            weekly_df.loc[i, 'cumulative_fitness'] = previous_fitness + current_stimulus
+    
+    # Training consistency score (percentage of weeks with training)
+    total_weeks = weekly_df['weeks_training'].max()
+    active_weeks = len(weekly_df)
+    weekly_df['training_consistency'] = (active_weeks / total_weeks) * 100
+    
+    # Experience factor - training maturity bonus
+    # Plateaus after ~2 years of consistent training
+    weekly_df['experience_factor'] = np.minimum(
+        1.0 + (weekly_df['weeks_training'] / 104) * 0.5,  # 50% bonus over 2 years
+        1.5
+    )
+    
+    # Volume consistency - reward steady accumulation
+    weekly_df['weekly_distance_km'] = weekly_df['distance'] / 1000
+    weekly_df['volume_consistency'] = 100 - (weekly_df['weekly_distance_km'].rolling(
+        window=min(12, len(weekly_df)), min_periods=1
+    ).std() / weekly_df['weekly_distance_km'].rolling(
+        window=min(12, len(weekly_df)), min_periods=1
+    ).mean() * 100).fillna(0)
+    weekly_df['volume_consistency'] = weekly_df['volume_consistency'].clip(0, 100)
+    
+    # Normalize components for composite score
+    def safe_normalize(series, target_max=None):
+        if series.max() == series.min():
+            return pd.Series([50] * len(series), index=series.index)
+        
+        if target_max:
+            return (series / target_max * 100).clip(0, 100)
+        else:
+            return ((series - series.min()) / (series.max() - series.min()) * 100)
+    
+    # Component scores
+    weekly_df['fitness_score'] = safe_normalize(weekly_df['cumulative_fitness'])
+    weekly_df['volume_score'] = safe_normalize(weekly_df['cumulative_volume'])
+    weekly_df['consistency_score'] = weekly_df['training_consistency']
+    weekly_df['experience_score'] = safe_normalize(weekly_df['experience_factor'])
+    
+    # Composite Fitness Bank score
+    weekly_df['fitness_bank'] = (
+        weekly_df['fitness_score'] * 0.4 +           # Accumulated training load
+        weekly_df['volume_score'] * 0.25 +           # Total volume logged  
+        weekly_df['consistency_score'] * 0.25 +      # Training adherence
+        weekly_df['experience_score'] * 0.1          # Training maturity
+    )
+    
+    # Add milestones
+    volume_milestones = [100, 500, 1000, 2000, 5000, 10000]  # km
+    weekly_df['volume_milestone'] = 0
+    for milestone in volume_milestones:
+        weekly_df.loc[weekly_df['cumulative_volume'] >= milestone, 'volume_milestone'] = milestone
+    
+    # Training age in years
+    weekly_df['training_age_years'] = weekly_df['weeks_training'] / 52.0
+    
+    return weekly_df
+
+
+def get_lifetime_achievements(weekly_df: pd.DataFrame) -> dict:
+    """
+    Extract lifetime training achievements from cumulative data.
+    
+    Args:
+        weekly_df (pd.DataFrame): Output from get_cumulative_training_shape_data()
+        
+    Returns:
+        dict: Achievement metrics for gamification/motivation
+    """
+    if weekly_df.empty:
+        return {}
+    
+    latest = weekly_df.iloc[-1]
+    
+    # Calculate streaks and achievements
+    max_fitness = weekly_df['fitness_bank'].max()
+    current_fitness_pct = (latest['fitness_bank'] / max_fitness * 100) if max_fitness > 0 else 0
+    
+    return {
+        'total_distance_km': round(latest['cumulative_volume'], 1),
+        'training_age_years': round(latest['training_age_years'], 1),
+        'fitness_bank_score': round(latest['fitness_bank'], 1),
+        'peak_fitness_achieved': round(max_fitness, 1),
+        'current_vs_peak_pct': round(current_fitness_pct, 1),
+        'consistency_rate': round(latest['training_consistency'], 1),
+        'volume_milestone': latest['volume_milestone'],
+        'experience_level': 'Beginner' if latest['training_age_years'] < 0.5 else
+                           'Developing' if latest['training_age_years'] < 1.5 else
+                           'Experienced' if latest['training_age_years'] < 3 else 'Veteran',
+        'total_weeks_trained': len(weekly_df)
+    }
