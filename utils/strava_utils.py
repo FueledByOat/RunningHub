@@ -450,11 +450,10 @@ def insert_single_gear(gear_data: Dict[str, Any], db_path: str) -> bool:
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             
-            # Note: Fixed column name mismatch - 'primary' vs 'is_primary'
             cursor.execute('''
                 INSERT OR REPLACE INTO gear VALUES (
                     :gear_id, :is_primary, :nickname, :resource_state, :retired, :distance,
-                    :brand_name, :model_name, :frame_type, :description, :weight, :import_date
+                    :brand_name, :model_name, :frame_type, :description, :weight
                 )
             ''', {
                 "gear_id": gear_data.get("id"),
