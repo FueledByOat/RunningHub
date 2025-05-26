@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +10,16 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
   <header class="site-header">
     <div class="container">
-      <h1 class="logo">RUNNING<span>HUB</span></h1>
+      <a href="{{ url_for('home') }}">
+        <h1 class="logo">RUNNING<span>HUB</span></h1>
+      </a>
       <p class="tagline">Detailed activity analysis</p>
     </div>
   </header>
@@ -24,37 +29,43 @@
     <p class="activity-meta">
       <i class="fas fa-hashtag"></i> {{ activity.id }} |
       <i class="fas fa-map-marker-alt"></i> {{ activity.location_city }} |
-      <i class="fas fa-calendar"></i> {{ activity.start_date }}
+      <i class="fas fa-calendar"></i> {{ activity.start_date }} {{ activity.start_time}}
     </p>
+            <div class="unit-selector">
+            <a href="{{ url_for('activity', units='mi', id=activity['id']) }}"
+                class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+            <a href="{{ url_for('activity', units='km', id=activity['id']) }}"
+                class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
+        </div>
 
     <div class="activity-banner">
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-route"></i></div>
-        <div class="metric-value">{{ activity.distance }} mi</div>
+        <div class="metric-value">{{ activity.distance }} {{ units }}</div>
         <div class="metric-label">Distance</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-clock"></i></div>
         <div class="metric-value">{{ activity.moving_time }} min</div>
         <div class="metric-label">Time</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-tachometer-alt"></i></div>
-        <div class="metric-value">{{ activity.average_speed }} mi/h</div>
+        <div class="metric-value">{{ activity.average_speed }} {{ units }}/h</div>
         <div class="metric-label">Avg Speed</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-bolt"></i></div>
-        <div class="metric-value">{{ activity.max_speed }} mi/h</div>
+        <div class="metric-value">{{ activity.max_speed }} {{ units }}/h</div>
         <div class="metric-label">Max Speed</div>
       </div>
 
       <div class="metric-card">
         <div class="metric-icon"><i class="far fa-clock"></i></div>
-        <div class="metric-value">{{ activity.average_pace }}</div>
+        <div class="metric-value">{{ activity.average_pace }} min/{{ units }}</div>
         <div class="metric-label">Avg Pace</div>
       </div>
 
@@ -63,28 +74,28 @@
         <div class="metric-value">{{ activity.average_cadence }} spm</div>
         <div class="metric-label">Cadence</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-fire"></i></div>
         <div class="metric-value">{{ activity.kilojoules }} kJ</div>
         <div class="metric-label">Energy</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-heartbeat"></i></div>
         <div class="metric-value">{{ activity.average_heartrate }} bpm</div>
         <div class="metric-label">HR Avg</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-heart"></i></div>
         <div class="metric-value">{{ activity.max_heartrate }} bpm</div>
         <div class="metric-label">HR Max</div>
       </div>
-      
+
       <div class="metric-card">
         <div class="metric-icon"><i class="fas fa-running"></i></div>
-        <div class="metric-value">{{ activity.gear_id }}</div>
+        <div class="metric-value">{{ activity.gear_name }}</div>
         <div class="metric-label">Shoes</div>
       </div>
     </div>
@@ -93,17 +104,22 @@
       <a href="{{ url_for('home') }}" class="btn">
         <i class="fas fa-arrow-left"></i> Back to Home
       </a>
+      <a href="{{ url_for('statistics') }}" class="btn">
+        <i class="fas fa-chart-line"></i> Statistics
+      </a>
     </div>
 
     <div class="map-container">
-        <iframe src="/map/" width="100%" height="100%" style="border:none;"></iframe>
+      <iframe src="{{ url_for('dashredirect') }}?id={{ activity['id'] }}" width="100%" height="100%"
+        style="border:none;"></iframe>
     </div>
   </main>
-  
+
   <footer class="site-footer">
     <div class="container">
       <p>RunningHub &copy; 2025 | Your personal running analytics platform</p>
     </div>
   </footer>
 </body>
+
 </html>

@@ -16,36 +16,51 @@
 <body>
     <header class="site-header">
         <div class="container">
-            <h1 class="logo">RUNNING<span>HUB</span></h1>
+            <a href="{{ url_for('home') }}">
+                <h1 class="logo">RUNNING<span>HUB</span></h1>
+            </a>
             <p class="tagline">Performance analytics & insights</p>
         </div>
     </header>
 
     <main class="container">
         <h2 class="page-title">Running Statistics</h2>
+        <!-- Unit Selector -->
+        <div class="unit-selector">
+            <a href="{{ url_for('statistics', units='mi', period=period) }}"
+                class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+            <a href="{{ url_for('statistics', units='km', period=period) }}"
+                class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
+        </div>
         <p class="activity-meta">
             <i class="fas fa-calendar-alt"></i> {{ date_range }} |
             <i class="fas fa-running"></i> {{ total_activities }} Activities |
-            <i class="fas fa-chart-line"></i> {{ total_distance }} km Total
+            <i class="fas fa-chart-line"></i> {{ total_distance }} {{ units }} Total
         </p>
 
         <!-- Time Period Selector -->
         <div class="time-selector">
-            <a href="{{ url_for('statistics', period='week') }}"
+            <a href="{{ url_for('statistics', period='week', units=units) }}"
                 class="time-btn {{ 'active' if period == 'week' }}">Week</a>
-            <a href="{{ url_for('statistics', period='month') }}"
+            <a href="{{ url_for('statistics', period='month', units=units) }}"
                 class="time-btn {{ 'active' if period == 'month' }}">Month</a>
-            <a href="{{ url_for('statistics', period='year') }}"
+            <a href="{{ url_for('statistics', period='year', units=units) }}"
                 class="time-btn {{ 'active' if period == 'year' }}">Year</a>
-            <a href="{{ url_for('statistics', period='all') }}" class="time-btn {{ 'active' if period == 'all' }}">All
-                Time</a>
+            <a href="{{ url_for('statistics', period='all', units=units) }}"
+                class="time-btn {{ 'active' if period == 'all' }}">All Time</a>
+
         </div>
 
         <!-- Summary Stats -->
         <div class="summary-stats">
             <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-running"></i></div>
+                <div class="stats-value">{{ stats.total_activities }}</div>
+                <div class="stats-label">Activities</div>
+            </div>
+            <div class="stats-card">
                 <div class="stats-icon"><i class="fas fa-route"></i></div>
-                <div class="stats-value">{{ stats.total_distance }} km</div>
+                <div class="stats-value">{{ stats.total_distance }} {{ units }}</div>
                 <div class="stats-label">Total Distance</div>
             </div>
 
@@ -56,16 +71,18 @@
             </div>
 
             <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-mountain"></i></div>
+                <div class="stats-value">{{ stats.total_elevation }} m</div>
+                <div class="stats-label">Total Elevation</div>
+            </div>
+
+            <div class="stats-card">
                 <div class="stats-icon"><i class="fas fa-fire"></i></div>
                 <div class="stats-value">{{ stats.total_calories }} kcal</div>
                 <div class="stats-label">Total Calories</div>
             </div>
 
-            <div class="stats-card">
-                <div class="stats-icon"><i class="fas fa-running"></i></div>
-                <div class="stats-value">{{ stats.total_activities }}</div>
-                <div class="stats-label">Activities</div>
-            </div>
+
         </div>
 
         <!-- Charts Section -->
@@ -81,61 +98,37 @@
             </div>
         </div>
 
-        <!-- Detailed Stats Tables -->
-        <div class="stats-tables">
-            <div class="table-wrapper">
-                <h3><i class="fas fa-trophy"></i> Personal Records</h3>
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Distance</th>
-                            <th>Time</th>
-                            <th>Pace</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in personal_records %}
-                        <tr>
-                            <td>{{ record.distance }} km</td>
-                            <td>{{ record.time }}</td>
-                            <td>{{ record.pace }} min/km</td>
-                            <td>{{ record.date }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
 
-            <div class="table-wrapper">
-                <h3><i class="fas fa-shoe-prints"></i> Shoe Usage</h3>
-                <table class="stats-table">
-                    <thead>
-                        <tr>
-                            <th>Shoe</th>
-                            <th>Distance</th>
-                            <th>Activities</th>
-                            <th>Last Used</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for shoe in shoes %}
-                        <tr>
-                            <td>{{ shoe.name }}</td>
-                            <td>{{ shoe.distance }} km</td>
-                            <td>{{ shoe.activities }}</td>
-                            <td>{{ shoe.last_used }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-wrapper">
+            <h3><i class="fas fa-shoe-prints"></i> Shoe Usage</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Shoe</th>
+                        <th>Distance</th>
+                        <th>Activities</th>
+                        <th>Last Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shoe in shoes %}
+                    <tr>
+                        <td>{{ shoe.name }}</td>
+                        <td>{{ shoe.distance }} {{ units }}</td>
+                        <td>{{ shoe.activities }}</td>
+                        <td>{{ shoe.last_used }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         </div>
 
         <!-- Heatmap -->
-        <div class="heatmap-container">
-            <h3><i class="fas fa-calendar-check"></i> Activity Heatmap</h3>
-            <div class="heatmap" id="activityHeatmap"></div>
+        <div class="heatmap-container-stats">
+            <iframe src="{{ url_for('density_redirect') }}?start_date={{ start_date }}" width="100%" height="100%"
+                style="border:none;"></iframe>
+            </iframe>
         </div>
 
         <!-- Recent Activities -->
@@ -149,9 +142,9 @@
                         <a href="{{ url_for('activity', id=activity.id) }}">{{ activity.name }}</a>
                     </div>
                     <div class="activity-metrics">
-                        <span><i class="fas fa-route"></i> {{ activity.distance }} km</span>
+                        <span><i class="fas fa-route"></i> {{ activity.distance }} {{ units }}</span>
                         <span><i class="fas fa-clock"></i> {{ activity.time }}</span>
-                        <span><i class="fas fa-tachometer-alt"></i> {{ activity.pace }} min/km</span>
+                        <span><i class="fas fa-tachometer-alt"></i> {{ activity.pace }} min/{{ units }}</span>
                     </div>
                 </div>
                 {% endfor %}
@@ -181,98 +174,94 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Get data from backend
 
-            // Claude code bad
-              const weeklyDistances = JSON.parse('{{ weekly_distances|tojson }}' || '[0, 0, 0, 0, 0, 0, 0]');
-              const paceDates = JSON.parse('{{ pace_dates|tojson }}' || '["Jan", "Feb", "Mar", "Apr", "May"]');
-              const paceValues = JSON.parse('{{ pace_values|tojson }}' || '[5.2, 5.1, 5.3, 5.0, 4.9]');
+            const weeklyDistances = JSON.parse('{{ weekly_distances|tojson }}' || '[0, 0, 0, 0, 0, 0, 0]');
+            const paceDates = JSON.parse('{{ pace_dates|tojson }}' || '["Jan", "Feb", "Mar", "Apr", "May"]');
+            const paceValues = JSON.parse('{{ pace_values|tojson }}' || '[5.2, 5.1, 5.3, 5.0, 4.9]');
 
 
-        const distanceCtx = document.getElementById('distanceChart');
-        if (distanceCtx) {
-            const distanceChart = new Chart(distanceCtx.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Distance (km)',
-                        data: weeklyDistances,
-                        backgroundColor: '#0c1559',
-                        borderColor: '#0c1559',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Distance (km)'
-                            }
-                        },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Day of Week'
-                            }
-                        }
+            const distanceCtx = document.getElementById('distanceChart');
+            if (distanceCtx) {
+                const distanceChart = new Chart(distanceCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Distance (km)',
+                            data: weeklyDistances,
+                            backgroundColor: '#0c1559',
+                            borderColor: '#0c1559',
+                            borderWidth: 1
+                        }]
                     },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-
-        // Pace Chart
-        const paceCtx = document.getElementById('paceChart');
-        if (paceCtx) {
-            const paceChart = new Chart(paceCtx.getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: paceDates,
-                    datasets: [{
-                        label: 'Pace (min/km)',
-                        data: paceValues,
-                        fill: false,
-                        borderColor: '#ffcc00',
-                        backgroundColor: 'rgba(255, 204, 0, 0.2)',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        pointBackgroundColor: '#0c1559',
-                        pointBorderColor: '#0c1559',
-                        pointRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: {
-                                display: true,
-                                text: 'Pace (min/km)'
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distance (km)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Day of Week'
+                                }
                             }
                         },
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Date'
+                        plugins: {
+                            legend: {
+                                display: false
                             }
                         }
                     }
-                }
-            });
-        }
+                });
+            }
 
-      // Here you would initialize the activity heatmap
-      // For example with a library like Cal-Heatmap
-    });
+            // Pace Chart
+            const paceCtx = document.getElementById('paceChart');
+            if (paceCtx) {
+                const paceChart = new Chart(paceCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: paceDates,
+                        datasets: [{
+                            label: 'Pace (min/km)',
+                            data: paceValues,
+                            fill: false,
+                            borderColor: '#ffcc00',
+                            backgroundColor: 'rgba(255, 204, 0, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointBackgroundColor: '#0c1559',
+                            pointBorderColor: '#0c1559',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: 'Pace (min/km)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
     </script>
 </body>
 

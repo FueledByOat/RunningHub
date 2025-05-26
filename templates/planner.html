@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Routine Planner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="{{ url_for('static', filename='js/runstrong_planner.js') }}" defer></script>
+
+</head>
+
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('runstrong') }}">Home</a>
+        <a href="{{ url_for('exercise_library') }}">Library</a>
+        <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('journal') }}">Journal</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
+        </a>
+    </div>
+    <div class="container">
+        <div class="exercise-pool">
+            <h2>Available Exercises</h2>
+            <ul id="exercise-pool">
+                <!-- Exercises will be loaded from Flask backend -->
+            </ul>
+        </div>
+        <div class="routine-builder">
+            <h2>Routine Builder</h2>
+            <ul id="routine-list"></ul>
+            <div class="form-controls">
+                <input type="text" id="routine-name" placeholder="Routine Name" />
+                <button id="save-routine">Save Routine</button>
+            </div>
+            <h3>Load Existing Routine</h3>
+            <select id="routine-selector">
+                <option value="">Select a routine...</option>
+            </select>
+            <button id="load-routine">Load Routine</button>
+        </div>
+    </div>
+
+</body>
+
+</html>

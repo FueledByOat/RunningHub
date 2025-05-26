@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,10 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
   <header class="site-header">
     <div class="container">
@@ -20,29 +23,48 @@
 
   <main class="container">
     <div class="btn-container">
-      <a href="{{ url_for('activity') }}" class="btn">
+      <a href="{{ url_for('activity', id=activity) }}" class="btn">
         <i class="fas fa-running"></i> Latest Activity
       </a>
       <a href="{{ url_for('statistics') }}" class="btn">
         <i class="fas fa-chart-line"></i> Statistics
       </a>
-      <a href="#" class="btn btn-accent">
-        <i class="fas fa-calendar-alt"></i> All Activities
+      <a href="{{ url_for('trophy_room') }}" class="btn btn-accent">
+        <i class="fas fa-trophy"></i> Trophy Room
+      </a>
+      <a href="{{ url_for('dashboard_redirect') }}" class="btn btn-accent">
+        <i class="fas fa-chart-line"></i> Dashboard
+      </a>
+      <a href="{{ url_for('query') }}" class="btn btn-accent">
+        <i class="fas fa-magnifying-glass"></i> Query
       </a>
     </div>
 
-    <div class="map-container">
-      <!-- Placeholder for featured map or dashboard visualization -->
-      <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background-color:var(--gray-light);">
-        <i class="fas fa-map-marked-alt" style="font-size:3rem; color:var(--primary);"></i>
-      </div>
+    <div class="image-container">
+      <a href="{{ url_for('runnervision') }}">
+        <img src="static\images\RunnerVisionLogo_transparent.png" alt="RunnerVision Logo" id="runner_vision_img">
+      </a>
+      <a href="{{ url_for('runstrong') }}">
+        <img src="static\images\RUN_STRONG_logo_transparent.png" alt="RunnerSTRONG Logo" id="run_strong_img">
+      </a>
     </div>
+    </div>
+
+    <div class="heatmap-container-home">
+
+      <iframe src="{{ url_for('density_redirect') }}?start_date={{ '2000-01-01' }}" width="100%" height="100%"
+        style="border:none;">
+      </iframe>
+    </div>
+
+
   </main>
-  
+
   <footer class="site-footer">
     <div class="container">
       <p>RunningHub &copy; 2025 | Your personal running analytics platform</p>
     </div>
   </footer>
 </body>
+
 </html>
