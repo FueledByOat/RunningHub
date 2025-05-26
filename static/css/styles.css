@@ -931,11 +931,12 @@ body.runstrong {
   font-size: 1.1rem;
 }
 
-.runstrong-container {
-  padding: 2rem;
-  max-width: 800px;
+.runstrong .container {
+  display: flex;
+  gap: 40px;
+  padding: 20px;
+  max-width: 1200px;
   margin: 0 auto;
-  text-align: center;
 }
 
 .runstrong-button-grid {
@@ -967,108 +968,111 @@ body.runstrong {
   margin-top: 1rem;
   color: var(--rs-white);
 }
-   .runstrong .container {
-      display: flex;
-      gap: 40px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
 
-    .runstrong .exercise-pool,
-    .runstrong .routine-builder {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      padding: 20px;
-      backdrop-filter: blur(10px);
-    }
-    
-    .runstrong h2, .runstrong h3 {
-      margin-top: 0;
-      color: var(--rs-white);
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    .runstrong ul {
-      list-style-type: none;
-      padding: 15px;
-      border: 2px solid var(--rs-accent);
-      min-height: 300px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 8px;
-      margin: 0;
-    }
-    
-    .runstrong li {
-      padding: 12px 15px;
-      margin: 8px 0;
-      background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
-      border: 1px solid var(--rs-secondary);
-      cursor: grab;
-      border-radius: 6px;
-      color: var(--rs-white);
-      font-weight: 500;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 5px var(--rs-shadow);
-    }
+.runstrong .container {
+  display: flex;
+  gap: 40px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
-    .runstrong li:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 10px var(--rs-shadow);
-      background: linear-gradient(135deg, var(--rs-highlight), var(--rs-accent));
-    }
-    
-    .runstrong li:active {
-      cursor: grabbing;
-    }
-    
-    .runstrong .form-controls {
-      margin-top: 20px;
-      text-align: center;
-    }
-    
-    .runstrong select,
-    .runstrong input[type="text"] {
-      padding: 12px;
-      margin: 5px;
-      width: 200px;
-      border: 2px solid var(--rs-accent);
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--rs-white);
-      backdrop-filter: blur(5px);
-    }
+.runstrong .exercise-pool,
+.runstrong .routine-builder {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 20px;
+  backdrop-filter: blur(10px);
+}
 
-    .runstrong select::placeholder,
-    .runstrong input[type="text"]::placeholder {
-      color: rgba(255, 255, 255, 0.7);
-    }
-    
-    .runstrong button {
-      padding: 12px 20px;
-      margin: 5px;
-      background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
-      color: var(--rs-white);
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 5px var(--rs-shadow);
-    }
-    
-    .runstrong button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 10px var(--rs-shadow);
-      background: linear-gradient(135deg, var(--rs-highlight), var(--rs-secondary));
-    }
-    
-    .sortable-ghost {
-      opacity: 0.4;
-      background: var(--rs-secondary) !important;
-    }
-    
-    .sortable-chosen {
-      transform: scale(1.05);
-    }
+.runstrong h2,
+.runstrong h3 {
+  margin-top: 0;
+  color: var(--rs-white);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.runstrong ul {
+  list-style-type: none;
+  padding: 15px;
+  border: 2px solid var(--rs-accent);
+  min-height: 300px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin: 0;
+}
+
+.runstrong li {
+  padding: 12px 15px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
+  border: 1px solid var(--rs-secondary);
+  cursor: grab;
+  border-radius: 6px;
+  color: var(--rs-white);
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px var(--rs-shadow);
+}
+
+.runstrong li:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px var(--rs-shadow);
+  background: linear-gradient(135deg, var(--rs-highlight), var(--rs-accent));
+}
+
+.runstrong li:active {
+  cursor: grabbing;
+}
+
+.runstrong .form-controls {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.runstrong select,
+.runstrong input[type="text"] {
+  padding: 12px;
+  margin: 5px;
+  width: 200px;
+  border: 2px solid var(--rs-accent);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+  backdrop-filter: blur(5px);
+}
+
+.runstrong select::placeholder,
+.runstrong input[type="text"]::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.runstrong button {
+  padding: 12px 20px;
+  margin: 5px;
+  background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
+  color: var(--rs-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px var(--rs-shadow);
+}
+
+.runstrong button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px var(--rs-shadow);
+  background: linear-gradient(135deg, var(--rs-highlight), var(--rs-secondary));
+}
+
+.sortable-ghost {
+  opacity: 0.4;
+  background: var(--rs-secondary) !important;
+}
+
+.sortable-chosen {
+  transform: scale(1.05);
+}

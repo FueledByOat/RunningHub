@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <title>Routine Planner</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="{{ url_for('static', filename='js/runstrong_planner.js') }}" defer></script>
+
 </head>
 
 <body class="runstrong">
@@ -23,20 +26,11 @@
                 class="runstrong-logo" />
         </a>
     </div>
-
     <div class="container">
         <div class="exercise-pool">
             <h2>Available Exercises</h2>
             <ul id="exercise-pool">
-                <!-- Sample exercises for demo -->
-                <li class="draggable" data-id="1">Push-ups</li>
-                <li class="draggable" data-id="2">Squats</li>
-                <li class="draggable" data-id="3">Lunges</li>
-                <li class="draggable" data-id="4">Planks</li>
-                <li class="draggable" data-id="5">Burpees</li>
-                <li class="draggable" data-id="6">Mountain Climbers</li>
-                <li class="draggable" data-id="7">Jumping Jacks</li>
-                <li class="draggable" data-id="8">Pull-ups</li>
+                <!-- Exercises will be loaded from Flask backend -->
             </ul>
         </div>
         <div class="routine-builder">
@@ -49,146 +43,11 @@
             <h3>Load Existing Routine</h3>
             <select id="routine-selector">
                 <option value="">Select a routine...</option>
-                <option value="1">Morning Workout</option>
-                <option value="2">Evening Cardio</option>
             </select>
             <button id="load-routine">Load Routine</button>
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script>
-        // Sample routines data for demo
-        const sampleRoutines = {
-            1: {
-                name: "Morning Workout",
-                exercises: [
-                    [1, "Push-ups"],
-                    [2, "Squats"],
-                    [4, "Planks"]
-                ]
-            },
-            2: {
-                name: "Evening Cardio",
-                exercises: [
-                    [5, "Burpees"],
-                    [7, "Jumping Jacks"],
-                    [6, "Mountain Climbers"]
-                ]
-            }
-        };
-
-        // Drag and drop setup
-        const exercisePool = Sortable.create(document.getElementById("exercise-pool"), {
-            group: {
-                name: "shared",
-                pull: "clone",
-                put: false
-            },
-            animation: 150,
-            sort: false,
-            ghostClass: "sortable-ghost",
-            chosenClass: "sortable-chosen"
-        });
-
-        const routineList = Sortable.create(document.getElementById("routine-list"), {
-            group: {
-                name: "shared",
-                pull: true,
-                put: true
-            },
-            animation: 150,
-            ghostClass: "sortable-ghost",
-            chosenClass: "sortable-chosen",
-            onAdd: function (evt) {
-                // When cloning from exercise pool, ensure proper data attributes
-                const item = evt.item;
-                if (!item.classList.contains('from-routine')) {
-                    item.classList.add('draggable');
-                }
-            }
-        });
-
-        // Save routine
-        document.getElementById("save-routine").addEventListener("click", () => {
-            const name = document.getElementById("routine-name").value.trim();
-            const items = document.querySelectorAll("#routine-list li");
-            const routine = Array.from(items).map((el, idx) => ({
-                id: el.dataset.id,
-                order: idx
-            }));
-
-            if (!name || routine.length === 0) {
-                alert("Please enter a routine name and add at least one exercise.");
-                return;
-            }
-
-            // In a real application, this would be a fetch request
-            console.log("Saving routine:", { name, routine });
-            alert("Routine saved successfully!");
-
-            // For demo purposes, add to sample data
-            const newId = Object.keys(sampleRoutines).length + 1;
-            sampleRoutines[newId] = {
-                name: name,
-                exercises: routine.map(r => {
-                    const exerciseEl = document.querySelector(`[data-id="${r.id}"]`);
-                    return [r.id, exerciseEl ? exerciseEl.textContent : 'Unknown Exercise'];
-                })
-            };
-            loadRoutines();
-
-            // Clear the form
-            document.getElementById("routine-name").value = '';
-        });
-
-        // Load routines into dropdown
-        function loadRoutines() {
-            const selector = document.getElementById("routine-selector");
-            selector.innerHTML = '<option value="">Select a routine...</option>';
-
-            // In a real application, this would be a fetch request
-            Object.keys(sampleRoutines).forEach(id => {
-                const routine = sampleRoutines[id];
-                const opt = document.createElement("option");
-                opt.value = id;
-                opt.textContent = routine.name;
-                selector.appendChild(opt);
-            });
-        }
-
-        // Load a selected routine
-        document.getElementById("load-routine").addEventListener("click", () => {
-            const id = document.getElementById("routine-selector").value;
-            if (!id) {
-                alert("Please select a routine to load.");
-                return;
-            }
-
-            // In a real application, this would be a fetch request
-            const routine = sampleRoutines[id];
-            if (!routine) {
-                alert("Routine not found.");
-                return;
-            }
-
-            const list = document.getElementById("routine-list");
-            list.innerHTML = "";
-
-            routine.exercises.forEach(ex => {
-                const li = document.createElement("li");
-                li.className = "draggable from-routine";
-                li.dataset.id = ex[0];
-                li.textContent = ex[1];
-                list.appendChild(li);
-            });
-        });
-
-        // Initial population
-        window.addEventListener("DOMContentLoaded", () => {
-            loadRoutines();
-        });
-    </script>
 </body>
 
 </html>

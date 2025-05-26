@@ -14,29 +14,40 @@ A modular, open-source project for runners and coaches to analyze running data, 
 
 | Feature           | Tool(s)                                                |
 | ----------------- | ------------------------------------------------------ |
-| Web Interface     | Flask or FastAPI                                       |
-| Dashboards        | Dash or Streamlit (for analytics), Grafana (for infra) |
-| Data Storage      | PostgreSQL + PostGIS                                   |
+| Web Interface     | Flask                                                  |
+| Dashboards        | Dash                                                   |
+| Data Storage      | SQLite                                                 |
 | GPX Parsing       | `gpxpy`, `pandas`, `shapely`                           |
 | Metrics Analysis  | `pandas`, `scipy`, `plotly`, `numpy`                   |
 | ML Models         | `scikit-learn`, `ruptures`, `xgboost`                  |
-| LLM Summaries     | `transformers`, `ollama`, `langchain`                  |
-| Data Ingestion    | Custom scripts, Prefect/Airflow (optional)             |
+| LLM Summaries     | `transformers`                  |
+| Data Ingestion    | Custom scripts                                         |
 | Authentication    | Auth0, Flask-Login (optional)                          |
 | Containerization  | Docker, Docker Compose                                 |
 | DevOps Monitoring | Grafana + Prometheus (for server/app health)           |
 
 ## 🔄 Data Sources
 
-* **Strava API** (preferred for historical + social data)
-* **Coros Export Files** (local device-based JSON/CSV/GPX)
-* **Apple Health** (via HealthKit exports or 3rd-party tools)
+* **Strava API** 
+
+## Strava Data ERD
+
+[gear]                             [activities]                         [streams]
++-----------+                     +----------------------+             +----------------------+
+| gear_id PK|<------------------+ | id PK               |<-----------+ | activity_id PK       |
+| is_primary|                    | resource_state       |             | time_data             |
+| nickname  |                    | athlete_id           |             | time_series_type      |
+| ...       |                    | gear_id FK ----------+             | ...                   |
++-----------+                    | ...                  |             +------------------------+
+                                 +----------------------+
+
+
 
 ## 📦 Initial Features (Phase 1)
 
-* [ ] Dockerized Flask backend + Postgres DB
-* [ ] GPX file upload and heatmap visualization
-* [ ] Metrics analysis dashboard (HR, cadence, stride length, power)
+* [ ] Dockerized Flask backend + SQLite DB
+* [X] Heatmap visualization
+* [X] Metrics analysis dashboard (HR, cadence, stride length, power)
 * [ ] Time-based filters for session comparison
 * [ ] Simple ML change detection (e.g., stride length anomalies)
 * [ ] LLM summarizer API for weekly insights
@@ -60,13 +71,10 @@ A modular, open-source project for runners and coaches to analyze running data, 
 ## 📅 Planned Features (Backlog)
 
 * [ ] Authentication (Auth0 or internal)
-* [ ] Prefect-based data ingestion workflows
 * [ ] REST API endpoints for mobile app access
 * [ ] Integration with training plans & schedule data
 * [ ] Personalized recommendations engine (e.g., "your stride length has dropped 4% since your last race")
 * [ ] Multi-user support and role-based access
-* [ ] Export to PDF reports
-* [ ] Real-time metrics overlay via smartwatch connection (stretch goal)
 
 ## 📚 Documentation
 

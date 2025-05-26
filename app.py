@@ -147,6 +147,13 @@ def run_analysis():
 # RunStrong Serve Endpoints
 # -------------------------------------
 
+@app.route('/runstrong/exercises')
+def get_exercises_api():
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        exercises = c.execute("SELECT id, name FROM exercises").fetchall()
+    return {'exercises': exercises}
+
 @app.route('/runstrong/exercise-library')
 def exercise_library():
     exercises = Exercise.query.all()
@@ -167,7 +174,7 @@ def save_routine():
         # Save to RoutineExercise table
         for item in routine_exercises:
             c.execute('''
-                INSERT INTO routine_exercises (routine_id, exercise_id, position)
+                INSERT INTO routine_exercises (routine_id, exercise_id, order_index)
                 VALUES (?, ?, ?)
             ''', (routine_id, item['id'], item['order']))
 
@@ -198,11 +205,7 @@ def load_routine(routine_id):
 
 @app.route('/runstrong/planner')
 def planner():
-    conn = sqlite3.connect(Config.DB_PATH_RUNSTRONG)
-    cursor = conn.cursor()
-    exercises = cursor.execute("SELECT id, name FROM exercises").fetchall()
-    conn.close()
-    return render_template('planner.html', exercises=exercises)
+    return render_template('planner.html')
 
 @app.route('/runstrong/journal')
 def journal():

@@ -1,3 +1,5 @@
+
+
 # RunnerVision: Biomechanics Analysis Platform
 
 A comprehensive system for analyzing running form using computer vision and wearable data integration.
@@ -37,9 +39,8 @@ RunnerVision uses computer vision (BlazePose) combined with smartwatch metrics t
 ## 🛠️ Setup Requirements
 
 ### Hardware
-- 2× smartphone cameras with tripods
+- 2× smartphone cameras or GoPro with tripods
 - Treadmill with consistent lighting
-- Colored markers for joint position tracking
 - Running watches that capture advanced metrics
 - Computer with GPU support (recommended)
 
@@ -50,7 +51,7 @@ RunnerVision uses computer vision (BlazePose) combined with smartwatch metrics t
 - TensorFlow or PyTorch
 - Pandas and NumPy for data processing
 - Matplotlib/Plotly for visualization
-- Flask for UI (planned)
+- Flask for UI
 
 ## Installation
 
