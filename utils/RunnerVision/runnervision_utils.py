@@ -910,8 +910,8 @@ class RunAnalyzer:
                 add_summary_metric('stride_length_cm', "Stride Length", unit=" cm")
                 add_summary_metric('normalized_stride_length', "Normalized Stride", unit=" × height", val_format="{:.2f}")
                 add_summary_metric('strike_landing_stiffness', "Landing Stiffness", is_categorical=True)
-                add_summary_metric('vertical_oscillation', "Vertical Oscillation", unit=" cm")
-                add_summary_metric('ground_contact_time', "Ground Contact Time", unit=" ms", val_format="{:.0f}")
+                add_summary_metric('vertical_oscillation_cm', "Vertical Oscillation", unit=" cm")
+                add_summary_metric('avg_contact_time_ms', "Ground Contact Time", unit=" ms", val_format="{:.0f}")
                 add_summary_metric('cadence', "Cadence", unit=" spm", val_format="{:.0f}")
 
                 html_content.extend(["            </div>", "        </div>"])
@@ -1316,9 +1316,6 @@ class RunAnalyzer:
                 except Exception as e:
                     print(f"❌ An unexpected error occurred during report generation: {e}")
 
-
-            # --- Dummy/Placeholder methods ---
-            # These would be implemented in your actual class
             def _save_side_metric_plots(self):
                 """Create and save plots of running metrics."""
                 if self.side_metrics is None:
@@ -1399,52 +1396,6 @@ class RunAnalyzer:
                     plt.savefig(plot_file)
                     plot_files.append(plot_file)
                     plt.close()
-                
-                # # Plot 5: Arm Swing Analysis
-                # if 'arm_swing_amplitude' in self.side_metrics.columns:
-                #     plt.figure(figsize=(10, 6))
-                #     plt.plot(self.side_metrics['frame_number'], self.side_metrics['arm_swing_amplitude'], 'g-')
-                #     plt.xlabel('Frame Number')
-                #     plt.ylabel('Amplitude (degrees)')
-                #     plt.title('Arm Swing Amplitude')
-                #     plt.grid(True)
-                    
-                #     # Add reference lines for optimal zones
-                #     plt.axhline(y=45, color='g', linestyle='--', alpha=0.7, label='Optimal Zone')
-                #     plt.axhline(y=35, color='y', linestyle='--', alpha=0.5, label='Good Zone')
-                #     plt.axhline(y=25, color='r', linestyle='--', alpha=0.5, label='Minimal Zone')
-                #     plt.legend()
-                    
-                #     # Save plot
-                #     plot_file = os.path.join(plots_dir, f"{self.session_id}_arm_swing.png")
-                #     plt.savefig(plot_file)
-                #     plot_files.append(plot_file)
-                #     plt.close()
-                
-                # # Plot 6: Stride Length and Frequency
-                # if 'stride_length_cm' in self.side_metrics.columns and 'stride_frequency' in self.side_metrics.columns:
-                #     fig, ax1 = plt.subplots(figsize=(10, 6))
-                    
-                #     color = 'tab:blue'
-                #     ax1.set_xlabel('Frame Number')
-                #     ax1.set_ylabel('Stride Length (cm)', color=color)
-                #     ax1.plot(self.side_metrics['frame_number'], self.side_metrics['stride_length_cm'], color=color)
-                #     ax1.tick_params(axis='y', labelcolor=color)
-                    
-                #     ax2 = ax1.twinx()  # Create a second y-axis sharing the same x-axis
-                #     color = 'tab:red'
-                #     ax2.set_ylabel('Stride Frequency (strides/min)', color=color)
-                #     ax2.plot(self.side_metrics['frame_number'], self.side_metrics['stride_frequency'], color=color)
-                #     ax2.tick_params(axis='y', labelcolor=color)
-                    
-                #     fig.tight_layout()
-                #     plt.title('Stride Length and Frequency')
-                    
-                #     # Save plot
-                #     plot_file = os.path.join(plots_dir, f"{self.session_id}_stride_metrics.png")
-                #     plt.savefig(plot_file)
-                #     plot_files.append(plot_file)
-                #     plt.close()
                 
                 # Plot 7: Landing Stiffness Analysis
                 if 'strike_landing_stiffness' in self.side_metrics.columns:
@@ -1596,7 +1547,6 @@ class RunAnalyzer:
                             "This increases impact forces and may lead to injuries. Focus on softer landings with a slightly bent knee at contact."
                         )
                 
-                # Limit to top 5 recommendations to avoid overwhelming the runner
                 return recommendations[:]
         report_gen = SideReportGenerator(side_metrics= self.side_metrics, session_id="Run_May24_Test001", reports_dir = self.reports_dir)
     

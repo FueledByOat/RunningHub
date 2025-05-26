@@ -731,8 +731,6 @@ def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athle
 
             daily_df['CTL'] = daily_tss.iloc[-1]
             daily_df['ATL'] = daily_tss.iloc[-1]
-
-            print(daily_tss.iloc[0])
             
             for i in range(1, len(daily_df)):
                 yesterday = daily_df.index[i-1]
@@ -1159,3 +1157,110 @@ def get_lifetime_achievements(weekly_df: pd.DataFrame) -> dict:
                            'Experienced' if latest['training_age_years'] < 3 else 'Veteran',
         'total_weeks_trained': len(weekly_df)
     }
+
+def init_runstrong_db():
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        c.execute('''
+        CREATE TABLE IF NOT EXISTS exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            description TEXT,
+            instructions TEXT,
+            exercise_type TEXT,
+            movement_pattern TEXT,
+
+            primary_muscles TEXT,
+            secondary_muscles TEXT,
+            muscle_groups TEXT,
+            unilateral BOOLEAN,
+
+            difficulty_rating TEXT,
+            prerequisites TEXT,
+            progressions TEXT,
+            regressions TEXT,
+
+            equipment_required TEXT,
+            equipment_optional TEXT,
+            setup_time INTEGER,
+            space_required TEXT,
+
+            rep_range_min INTEGER,
+            rep_range_max INTEGER,
+            tempo TEXT,
+            range_of_motion TEXT,
+            compound_vs_isolation TEXT,
+
+            injury_risk_level TEXT,
+            contraindications TEXT,
+            common_mistakes TEXT,
+            safety_notes TEXT,
+
+            image_url TEXT,
+            video_url TEXT,
+            gif_url TEXT,
+            diagram_url TEXT,
+
+            category TEXT,
+            training_style TEXT,
+            experience_level TEXT,
+            goals TEXT,
+
+            duration_minutes INTEGER,
+            popularity_score INTEGER,
+            alternatives TEXT,
+            supersets_well_with TEXT
+        );
+        ''')
+        conn.commit()
+        c.execute('''                  
+        CREATE TABLE IF NOT EXISTS workout_routines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            date_created DATE
+            );
+        ''')
+        conn.commit()
+        c.execute('''                 
+        CREATE TABLE IF NOT EXISTS routine_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            routine_id INTEGER,
+            exercise_id INTEGER,
+            sets INTEGER,
+            reps INTEGER,
+            load_lbs FLOAT,
+            order_index INTEGER,
+            notes TEXT,
+            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
+            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+            )
+        ''')
+        conn.commit()
+
+def add_exercise(data):
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        c.execute('''
+        INSERT INTO exercises (
+            name, description, instructions, exercise_type, movement_pattern,
+            primary_muscles, secondary_muscles, muscle_groups, unilateral,
+            difficulty_rating, prerequisites, progressions, regressions,
+            equipment_required, equipment_optional, setup_time, space_required,
+            rep_range_min, rep_range_max, tempo, range_of_motion, compound_vs_isolation,
+            injury_risk_level, contraindications, common_mistakes, safety_notes,
+            image_url, video_url, gif_url, diagram_url,
+            category, training_style, experience_level, goals,
+            duration_minutes, popularity_score, alternatives, supersets_well_with
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', [
+            data.get('name'), data.get('description'), data.get('instructions'), data.get('exercise_type'), data.get('movement_pattern'),
+            json.dumps(data.get('primary_muscles')), json.dumps(data.get('secondary_muscles')), data.get('muscle_groups'), data.get('unilateral'),
+            data.get('difficulty_rating'), data.get('prerequisites'), json.dumps(data.get('progressions')), json.dumps(data.get('regressions')),
+            json.dumps(data.get('equipment_required')), data.get('equipment_optional'), data.get('setup_time'), data.get('space_required'),
+            data.get('rep_range_min'), data.get('rep_range_max'), data.get('tempo'), data.get('range_of_motion'), data.get('compound_vs_isolation'),
+            data.get('injury_risk_level'), data.get('contraindications'), json.dumps(data.get('common_mistakes')), data.get('safety_notes'),
+            data.get('image_url'), data.get('video_url'), data.get('gif_url'), data.get('diagram_url'),
+            data.get('category'), json.dumps(data.get('training_style')), json.dumps(data.get('experience_level')), json.dumps(data.get('goals')),
+            data.get('duration_minutes'), data.get('popularity_score'), json.dumps(data.get('alternatives')), json.dumps(data.get('supersets_well_with'))
+        ])
+        conn.commit()

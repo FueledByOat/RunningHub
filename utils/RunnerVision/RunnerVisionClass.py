@@ -4,15 +4,16 @@ Core implementation for RunnerVision using BlazePose for runner biomechanics ana
 """
 import os
 import math
+import math
 from datetime import datetime
 import argparse
-import csv
 import cv2
 import numpy as np
 import mediapipe as mp
 import matplotlib.pyplot as plt
 import pandas as pd
 from collections import deque
+from typing import Dict, List, Tuple, Optional
 
 
 class RunnerVisionAnalyzer:
@@ -74,7 +75,7 @@ class RunnerVisionAnalyzer:
             'elbow_angle' : [],
             'hand_position' : [],
             'arm_swing_amplitude' : [],
-            'arm_swing_symmetry' : [],
+            # 'arm_swing_symmetry' : [],
             'arm_swing_overall_assessment' : [],
             'arm_swing_recommendations' : [],
             'knee_angle_left': [],  # degrees
@@ -88,7 +89,13 @@ class RunnerVisionAnalyzer:
             'stance_phase_detected': [],  # boolean for whether foot is on ground
             'stance_foot' : [],
             'stance_confidence' : [],
-            # 'ground_contact_time' : [],
+            'stance_phase_detected_velocity': [],
+            'stance_foot_velocity': [],
+            'avg_contact_time_ms' : [],
+            'ground_contact_efficiency_rating' : [],
+            'ground_contact_cadence_spm' : [],
+            'vertical_oscillation_cm' : [],
+            'vertical_oscillation_efficiency_rating' : [],
             # 'flight_time' : [],
             # 'duty_factor' : [],
             # 'peak_knee_flexion_during_stance' : [],
@@ -149,6 +156,7 @@ class RunnerVisionAnalyzer:
             'stance_foot' : [],
             'stance_confidence' : []                                    
         }
+    
         
     def process_video(self, video_path, output_path="videos"): 
         """Process video and extract running biomechanics data."""
@@ -184,6 +192,7 @@ class RunnerVisionAnalyzer:
             # Extract running metrics
             if side:
                 # print('extracting side metrics')
+
                 self.extract_side_metrics(results.pose_landmarks, frame_count, cap.get(cv2.CAP_PROP_POS_MSEC)/1000.0)
             else:
                 # print('extracting rear metrics')
@@ -224,6 +233,10 @@ class RunnerVisionAnalyzer:
         else:
             return pd.DataFrame(self.rear_metrics)
     
+# -------------------------------------
+# Side Metrics Sections
+# -------------------------------------
+
     def extract_side_metrics(self, landmarks, frame_number, timestamp):
         """Extract running biomechanics metrics from a single frame
         for a video shot from the side of a runner, AKA the sagittal plane."""
@@ -269,12 +282,12 @@ class RunnerVisionAnalyzer:
         self.side_metrics['trunk_angle_confidence'].append(trunk_angle['confidence'])
         
         # Calculate arm carriage
-        arm_angle = self.analyze_arm_carriage(landmark_coords)
+        arm_angle = self.arm_carriage_wrapper(landmark_coords)
         self.side_metrics['upper_arm_angle'].append(arm_angle['upper_arm_angle'])
         self.side_metrics['elbow_angle'].append(arm_angle['elbow_angle'])
         self.side_metrics['hand_position'].append(arm_angle['hand_position'])
         self.side_metrics['arm_swing_amplitude'].append(arm_angle['arm_swing_amplitude'])
-        self.side_metrics['arm_swing_symmetry'].append(arm_angle['arm_swing_symmetry'])
+        # self.side_metrics['arm_swing_symmetry'].append(arm_angle['arm_swing_symmetry'])
         self.side_metrics['arm_swing_overall_assessment'].append(arm_angle['overall_assessment'])
         self.side_metrics['arm_swing_recommendations'].append(arm_angle['recommendations'])
         
@@ -293,8 +306,22 @@ class RunnerVisionAnalyzer:
         self.side_metrics['stride_assessment'].append(stride_length['assessment'])
         self.side_metrics['stride_confidence'].append(stride_length['confidence'])
 
+        # New Metrics
+        vertical_oscillation_metrics = self.vertical_oscillation_wrapper(landmark_coords)
+        self.side_metrics['vertical_oscillation_cm'].append(vertical_oscillation_metrics['vertical_oscillation_cm'])
+        self.side_metrics['vertical_oscillation_efficiency_rating'].append(vertical_oscillation_metrics['efficiency_rating'])
+        ground_contact_metrics = self.ground_contact_wrapper(landmark_coords)
+        self.side_metrics['avg_contact_time_ms'].append(ground_contact_metrics['avg_contact_time_ms'])
+        self.side_metrics['ground_contact_cadence_spm'].append(ground_contact_metrics['cadence_spm'])
+        self.side_metrics['ground_contact_efficiency_rating'].append(ground_contact_metrics['efficiency_rating'])
+        stand_phase_detector_velocity = self.stance_detector_velocity_wrapper(landmark_coords)
+        self.side_metrics['stance_phase_detected_velocity'].append(stand_phase_detector_velocity['is_stance_phase'])
+        self.side_metrics['stance_foot_velocity'].append(stand_phase_detector_velocity['stance_foot'])
 
 
+# -------------------------------------
+# Side Metric Functions and Classes
+# -------------------------------------
 
     def calculate_foot_strike(self, landmarks, stance_phase):
         """
@@ -622,389 +649,295 @@ class RunnerVisionAnalyzer:
         
         return False
     
-    def analyze_arm_carriage(self, landmarks, frame_index=None):
+    class ArmCarriageAnalyzer:
         """
-        Analyze arm carriage and swing mechanics during running.
+        Analyzes arm carriage focusing on the right arm (visible from right-side view).
+        Maintains internal history for swing amplitude analysis.
+        """
         
-        Args:
-            landmarks: Dictionary containing pose landmarks with x,y coordinates
-            frame_index: Current frame index (optional, for temporal analysis)
+        def __init__(self, frame_rate: float = 30.0, history_size: int = 60):
+            """
+            Initialize the arm carriage analyzer.
             
-        Returns:
-            dict: Contains:
-                - 'upper_arm_angle': Angle of upper arm relative to vertical (degrees)
-                - 'elbow_angle': Elbow flexion angle (degrees)
-                - 'hand_position': Assessment of hand position (e.g., 'optimal', 'too_high')
-                - 'arm_swing_amplitude': Estimated swing amplitude (if temporal data available)
-                - 'arm_swing_symmetry': Assessment of left/right symmetry (if both visible)
-                - 'overall_assessment': Overall assessment of arm carriage
-                - 'recommendations': Specific recommendations for improvement
-        """
-        result = {
-            'upper_arm_angle': None,
-            'elbow_angle': None,
-            'hand_position': None,
-            'arm_swing_amplitude': None,
-            'arm_swing_symmetry': None,
-            'overall_assessment': None,
-            'recommendations': []
-        }
+            Args:
+                frame_rate: Video frame rate (fps)
+                history_size: Number of frames to maintain for swing analysis
+            """
+            self.frame_rate = frame_rate
+            self.history_size = history_size
+            
+            # Store right arm positions for amplitude analysis
+            self.right_arm_positions = deque(maxlen=history_size)
+            self.right_wrist_angles = deque(maxlen=history_size)  # Angle relative to shoulder
+            
+            self.frame_count = 0
         
-        # Initialize confidence tracking
-        visible_points = 0
-        total_points = 0
-        
-        # Track which arms are visible for analysis
-        visible_arms = []
-        if all(point in landmarks for point in ['right_shoulder', 'right_elbow', 'right_wrist']):
-            visible_arms.append('right')
-            visible_points += 3
-        
-        if all(point in landmarks for point in ['left_shoulder', 'left_elbow', 'left_wrist']):
-            visible_arms.append('left')
-            visible_points += 3
-        
-        total_points = 6  # Total possible arm points
-        
-        # If no arms are visible with sufficient landmarks, return limited analysis
-        if not visible_arms:
+        def update(self, landmarks: Dict) -> Dict:
+            """
+            Update with new frame data and analyze arm carriage.
+            
+            Args:
+                landmarks: Dictionary containing pose landmarks with x,y coordinates
+                
+            Returns:
+                dict: Arm carriage analysis results
+            """
+            self.frame_count += 1
+            
+            # Check if right arm is visible (prioritize right side for right-side view)
+            if not all(point in landmarks for point in ['right_shoulder', 'right_elbow', 'right_wrist']):
+                return self._insufficient_data_response()
+            
+            # Extract right arm landmarks
+            shoulder = landmarks['right_shoulder']
+            elbow = landmarks['right_elbow']
+            wrist = landmarks['right_wrist']
+            
+            # Store position for amplitude analysis
+            self._store_arm_position(shoulder, elbow, wrist)
+            
+            # Calculate current frame metrics
+            upper_arm_angle = self._calculate_upper_arm_angle(shoulder, elbow)
+            elbow_angle = self._calculate_elbow_angle(shoulder, elbow, wrist)
+            hand_position = self._analyze_hand_position(landmarks, shoulder, wrist)
+            
+            # Calculate swing amplitude (requires history)
+            swing_amplitude = self._calculate_swing_amplitude()
+            
+            # Generate overall assessment and recommendations
+            overall_assessment, recommendations = self._generate_assessment(
+                upper_arm_angle, elbow_angle, hand_position, swing_amplitude
+            )
+            
             return {
-                'upper_arm_angle': None,
-                'elbow_angle': None,
-                'overall_assessment': 'insufficient_data',
-                'recommendations': ['Ensure arms are visible in the video for proper analysis']
+                'upper_arm_angle': upper_arm_angle,
+                'elbow_angle': elbow_angle,
+                'hand_position': hand_position,
+                'arm_swing_amplitude': swing_amplitude,
+                'overall_assessment': overall_assessment,
+                'recommendations': recommendations,
+                'data_quality': 'sufficient',
+                'frames_analyzed': len(self.right_arm_positions)
             }
         
-        # Analysis for each visible arm
-        for arm_side in visible_arms:
-            prefix = arm_side
+        def _store_arm_position(self, shoulder, elbow, wrist):
+            """Store arm position data for amplitude analysis."""
+            # Calculate wrist angle relative to shoulder (horizontal reference)
+            wrist_dx = wrist[0] - shoulder[0]
+            wrist_dy = shoulder[1] - wrist[1]  # Inverted y for image coordinates
             
-            # Extract landmarks for current arm
-            shoulder = landmarks[f'{prefix}_shoulder']
-            elbow = landmarks[f'{prefix}_elbow']
-            wrist = landmarks[f'{prefix}_wrist']
+            # Angle from horizontal (0° = straight out to right, 90° = straight up)
+            wrist_angle = math.degrees(math.atan2(wrist_dy, wrist_dx))
             
-            # 1. Calculate upper arm angle relative to vertical
+            self.right_arm_positions.append({
+                'shoulder': shoulder,
+                'elbow': elbow,
+                'wrist': wrist,
+                'wrist_angle': wrist_angle,
+                'frame': self.frame_count
+            })
+            
+            self.right_wrist_angles.append(wrist_angle)
+        
+        def _calculate_upper_arm_angle(self, shoulder, elbow):
+            """Calculate upper arm angle relative to vertical."""
             upper_arm_dx = elbow[0] - shoulder[0]
-            upper_arm_dy = shoulder[1] - elbow[1]  # Inverted y-axis in image coordinates
+            upper_arm_dy = shoulder[1] - elbow[1]  # Inverted y-axis
             
-            upper_arm_angle = np.degrees(np.arctan2(upper_arm_dx, upper_arm_dy))
+            return math.degrees(math.atan2(upper_arm_dx, upper_arm_dy))
+        
+        def _calculate_elbow_angle(self, shoulder, elbow, wrist):
+            """Calculate elbow flexion angle."""
+            # Calculate vectors
+            upper_arm = [elbow[0] - shoulder[0], elbow[1] - shoulder[1]]
+            forearm = [wrist[0] - elbow[0], wrist[1] - elbow[1]]
             
-            # Store in result, prioritizing right arm (typically more visible in right-side footage)
-            if result['upper_arm_angle'] is None or arm_side == 'right':
-                result['upper_arm_angle'] = upper_arm_angle
+            # Calculate dot product
+            dot_product = upper_arm[0] * forearm[0] + upper_arm[1] * forearm[1]
             
-            # 2. Calculate elbow flexion angle
-            elbow_angle = self._calculate_elbow_angle(landmarks, arm_side)
+            # Calculate magnitudes
+            upper_arm_magnitude = (upper_arm[0]**2 + upper_arm[1]**2)**0.5
+            forearm_magnitude = (forearm[0]**2 + forearm[1]**2)**0.5
             
-            # Store in result, prioritizing right arm
-            if result['elbow_angle'] is None or arm_side == 'right':
-                result['elbow_angle'] = elbow_angle
+            if upper_arm_magnitude == 0 or forearm_magnitude == 0:
+                return 90.0  # Default reasonable value
             
-            # 3. Analyze hand position relative to body
-            # - Check if hands cross midline
-            # - Check if hands rise above shoulder height
-            # - Check if hands drop below hip height
-            hip_y = landmarks[f'{prefix}_hip'][1]
+            cos_angle = dot_product / (upper_arm_magnitude * forearm_magnitude)
+            cos_angle = max(min(cos_angle, 1.0), -1.0)  # Clamp to valid range
+            
+            angle_rad = math.acos(cos_angle)
+            angle_deg = math.degrees(angle_rad)
+            
+            # Return the interior angle (0° = fully bent, 180° = straight)
+            return angle_deg
+        
+        def _analyze_hand_position(self, landmarks, shoulder, wrist):
+            """Analyze hand position relative to body."""
+            # Check vertical position relative to shoulder and hip
             shoulder_y = shoulder[1]
             wrist_y = wrist[1]
             
-            # Approximate body midline using hip and shoulder midpoints
-            hip_center_x = (landmarks['left_hip'][0] + landmarks['right_hip'][0]) / 2 if all(k in landmarks for k in ['left_hip', 'right_hip']) else None
-            shoulder_center_x = (landmarks['left_shoulder'][0] + landmarks['right_shoulder'][0]) / 2 if all(k in landmarks for k in ['left_shoulder', 'right_shoulder']) else None
-            
-            if hip_center_x is not None and shoulder_center_x is not None:
-                midline_x = (hip_center_x + shoulder_center_x) / 2
-                
-                # Check if hand crosses midline (considering which side the arm is on)
-                crosses_midline = False
-                if (arm_side == 'right' and wrist[0] < midline_x) or (arm_side == 'left' and wrist[0] > midline_x):
-                    crosses_midline = True
-                    result['recommendations'].append(f"Avoid crossing hands over body midline during arm swing")
+            # Get hip position if available
+            if 'right_hip' in landmarks:
+                hip_y = landmarks['right_hip'][1]
+            else:
+                # Estimate hip position
+                hip_y = shoulder_y + (shoulder_y * 0.3)  # Rough estimate
             
             # Check vertical hand position
-            hand_position = 'optimal'
-            if wrist_y < shoulder_y:  # Hand higher than shoulder
-                hand_position = 'too_high'
-                result['recommendations'].append("Keep hands below shoulder height during arm swing")
+            if wrist_y < shoulder_y:  # Hand higher than shoulder (remember inverted y)
+                return 'too_high'
             elif wrist_y > hip_y:  # Hand lower than hip
-                hand_position = 'too_low'
-                result['recommendations'].append("Avoid dropping hands below hip level during arm swing")
-            
-            # Store in result (prioritizing right arm for single-sided analysis)
-            if result['hand_position'] is None or arm_side == 'right':
-                result['hand_position'] = hand_position
-        
-        # 4. Temporal analysis of arm swing (if tracking data available)
-        if frame_index is not None:
-            # Initialize arm position history if it doesn't exist
-            if not hasattr(self, 'arm_position_history'):
-                self.arm_position_history = {
-                    'right': [],
-                    'left': []
-                }
-            
-            # Store arm positions
-            for arm_side in visible_arms:
-                if arm_side == 'right' and 'right_wrist' in landmarks and 'right_shoulder' in landmarks:
-                    self.arm_position_history['right'].append({
-                        'frame': frame_index,
-                        'wrist_pos': landmarks['right_wrist'],
-                        'elbow_pos': landmarks['right_elbow'],
-                        'shoulder_pos': landmarks['right_shoulder']
-                    })
-                elif arm_side == 'left' and 'left_wrist' in landmarks and 'left_shoulder' in landmarks:
-                    self.arm_position_history['left'].append({
-                        'frame': frame_index,
-                        'wrist_pos': landmarks['left_wrist'],
-                        'elbow_pos': landmarks['left_elbow'],
-                        'shoulder_pos': landmarks['left_shoulder']
-                    })
-            
-            # Limit history size (keep last 60 frames - approximately 2 seconds at 30fps)
-            max_history = 60
-            for arm_side in ['right', 'left']:
-                if len(self.arm_position_history[arm_side]) > max_history:
-                    self.arm_position_history[arm_side] = self.arm_position_history[arm_side][-max_history:]
-            
-            # Calculate arm swing amplitude (if we have enough history)
-            for arm_side in visible_arms:
-                if len(self.arm_position_history[arm_side]) >= 15:  # Need enough frames for reliable measurement
-                    # Find extremes of anterior and posterior swing
-                    anterior_positions = []
-                    posterior_positions = []
-                    
-                    for pos in self.arm_position_history[arm_side]:
-                        # Compute angle relative to body
-                        dx = pos['wrist_pos'][0] - pos['shoulder_pos'][0]
-                        if arm_side == 'right':
-                            # Right arm: posterior is positive x, anterior is negative x
-                            if dx < 0:
-                                anterior_positions.append(dx)
-                            else:
-                                posterior_positions.append(dx)
-                        else:
-                            # Left arm: posterior is negative x, anterior is positive x
-                            if dx > 0:
-                                anterior_positions.append(dx)
-                            else:
-                                posterior_positions.append(dx)
-                    
-                    # Calculate swing amplitude if we have both anterior and posterior positions
-                    if anterior_positions and posterior_positions:
-                        # Get average of extremes to filter out noise
-                        anterior_extreme = sorted(anterior_positions)[:5]  # 5 most extreme values
-                        posterior_extreme = sorted(posterior_positions, reverse=True)[:5]  # 5 most extreme values
-                        
-                        anterior_avg = sum(anterior_extreme) / len(anterior_extreme)
-                        posterior_avg = sum(posterior_extreme) / len(posterior_extreme)
-                        
-                        # Amplitude is the difference between extremes
-                        swing_amplitude = abs(posterior_avg - anterior_avg)
-                        
-                        # Convert to degrees for easier interpretation
-                        # Approximating the arc length using shoulder as pivot
-                        shoulder_width = abs(landmarks['right_shoulder'][0] - landmarks['left_shoulder'][0]) \
-                            if all(k in landmarks for k in ['right_shoulder', 'left_shoulder']) else 0.5  # Default value
-                        
-                        # Normalize by shoulder width
-                        normalized_amplitude = swing_amplitude / shoulder_width
-                        
-                        # Store result
-                        result['arm_swing_amplitude'] = normalized_amplitude
-                        
-                        # Assess swing amplitude
-                        if normalized_amplitude < 0.6:
-                            result['recommendations'].append("Increase arm swing amplitude for better running efficiency")
-                        elif normalized_amplitude > 1.4:
-                            result['recommendations'].append("Consider reducing excessive arm swing to conserve energy")
-        
-        # 5. Analyze arm swing symmetry (if both arms visible)
-        if 'right' in visible_arms and 'left' in visible_arms:
-            # Compare angles between left and right arms
-            left_upper_arm_dx = landmarks['left_elbow'][0] - landmarks['left_shoulder'][0]
-            left_upper_arm_dy = landmarks['left_shoulder'][1] - landmarks['left_elbow'][1]
-            left_angle = np.degrees(np.arctan2(left_upper_arm_dx, left_upper_arm_dy))
-            
-            right_upper_arm_dx = landmarks['right_elbow'][0] - landmarks['right_shoulder'][0]
-            right_upper_arm_dy = landmarks['right_shoulder'][1] - landmarks['right_elbow'][1]
-            right_angle = np.degrees(np.arctan2(right_upper_arm_dx, right_upper_arm_dy))
-            
-            # Compare elbow angles
-            left_elbow_angle = self._calculate_elbow_angle(landmarks, 'left')
-            right_elbow_angle = self._calculate_elbow_angle(landmarks, 'right')
-            
-            # Check for significant asymmetry
-            angle_difference = abs(left_angle - right_angle)
-            elbow_difference = abs(left_elbow_angle - right_elbow_angle)
-            
-            if angle_difference > 20 or elbow_difference > 25:
-                result['arm_swing_symmetry'] = 'asymmetrical'
-                result['recommendations'].append("Work on arm swing symmetry for better running economy")
+                return 'too_low'
             else:
-                result['arm_swing_symmetry'] = 'symmetrical'
+                return 'optimal'
         
-        # 6. Overall assessment of arm carriage
-        overall_issues = []
-        
-        # Check elbow angle (90° ± 15° is generally optimal)
-        if result['elbow_angle'] is not None:
-            if result['elbow_angle'] < 75:
-                overall_issues.append("elbow_too_bent")
-                result['recommendations'].append("Open elbow angle slightly (aim for 90-100°)")
-            elif result['elbow_angle'] > 115:
-                overall_issues.append("elbow_too_straight")
-                result['recommendations'].append("Increase elbow bend (aim for 90-100°)")
-        
-        # Check hand position
-        if result['hand_position'] != 'optimal':
-            overall_issues.append(f"hand_position_{result['hand_position']}")
-        
-        # Check arm swing amplitude
-        if result['arm_swing_amplitude'] is not None:
-            if result['arm_swing_amplitude'] < 0.6:
-                overall_issues.append("insufficient_swing")
-            elif result['arm_swing_amplitude'] > 1.4:
-                overall_issues.append("excessive_swing")
-        
-        # Determine overall assessment
-        if not overall_issues:
-            result['overall_assessment'] = "optimal"
-        elif len(overall_issues) == 1:
-            result['overall_assessment'] = f"suboptimal_{overall_issues[0]}"
-        else:
-            result['overall_assessment'] = "multiple_issues"
-        
-        # Remove duplicate recommendations
-        result['recommendations'] = list(set(result['recommendations']))
-        
-        # Add general guidance based on overall assessment
-        if result['overall_assessment'] == "optimal":
-            result['recommendations'].insert(0, "Arm carriage is good - maintain current form")
-        elif "multiple_issues" in result['overall_assessment']:
-            result['recommendations'].insert(0, "Multiple arm carriage issues detected - focus on the specific recommendations below")
-        
-        return result
-
-    def _calculate_elbow_angle(self, landmarks, side):
-        """
-        Calculate elbow flexion angle.
-        
-        Args:
-            landmarks: Dictionary containing pose landmarks
-            side: 'left' or 'right' to specify which arm
+        def _calculate_swing_amplitude(self):
+            """Calculate arm swing amplitude from wrist angle variations."""
+            if len(self.right_wrist_angles) < 15:  # Need sufficient data
+                return None
             
-        Returns:
-            float: Elbow angle in degrees (180 = fully straight)
-        """
-        # Extract relevant landmarks
-        shoulder = landmarks[f'{side}_shoulder']
-        elbow = landmarks[f'{side}_elbow']
-        wrist = landmarks[f'{side}_wrist']
-        
-        # Calculate vectors
-        upper_arm = [elbow[0] - shoulder[0], elbow[1] - shoulder[1]]
-        forearm = [wrist[0] - elbow[0], wrist[1] - elbow[1]]
-        
-        # Calculate dot product
-        dot_product = upper_arm[0] * forearm[0] + upper_arm[1] * forearm[1]
-        
-        # Calculate magnitudes
-        upper_arm_magnitude = (upper_arm[0]**2 + upper_arm[1]**2)**0.5
-        forearm_magnitude = (forearm[0]**2 + forearm[1]**2)**0.5
-        
-        # Calculate angle in radians, then convert to degrees
-        if upper_arm_magnitude == 0 or forearm_magnitude == 0:
-            return 0
-        
-        cos_angle = dot_product / (upper_arm_magnitude * forearm_magnitude)
-        # Ensure value is in valid range for arccos
-        cos_angle = max(min(cos_angle, 1.0), -1.0)
-        
-        angle_rad = math.acos(cos_angle)
-        angle_deg = math.degrees(angle_rad)
-        
-        # Adjust to standard biomechanical convention
-        # 180 degrees = straight arm, 0 degrees = fully flexed
-        return 180 - angle_deg
-
-    def get_arm_carriage_summary(self, running_state=None):
-        """
-        Generate a human-readable summary of arm carriage analysis.
-        
-        Args:
-            running_state: Optional dictionary with additional running metrics
+            # Convert deque to array for easier analysis
+            angles = np.array(self.right_wrist_angles)
             
-        Returns:
-            str: Summary of arm carriage analysis with recommendations
-        """
-        if not hasattr(self, 'arm_carriage_results') or not self.arm_carriage_results:
-            return "Insufficient data for arm carriage analysis."
-        
-        # Get most recent arm carriage analysis
-        latest = self.arm_carriage_results[-1]
-        
-        # Create summary
-        summary = "ARM CARRIAGE ANALYSIS:\n"
-        
-        # Add elbow angle assessment
-        if latest.get('elbow_angle') is not None:
-            elbow_angle = latest['elbow_angle']
-            summary += f"• Elbow angle: {elbow_angle:.1f}° "
+            # Remove outliers to get cleaner swing pattern
+            # Use percentiles to find swing range
+            p10 = np.percentile(angles, 10)  # Lower bound of swing
+            p90 = np.percentile(angles, 90)  # Upper bound of swing
             
-            if 85 <= elbow_angle <= 105:
-                summary += "(optimal)\n"
-            elif elbow_angle < 85:
-                summary += "(too bent)\n"
+            # Calculate swing amplitude as the range between 10th and 90th percentiles
+            swing_range_degrees = p90 - p10
+            
+            # Convert to normalized amplitude
+            # A typical efficient arm swing is about 45-60 degrees total range
+            # Normalize so 1.0 represents optimal swing
+            normalized_amplitude = swing_range_degrees / 52.5  # 52.5° is middle of optimal range
+            
+            return normalized_amplitude
+        
+        def _generate_assessment(self, upper_arm_angle, elbow_angle, hand_position, swing_amplitude):
+            """Generate overall assessment and recommendations."""
+            recommendations = []
+            issues = []
+            
+            # Analyze elbow angle (90-110° is generally optimal for running)
+            if elbow_angle < 75:
+                issues.append("elbow_too_bent")
+                recommendations.append("Open elbow angle slightly (aim for 90-110°)")
+            elif elbow_angle > 125:
+                issues.append("elbow_too_straight")
+                recommendations.append("Increase elbow bend (aim for 90-110°)")
+            
+            # Analyze hand position
+            if hand_position == 'too_high':
+                issues.append("hand_position_high")
+                recommendations.append("Keep hands below shoulder height during arm swing")
+            elif hand_position == 'too_low':
+                issues.append("hand_position_low")
+                recommendations.append("Avoid dropping hands below hip level during arm swing")
+            
+            # Analyze swing amplitude
+            if swing_amplitude is not None:
+                if swing_amplitude < 0.7:  # Less than 70% of optimal
+                    issues.append("insufficient_swing")
+                    recommendations.append("Increase arm swing amplitude for better running efficiency")
+                elif swing_amplitude > 1.4:  # More than 140% of optimal
+                    issues.append("excessive_swing")
+                    recommendations.append("Consider reducing excessive arm swing to conserve energy")
+            
+            # Check for crossing midline (based on upper arm angle)
+            if upper_arm_angle < -15:  # Right arm swinging too far left
+                issues.append("crosses_midline")
+                recommendations.append("Avoid swinging right arm across body midline")
+            
+            # Determine overall assessment
+            if not issues:
+                overall_assessment = "optimal"
+                recommendations.insert(0, "Arm carriage is good - maintain current form")
+            elif len(issues) == 1:
+                overall_assessment = f"suboptimal_{issues[0]}"
             else:
-                summary += "(too straight)\n"
-        
-        # Add hand position assessment
-        if latest.get('hand_position') is not None:
-            summary += f"• Hand position: "
+                overall_assessment = "multiple_issues"
+                recommendations.insert(0, "Multiple arm carriage issues detected")
             
-            if latest['hand_position'] == 'optimal':
-                summary += "Good (within recommended range)\n"
-            elif latest['hand_position'] == 'too_high':
-                summary += "Too high (above shoulder level)\n"
-            elif latest['hand_position'] == 'too_low':
-                summary += "Too low (below hip level)\n"
+            return overall_assessment, recommendations
         
-        # Add arm swing amplitude if available
-        if latest.get('arm_swing_amplitude') is not None:
-            amplitude = latest['arm_swing_amplitude']
-            amplitude_percent = amplitude * 100  # Convert to percentage for readability
+        def _insufficient_data_response(self):
+            """Return response when insufficient data is available."""
+            return {
+                'upper_arm_angle': None,
+                'elbow_angle': None,
+                'hand_position': None,
+                'arm_swing_amplitude': None,
+                'overall_assessment': 'insufficient_data',
+                'recommendations': ['Ensure right arm is visible in the video for proper analysis'],
+                'data_quality': 'insufficient',
+                'frames_analyzed': 0
+            }
+        
+        def get_detailed_summary(self) -> str:
+            """Generate a detailed summary of the latest arm analysis."""
+            if len(self.right_arm_positions) == 0:
+                return "No arm carriage data available."
             
-            summary += f"• Arm swing amplitude: {amplitude_percent:.1f}% of shoulder width "
+            # Get current state by running analysis on most recent position
+            latest_pos = self.right_arm_positions[-1]
+            landmarks = {
+                'right_shoulder': latest_pos['shoulder'],
+                'right_elbow': latest_pos['elbow'],
+                'right_wrist': latest_pos['wrist']
+            }
             
-            if 60 <= amplitude_percent <= 140:
-                summary += "(optimal range)\n"
-            elif amplitude_percent < 60:
-                summary += "(insufficient - energy inefficient)\n"
-            else:
-                summary += "(excessive - may waste energy)\n"
-        
-        # Add symmetry information if available
-        if latest.get('arm_swing_symmetry') is not None:
-            summary += f"• Arm swing symmetry: {latest['arm_swing_symmetry'].capitalize()}\n"
-        
-        # Add recommendations
-        if latest.get('recommendations'):
-            summary += "\nRECOMMENDATIONS:\n"
-            for i, rec in enumerate(latest['recommendations'], 1):
-                summary += f"{i}. {rec}\n"
-        
-        # Add context based on running state
-        if running_state and 'speed_mps' in running_state:
-            speed = running_state['speed_mps']
+            # Get latest analysis
+            analysis = self.update(landmarks)
             
-            if speed > 5.0:  # Faster running
-                summary += "\nNote: At faster speeds (current: {:.1f} m/s), slightly increased arm drive is beneficial.\n".format(speed)
-            elif speed < 3.0:  # Slower running
-                summary += "\nNote: At slower speeds (current: {:.1f} m/s), focus on relaxed, efficient arm movement.\n".format(speed)
-        
-        return summary
+            summary = "RIGHT ARM CARRIAGE ANALYSIS:\n"
+            summary += f"• Frames analyzed: {analysis['frames_analyzed']}\n"
+            
+            if analysis['elbow_angle'] is not None:
+                elbow = analysis['elbow_angle']
+                summary += f"• Elbow angle: {elbow:.1f}° "
+                if 85 <= elbow <= 115:
+                    summary += "(optimal)\n"
+                elif elbow < 85:
+                    summary += "(too bent)\n"
+                else:
+                    summary += "(too straight)\n"
+            
+            if analysis['hand_position'] is not None:
+                summary += f"• Hand position: {analysis['hand_position']}\n"
+            
+            if analysis['arm_swing_amplitude'] is not None:
+                amp = analysis['arm_swing_amplitude']
+                summary += f"• Swing amplitude: {amp:.2f} "
+                if 0.8 <= amp <= 1.2:
+                    summary += "(optimal)\n"
+                elif amp < 0.8:
+                    summary += "(insufficient)\n"
+                else:
+                    summary += "(excessive)\n"
+            
+            if analysis['recommendations']:
+                summary += "\nRECOMMENDATIONS:\n"
+                for i, rec in enumerate(analysis['recommendations'], 1):
+                    summary += f"{i}. {rec}\n"
+            
+            return summary
     
+    def arm_carriage_wrapper(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+    
+        if not hasattr(self, '_arm_carriage_analyzer_side'):
+            self._arm_carriage_analyzer_side = self.ArmCarriageAnalyzer()
+            # Pass image height if available
+            # if hasattr(self, 'image_height'):
+            #     self._stance_detector.image_height = self.image_height
+        
+        # Use the detector to determine stance phase
+        return self._arm_carriage_analyzer_side.update(landmarks)
+
+
+
     def calculate_knee_angle(self, landmarks, side):
         """
         Calculate knee angle (extension/flexion).
@@ -1957,6 +1890,405 @@ class RunnerVisionAnalyzer:
         # Use the detector to determine stance phase
         return self._stance_detector_side.detect_stance_phase_side(landmarks)
 
+
+    class VerticalOscillationAnalyzer:
+        """
+        Analyzes vertical oscillation of runner's center of mass.
+        Maintains internal history of necessary data points.
+        """
+        
+        def __init__(self, frame_rate: float = 60.0, window_size: int = 30):
+            """
+            Initialize the vertical oscillation analyzer.
+            
+            Args:
+                frame_rate: Video frame rate (fps)
+                window_size: Number of frames to maintain for analysis
+            """
+            self.frame_rate = frame_rate
+            self.window_size = window_size
+            self.com_heights = deque(maxlen=window_size)
+            self.frame_count = 0
+            
+        def update(self, landmarks: Dict) -> Dict:
+            """
+            Update with new frame data and calculate vertical oscillation metrics.
+            
+            Args:
+                landmarks: Dictionary containing pose landmarks with x,y coordinates
+                
+            Returns:
+                dict: Vertical oscillation analysis results
+            """
+            # Calculate center of mass height (hip midpoint approximation)
+            hip_center_y = (landmarks['left_hip'][1] + landmarks['right_hip'][1]) / 2
+            self.com_heights.append(hip_center_y)
+            self.frame_count += 1
+            
+            # Need sufficient data for meaningful analysis
+            if len(self.com_heights) < min(10, self.window_size):
+                return self._insufficient_data_response()
+            
+            heights_array = np.array(self.com_heights)
+            
+            # Calculate basic statistics
+            avg_height = np.mean(heights_array)
+            min_height = np.min(heights_array)
+            max_height = np.max(heights_array)
+            
+            # Calculate vertical oscillation (peak-to-peak in cm)
+            vertical_oscillation_cm = (max_height - min_height) * 100
+            
+            # Calculate oscillation frequency
+            oscillation_frequency = self._calculate_frequency(heights_array, avg_height)
+            
+            # Determine efficiency rating
+            efficiency_rating = self._get_efficiency_rating(vertical_oscillation_cm)
+            
+            return {
+                'vertical_oscillation_cm': vertical_oscillation_cm,
+                'oscillation_frequency': oscillation_frequency,
+                'efficiency_rating': efficiency_rating,
+                'avg_com_height': avg_height,
+                'min_com_height': min_height,
+                'max_com_height': max_height,
+                'data_quality': 'sufficient'
+            }
+        
+        def _calculate_frequency(self, heights: np.ndarray, avg_height: float) -> float:
+            """Calculate oscillation frequency using simple peak detection."""
+            if len(heights) < 5:
+                return 0.0
+                
+            # Simple peak detection - count transitions above average
+            peaks = 0
+            above_avg = heights > avg_height
+            
+            for i in range(1, len(above_avg)):
+                if above_avg[i] and not above_avg[i-1]:  # Transition to above average
+                    peaks += 1
+            
+            # Convert to frequency (oscillations per second)
+            time_span = len(heights) / self.frame_rate
+            return peaks / time_span if time_span > 0 else 0.0
+        
+        def _get_efficiency_rating(self, oscillation_cm: float) -> str:
+            """Determine efficiency rating based on vertical oscillation."""
+            if oscillation_cm <= 7.0:
+                return 'excellent'
+            elif oscillation_cm <= 9.0:
+                return 'good'
+            elif oscillation_cm <= 12.0:
+                return 'moderate'
+            else:
+                return 'poor'
+        
+        def _insufficient_data_response(self) -> Dict:
+            """Return response when insufficient data is available."""
+            return {
+                'vertical_oscillation_cm': 0.0,
+                'oscillation_frequency': 0.0,
+                'efficiency_rating': 'insufficient_data',
+                'avg_com_height': 0.0,
+                'min_com_height': 0.0,
+                'max_com_height': 0.0,
+                'data_quality': 'insufficient'
+            }
+
+    def vertical_oscillation_wrapper(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+    
+        if not hasattr(self, '_vertical_oscillation_detector_side'):
+            self._vertical_oscillation_detector_side = self.VerticalOscillationAnalyzer()
+            # Pass image height if available
+            # if hasattr(self, 'image_height'):
+            #     self._stance_detector.image_height = self.image_height
+        
+        # Use the detector to determine stance phase
+        return self._vertical_oscillation_detector_side.update(landmarks)
+
+    class GroundContactTimeAnalyzer:
+        """
+        Analyzes ground contact time for running gait.
+        Maintains internal history of foot positions and contact states.
+        """
+        
+        def __init__(self, frame_rate: float = 60.0, history_size: int = 60, 
+                    foot_height_threshold: float = 0.02):
+            """
+            Initialize the ground contact time analyzer.
+            
+            Args:
+                frame_rate: Video frame rate (fps)
+                history_size: Number of frames to maintain for contact analysis
+                foot_height_threshold: Threshold for determining foot contact
+            """
+            self.frame_rate = frame_rate
+            self.history_size = history_size
+            self.foot_height_threshold = foot_height_threshold
+            
+            # Store foot heights and contact states
+            self.left_foot_heights = deque(maxlen=history_size)
+            self.right_foot_heights = deque(maxlen=history_size)
+            self.left_contact_states = deque(maxlen=history_size)
+            self.right_contact_states = deque(maxlen=history_size)
+            
+            # Track current contact periods
+            self.left_contact_start = None
+            self.right_contact_start = None
+            self.left_contact_times = deque(maxlen=10)  # Store recent contact durations
+            self.right_contact_times = deque(maxlen=10)
+            
+            self.frame_count = 0
+            self.step_count = 0
+        
+        def update(self, landmarks: Dict) -> Dict:
+            """
+            Update with new frame data and calculate ground contact metrics.
+            
+            Args:
+                landmarks: Dictionary containing pose landmarks with x,y coordinates
+                
+            Returns:
+                dict: Ground contact time analysis results
+            """
+            # Extract current foot positions
+            left_ankle_y = landmarks['left_ankle'][1]
+            right_ankle_y = landmarks['right_ankle'][1]
+            
+            self.left_foot_heights.append(left_ankle_y)
+            self.right_foot_heights.append(right_ankle_y)
+            self.frame_count += 1
+            
+            # Determine ground contact states
+            left_ground_level = self._get_ground_level(self.left_foot_heights)
+            right_ground_level = self._get_ground_level(self.right_foot_heights)
+            
+            left_contact = left_ankle_y <= (left_ground_level + self.foot_height_threshold)
+            right_contact = right_ankle_y <= (right_ground_level + self.foot_height_threshold)
+            
+            self.left_contact_states.append(left_contact)
+            self.right_contact_states.append(right_contact)
+            
+            # Track contact periods
+            self._update_contact_tracking('left', left_contact)
+            self._update_contact_tracking('right', right_contact)
+            
+            # Calculate metrics if sufficient data
+            if len(self.left_foot_heights) < 10:
+                return self._insufficient_data_response()
+            
+            return self._calculate_metrics()
+        
+        def _get_ground_level(self, foot_heights: deque) -> float:
+            """Estimate ground level from recent foot positions."""
+            if len(foot_heights) < 5:
+                return min(foot_heights) if foot_heights else 0.0
+            
+            # Use 10th percentile as ground level estimate
+            heights_array = np.array(foot_heights)
+            return np.percentile(heights_array, 10)
+        
+        def _update_contact_tracking(self, foot: str, is_contact: bool):
+            """Track contact periods for each foot."""
+            if foot == 'left':
+                contact_start = self.left_contact_start
+                contact_times = self.left_contact_times
+            else:
+                contact_start = self.right_contact_start
+                contact_times = self.right_contact_times
+            
+            if is_contact and contact_start is None:
+                # Start of contact period
+                if foot == 'left':
+                    self.left_contact_start = self.frame_count
+                else:
+                    self.right_contact_start = self.frame_count
+            elif not is_contact and contact_start is not None:
+                # End of contact period
+                contact_duration_frames = self.frame_count - contact_start
+                contact_duration_ms = (contact_duration_frames / self.frame_rate) * 1000
+                contact_times.append(contact_duration_ms)
+                self.step_count += 1
+                
+                if foot == 'left':
+                    self.left_contact_start = None
+                else:
+                    self.right_contact_start = None
+        
+        def _calculate_metrics(self) -> Dict:
+            """Calculate ground contact time metrics."""
+            # Calculate average contact times
+            left_avg = np.mean(self.left_contact_times) if self.left_contact_times else 0.0
+            right_avg = np.mean(self.right_contact_times) if self.right_contact_times else 0.0
+            
+            avg_contact_time_ms = (left_avg + right_avg) / 2 if (left_avg > 0 or right_avg > 0) else 0.0
+            
+            # Contact time ratio
+            if right_avg > 0:
+                contact_time_ratio = left_avg / right_avg
+            else:
+                contact_time_ratio = 1.0 if left_avg == 0 else float('inf')
+            
+            # Calculate cadence
+            time_span_minutes = len(self.left_foot_heights) / (self.frame_rate * 60)
+            total_steps = len(self.left_contact_times) + len(self.right_contact_times)
+            cadence_spm = total_steps / time_span_minutes if time_span_minutes > 0 else 0.0
+            
+            # Efficiency rating
+            efficiency_rating = self._get_efficiency_rating(avg_contact_time_ms)
+            
+            return {
+                'left_foot_contact_time_ms': left_avg,
+                'right_foot_contact_time_ms': right_avg,
+                'avg_contact_time_ms': avg_contact_time_ms,
+                'contact_time_ratio': contact_time_ratio,
+                'efficiency_rating': efficiency_rating,
+                'cadence_spm': cadence_spm,
+                'total_steps_detected': total_steps,
+                'data_quality': 'sufficient'
+            }
+        
+        def _get_efficiency_rating(self, contact_time_ms: float) -> str:
+            """Determine efficiency rating based on contact time."""
+            if contact_time_ms <= 180:
+                return 'excellent'
+            elif contact_time_ms <= 220:
+                return 'good'
+            elif contact_time_ms <= 280:
+                return 'moderate'
+            else:
+                return 'poor'
+        
+        def _insufficient_data_response(self) -> Dict:
+            """Return response when insufficient data is available."""
+            return {
+                'left_foot_contact_time_ms': 0.0,
+                'right_foot_contact_time_ms': 0.0,
+                'avg_contact_time_ms': 0.0,
+                'contact_time_ratio': 1.0,
+                'efficiency_rating': 'insufficient_data',
+                'cadence_spm': 0.0,
+                'total_steps_detected': 0,
+                'data_quality': 'insufficient'
+            }
+
+    def ground_contact_wrapper(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+    
+        if not hasattr(self, '_ground_contact_detector_side'):
+            self._ground_contact_detector_side = self.GroundContactTimeAnalyzer()
+            # Pass image height if available
+            # if hasattr(self, 'image_height'):
+            #     self._stance_detector.image_height = self.image_height
+        
+        # Use the detector to determine stance phase
+        return self._ground_contact_detector_side.update(landmarks)
+
+    class StancePhaseDetectorVelocity:
+        """
+        Helper class to detect stance phase using velocity analysis.
+        Maintains minimal history for velocity calculations.
+        """
+        
+        def __init__(self, frame_rate: float = 30.0, velocity_window: int = 3):
+            """
+            Initialize stance phase detector.
+            
+            Args:
+                frame_rate: Video frame rate (fps)
+                velocity_window: Number of frames for velocity calculation
+            """
+            self.frame_rate = frame_rate
+            self.velocity_window = velocity_window
+            self.ankle_positions = deque(maxlen=velocity_window)
+            
+        def update(self, landmarks: Dict) -> Dict:
+            """
+            Update with new landmarks and detect stance phase.
+            
+            Args:
+                landmarks: Dictionary containing pose landmarks
+                
+            Returns:
+                dict: Stance phase detection results
+            """
+            # Store ankle positions for velocity calculation
+            ankle_data = {
+                'left_ankle': landmarks['left_ankle'],
+                'right_ankle': landmarks['right_ankle']
+            }
+            self.ankle_positions.append(ankle_data)
+            
+            if len(self.ankle_positions) < 2:
+                return {
+                    'is_stance_phase': False,
+                    'stance_foot': 'unknown',
+                    'left_foot_velocity': 0.0,
+                    'right_foot_velocity': 0.0,
+                    'confidence': 0.0
+                }
+            
+            # Calculate velocities
+            dt = 1.0 / self.frame_rate
+            recent_positions = list(self.ankle_positions)
+            
+            left_velocities = []
+            right_velocities = []
+            
+            for i in range(len(recent_positions) - 1):
+                left_dy = recent_positions[i+1]['left_ankle'][1] - recent_positions[i]['left_ankle'][1]
+                right_dy = recent_positions[i+1]['right_ankle'][1] - recent_positions[i]['right_ankle'][1]
+                
+                left_velocities.append(abs(left_dy / dt))
+                right_velocities.append(abs(right_dy / dt))
+            
+            avg_left_velocity = np.mean(left_velocities)
+            avg_right_velocity = np.mean(right_velocities)
+            
+            # Determine stance foot (lower velocity + lower position)
+            current_left_height = landmarks['left_ankle'][1]
+            current_right_height = landmarks['right_ankle'][1]
+            
+            # Score each foot for stance likelihood
+            left_score = (1.0 / (avg_left_velocity + 0.001)) * (1.0 if current_left_height <= current_right_height else 0.5)
+            right_score = (1.0 / (avg_right_velocity + 0.001)) * (1.0 if current_right_height <= current_left_height else 0.5)
+            
+            if left_score > right_score:
+                stance_foot = 'left'
+                confidence = left_score / (left_score + right_score)
+            else:
+                stance_foot = 'right'
+                confidence = right_score / (left_score + right_score)
+            
+            # Determine if in stance phase (low velocity threshold)
+            stance_velocity = avg_left_velocity if stance_foot == 'left' else avg_right_velocity
+            is_stance = stance_velocity < 0.1  # Adjust threshold as needed
+            
+            return {
+                'is_stance_phase': is_stance,
+                'stance_foot': stance_foot,
+                'left_foot_velocity': avg_left_velocity,
+                'right_foot_velocity': avg_right_velocity,
+                'confidence': confidence
+            }
+
+    def stance_detector_velocity_wrapper(self, landmarks):
+        """Attempting a wrapper around G rewrite"""
+    
+        if not hasattr(self, 'stance_detector_velocity_side'):
+            self.stance_detector_velocity_side = self.StancePhaseDetectorVelocity()
+            # Pass image height if available
+            # if hasattr(self, 'image_height'):
+            #     self._stance_detector.image_height = self.image_height
+        
+        # Use the detector to determine stance phase
+        return self.stance_detector_velocity_side.update(landmarks)
+
+# -------------------------------------
+# End Side Metrics Functions and Classes
+# -------------------------------------
+
     def draw_side_analysis(self, image, landmarks, frame_number):
         """Draw pose landmarks and metrics on image."""
         # Draw skeleton
@@ -1966,7 +2298,11 @@ class RunnerVisionAnalyzer:
             self.mp_pose.POSE_CONNECTIONS,
             landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style()
         )
-        
+
+# -------------------------------------
+# Side Video Metrics 
+# -------------------------------------
+
         # Add metrics text
         h, w, _ = image.shape
         metrics_text = [
@@ -2001,7 +2337,7 @@ class RunnerVisionAnalyzer:
             f"Elbow Angle: {self.side_metrics['elbow_angle'][-1]:.1f}*",
             f"Hand Position: {self.side_metrics['hand_position'][-1]}",
             f"Arm Swing Amplitude: {self.side_metrics['arm_swing_amplitude'][-1]}",
-            f"Arm Swing Symmetry: {self.side_metrics['arm_swing_symmetry'][-1]}",
+            # f"Arm Swing Symmetry: {self.side_metrics['arm_swing_symmetry'][-1]}",
             "",
             "STANCE METRICS",
             f"Stance Detected: {self.side_metrics['stance_phase_detected'][-1]}",
@@ -2037,6 +2373,10 @@ class RunnerVisionAnalyzer:
         
         return merged_df
     
+# -------------------------------------
+# Rear Metrics Sections
+# -------------------------------------
+
     def extract_rear_metrics(self, landmarks, frame_number, timestamp):
         """Extract running biomechanics metrics from a single frame
         for a video shot from the side of a runner, AKA the frontal plane."""
@@ -2122,6 +2462,10 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['left_wrist_crossover'].append(arm_swing_mechanics['left_wrist_crossover'])
         self.rear_metrics['right_wrist_crossover'].append(arm_swing_mechanics['right_wrist_crossover'])
         self.rear_metrics['shoulder_rotation'].append(arm_swing_mechanics['shoulder_rotation'])
+
+# -------------------------------------
+# Side Metrics Functions and Classes
+# -------------------------------------
 
     def calculate_foot_crossover(self, landmarks, threshold=0.25):
         """

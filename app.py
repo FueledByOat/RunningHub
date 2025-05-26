@@ -42,11 +42,27 @@ def home():
     latest_activity_id = db_utils.get_latest_activity() # load latest activity_id as default
     return render_template("home.html", activity = latest_activity_id)
 
-# @app.route("/runnervision/")
-# def runnervision_home():
-#     LATEST_ACTIVITY_ID = db_utils.get_latest_activity() # load latest activity_id as default
-#     return render_template("home.html", activity = LATEST_ACTIVITY_ID)
+@app.route('/runstrong')
+def runstrong():
 
+    return render_template(
+        'runstrong_home.html'
+    )
+
+@app.route('/runnervision')
+def runnervision():
+    report_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'html')
+    report_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'html')
+    video_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'mp4')
+    video_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'mp4')
+
+    return render_template(
+        'runnervision.html',
+        report_rear=report_rear,
+        report_side=report_side.replace("static/", "") if report_side else None,
+        video_rear=video_rear.replace("static/", "") if video_rear else None,
+        video_side=video_side.replace("static/", "") if video_side else None
+    )
 # -------------------------------------
 # RunnerVision Serve Endpoints
 # -------------------------------------
@@ -115,8 +131,94 @@ def upload_files():
         "warnings": errors if errors else None
     }), 200
 
+@app.route('/run_biomechanic_analysis', methods=['POST'])
+def run_analysis():
+    # Simulate or run long analysis process
+    result = rv_utils.run_analysis()
+    return jsonify({"status": "complete", 
+                    "message": "Analysis finished!",
+                    "rear_report_path": result[0]  ,
+                    "rear_video_path":  result[1] ,
+                    "side_report_path": result[2]  ,
+                    "side_video_path": result[3]
+                    })
+
 # -------------------------------------
-# Simple Web Page Endpoints
+# RunStrong Serve Endpoints
+# -------------------------------------
+
+@app.route('/runstrong/exercise-library')
+def exercise_library():
+    exercises = Exercise.query.all()
+    return render_template('exercise_library.html', exercises=exercises)
+
+@app.route('/runstrong/save-routine', methods=['POST'])
+def save_routine():
+    data = request.get_json()
+    routine_name = data['name']
+    routine_exercises = data['routine']  # list of {"id": exercise_id, "order": position}
+
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        # Save to Routine table
+        c.execute("INSERT INTO workout_routines (name) VALUES (?)", (routine_name,))
+        routine_id = c.lastrowid
+
+        # Save to RoutineExercise table
+        for item in routine_exercises:
+            c.execute('''
+                INSERT INTO routine_exercises (routine_id, exercise_id, position)
+                VALUES (?, ?, ?)
+            ''', (routine_id, item['id'], item['order']))
+
+        conn.commit()
+
+    return {'status': 'success'}
+
+@app.route('/runstrong/load-routines')
+def load_routines():
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        routines = c.execute("SELECT id, name FROM workout_routines").fetchall()
+    return {'routines': routines}
+
+@app.route('/runstrong/load-routine/<int:routine_id>')
+def load_routine(routine_id):
+    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+        c = conn.cursor()
+        c.execute('''
+            SELECT exercise.id, exercise.name
+            FROM routine_exercises
+            JOIN exercises ON exercise.id = routine_exercises.exercise_id
+            WHERE routine_exercises.routine_id = ?
+            ORDER BY routine_exercises.position ASC
+        ''', (routine_id,))
+        exercises = c.fetchall()
+    return {'exercises': exercises}
+
+@app.route('/runstrong/planner')
+def planner():
+    conn = sqlite3.connect(Config.DB_PATH_RUNSTRONG)
+    cursor = conn.cursor()
+    exercises = cursor.execute("SELECT id, name FROM exercises").fetchall()
+    conn.close()
+    return render_template('planner.html', exercises=exercises)
+
+@app.route('/runstrong/journal')
+def journal():
+    logs = WorkoutLog.query.order_by(WorkoutLog.log_date.desc()).all()
+    return render_template('journal.html', logs=logs)
+
+@app.route('/runstrong/dashboard')
+def dashboard():
+    return render_template('dashboard.html')
+
+# -------------------------------------
+# Top Level Web Page Endpoints and Routes
+# -------------------------------------
+
+# -------------------------------------
+# Query Page Functions
 # -------------------------------------
 
 @app.route('/query/', methods=['GET', 'POST'])
@@ -187,33 +289,9 @@ def run_ai_query():
 
     return render_template('query.html', columns=columns, rows=rows, error=error, request=request, sql_query = sql_query)
 
-
-@app.route('/runnervision')
-def runnervision():
-    report_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'html')
-    report_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'html')
-    video_rear = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'rear', 'mp4')
-    video_side = rv_utils.get_latest_file('RunnerVision/processed/2025-05-20', 'side', 'mp4')
-
-    return render_template(
-        'runnervision.html',
-        report_rear=report_rear,
-        report_side=report_side.replace("static/", "") if report_side else None,
-        video_rear=video_rear.replace("static/", "") if video_rear else None,
-        video_side=video_side.replace("static/", "") if video_side else None
-    )
-
-@app.route('/run_biomechanic_analysis', methods=['POST'])
-def run_analysis():
-    # Simulate or run long analysis process
-    result = rv_utils.run_analysis()
-    return jsonify({"status": "complete", 
-                    "message": "Analysis finished!",
-                    "rear_report_path": result[0]  ,
-                    "rear_video_path":  result[1] ,
-                    "side_report_path": result[2]  ,
-                    "side_video_path": result[3]
-                    })
+# -------------------------------------
+# Activity Page Functions
+# -------------------------------------
 
 @app.route("/activity/")
 def activity():
@@ -256,6 +334,10 @@ def activity():
     activity['start_date'], activity['start_time'] = format_utils.format_datetime(activity['start_date'])
 
     return render_template("activity.html", activity=activity, units=units)
+
+# -------------------------------------
+# Tropy Room / All Time Functions
+# -------------------------------------
 
 @app.route('/trophy_room/')
 def trophy_room():
@@ -454,6 +536,9 @@ def trophy_room():
         })
     return render_template("trophy_room.html", personal_records=personal_records, units = units)
 
+# -------------------------------------
+# Stats Page Functions
+# -------------------------------------
 
 @app.route('/statistics/', methods=['GET'])
 def statistics():
@@ -655,14 +740,18 @@ def statistics():
         recent_activities=activities_list,
         start_date = start_date
     )
+
 # -------------------------------------
 # Dash Pages and Redirect Endpoints
 # -------------------------------------
 
-
 @app.route("/map/")
 def dashredirect():
     return redirect(f"/map/?id={request.args.get('id')}")
+
+@app.route('/dashboard-redirect/')
+def dashboard_redirect():
+    return redirect('/dashboard/')
 
 @app.route("/density/")
 def density_redirect():
@@ -683,10 +772,6 @@ def density_redirect():
 
     start_date = request.args.get("start_date", "2024-01-01")
     return redirect(f"/density_dash/?start_date={start_date}&zoom={zoom}")
-
-@app.route('/dashboard-redirect/')
-def dashboard_redirect():
-    return redirect('/dashboard/')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5555)

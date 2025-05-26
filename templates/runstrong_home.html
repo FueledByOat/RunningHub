@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>RUNSTRONG | Performance Hub</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- <script src="{{ url_for('static', filename='js/runstrong_home.js') }}" defer></script> -->
+</head>
+
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('runstrong') }}">Home</a>
+        <a href="{{ url_for('exercise_library') }}">Library</a>
+        <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('journal') }}">Journal</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+    </div>
+
+        <div class="runnervision-header">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}"
+                alt="RunStrong Logo" class="runstrong-logo" />
+        </a>
+    </div>
+
+    <div class="runstrong-container">
+        <h1 class="runstrong-header">Welcome to Runstrong</h1>
+        <p class="runstrong-tagline">Your strength & performance planning hub</p>
+
+        <div class="runstrong-button-grid">
+            <a href="{{ url_for('exercise_library') }}">
+                <button>Exercise Library</button>
+            </a>
+            <a href="{{ url_for('planner') }}">
+                <button>Workout Planner</button>
+            </a>
+            <a href="{{ url_for('journal') }}">
+                <button>Workout Journal</button>
+            </a>
+            <a href="{{ url_for('dashboard') }}">
+                <button>Progress Dashboard</button>
+            </a>
+        </div>
+    </div>
+
+</body>
+
+</html>
