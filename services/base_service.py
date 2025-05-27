@@ -19,6 +19,7 @@ import os
 
 from utils import db_utils, format_utils, exception_utils
 from utils.RunnerVision import runnervision_utils as rv_utils
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class BaseService(ABC):
     """Abstract base class for all services."""
     
     def __init__(self, db_path: str):
-        self.db_path = db_path
+        self.db_path = Config.DB_PATH
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def _get_connection(self) -> sqlite3.Connection:

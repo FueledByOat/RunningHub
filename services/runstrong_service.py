@@ -11,10 +11,14 @@ from typing import Dict, List, Any, Tuple
 
 from services.base_service import BaseService
 from utils import db_utils, format_utils, exception_utils
+from config import Config
 
 class RunStrongService(BaseService):
     """Service for RunStrong strength training operations."""
     
+    def __init__(self, db_path: str):
+        self.db_path = Config.DB_PATH_RUNSTRONG
+
     def get_exercises(self) -> List[Tuple[int, str]]:
         """Get all available exercises."""
         try:
