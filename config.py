@@ -54,5 +54,5 @@ class Config:
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='running_hub.log', 
+    filename='logs/running_hub.log', 
     filemode='a')
