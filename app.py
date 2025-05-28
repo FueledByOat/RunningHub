@@ -226,6 +226,11 @@ class RunStrongRoutes:
             """Display RunStrong home page."""
             return render_template('runstrong_home.html')
         
+        @app.route('/exercise_library')
+        def exercise_library():
+            """Display RunStrong home page."""
+            return render_template('runstrong_exercise_library.html')
+        
         @app.route('/runstrong/exercises')
         def exercises():
             """API endpoint for exercise data."""

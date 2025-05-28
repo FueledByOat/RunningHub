@@ -2,6 +2,8 @@
 """
 Core implementation for RunnerVision using BlazePose for runner biomechanics analysis
 """
+from runnervision_metrics import rear_metrics
+
 import os
 import math
 import math
@@ -2387,7 +2389,7 @@ class RunnerVisionAnalyzer:
             landmark_coords[name] = (landmark.x, landmark.y, landmark.z, landmark.visibility)
         
         # Detect stance phase rear
-        stance_phase_rear = self.detect_stance_phase_rear(landmark_coords)
+        stance_phase_rear = rear_metrics.detect_stance_phase_rear(landmark_coords)
         self.rear_metrics['stance_phase_detected'].append(stance_phase_rear['is_stance_phase'])
         self.rear_metrics['stance_foot'].append(stance_phase_rear['stance_foot'])
         self.rear_metrics['stance_confidence'].append(stance_phase_rear['confidence'])
@@ -2397,27 +2399,27 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['frame_number'].append(frame_number)
         
         # Calculate foot crossover
-        foot_crossover = self.calculate_foot_crossover(landmark_coords)
+        foot_crossover = rear_metrics.calculate_foot_crossover(landmark_coords)
         self.rear_metrics['left_foot_crossover'].append(foot_crossover["left_foot_crossover"])
         self.rear_metrics['right_foot_crossover'].append(foot_crossover["right_foot_crossover"])
         self.rear_metrics['left_distance_from_midline'].append(foot_crossover["left_distance_from_midline"])
         self.rear_metrics['right_distance_from_midline'].append(foot_crossover["right_distance_from_midline"])
         
         # Calculate hip drop
-        hip_drop = self.calculate_hip_drop(landmark_coords)
+        hip_drop = rear_metrics.calculate_hip_drop(landmark_coords)
         self.rear_metrics['hip_drop_value'].append(hip_drop["hip_drop_value"])
         self.rear_metrics['hip_drop_direction'].append(hip_drop["hip_drop_direction"])
         self.rear_metrics['hip_drop_severity'].append(hip_drop["severity"])
 
         # Calculate pelic tilt angle
-        pelvic_tilt = self.calculate_pelvic_tilt(landmark_coords)
+        pelvic_tilt = rear_metrics.calculate_pelvic_tilt(landmark_coords)
         self.rear_metrics['pelvic_tilt_angle'].append(pelvic_tilt["tilt_angle_degrees"])
         self.rear_metrics['pelvic_tilt_elevated_side'].append(pelvic_tilt["elevated_side"])
         self.rear_metrics['pelvic_tilt_severity'].append(pelvic_tilt["severity"])
         self.rear_metrics['pelvic_tilt_normalized'].append(pelvic_tilt["normalized_tilt"])
         
         # Calculate knee_alignment
-        knee_alignment = self.calculate_knee_alignment(landmark_coords)
+        knee_alignment = rear_metrics.calculate_knee_alignment(landmark_coords)
         self.rear_metrics['left_knee_valgus'].append(knee_alignment["left_knee_valgus"])
         self.rear_metrics['right_knee_valgus'].append(knee_alignment["right_knee_valgus"])   
         self.rear_metrics['left_knee_varus'].append(knee_alignment["left_knee_varus"])
@@ -2428,7 +2430,7 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['knee_severity_right'].append(knee_alignment["severity_right"]) 
 
         # Calculate ankle_inversion
-        ankle_inversion = self.calculate_ankle_inversion(landmark_coords)
+        ankle_inversion = rear_metrics.calculate_ankle_inversion(landmark_coords)
         self.rear_metrics['left_ankle_inversion_value'].append(ankle_inversion["left_inversion_value"])
         self.rear_metrics['right_ankle_inversion_value'].append(ankle_inversion["right_inversion_value"])
         self.rear_metrics['left_ankle_normalized_value'].append(ankle_inversion["left_normalized"])
@@ -2441,15 +2443,15 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['right_ankle_angle'].append(ankle_inversion["right_foot_angle"])
 
         # Estimate step_width
-        step_width = self.calculate_step_width(landmark_coords)
+        step_width = rear_metrics.calculate_step_width(landmark_coords)
         self.rear_metrics['step_width'].append(step_width)
         
         # Detect stride_symmetry
-        stride_symmetry = self.calculate_stride_symmetry(landmark_coords)
+        stride_symmetry = rear_metrics.calculate_stride_symmetry(landmark_coords)
         self.rear_metrics['symmetry'].append(stride_symmetry)
 
         # Detect arm_swing_symmetry,
-        arm_swing_mechanics = self.calculate_arm_swing_mechanics(landmark_coords)
+        arm_swing_mechanics = rear_metrics.calculate_arm_swing_mechanics(landmark_coords)
         self.rear_metrics['vertical_elbow_diff'].append(arm_swing_mechanics['vertical_elbow_diff'])
         self.rear_metrics['normalized_vertical_diff'].append(arm_swing_mechanics['normalized_vertical_diff'])
         self.rear_metrics['left_elbow_angle'].append(arm_swing_mechanics['left_elbow_angle'])
@@ -2462,666 +2464,6 @@ class RunnerVisionAnalyzer:
         self.rear_metrics['left_wrist_crossover'].append(arm_swing_mechanics['left_wrist_crossover'])
         self.rear_metrics['right_wrist_crossover'].append(arm_swing_mechanics['right_wrist_crossover'])
         self.rear_metrics['shoulder_rotation'].append(arm_swing_mechanics['shoulder_rotation'])
-
-# -------------------------------------
-# Side Metrics Functions and Classes
-# -------------------------------------
-
-    def calculate_foot_crossover(self, landmarks, threshold=0.25):
-        """
-        Check for feet being too close to or crossing the body's midline (from rear view).
-        
-        From rear view perspective:
-        - Ideal: Left foot stays in left lane, right foot stays in right lane
-        - Issue: Feet cross or get too close to midline (medial foot placement)
-        
-        Future consideration would be calculating the angle from the hip marker to the knee for extreme values.
-
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates with keys like 'left_hip', 'right_foot_index', etc.
-        threshold : float, default=0.25
-            Proportion of hip width that determines acceptable proximity to midline.
-            Lower values are stricter (less crossover allowed).
-        
-        Returns:
-        --------
-        dict
-            Information about foot crossover including boolean flags and distances from midline.
-        """
-        # Calculate hip center and width for reference
-        left_hip_x = landmarks['left_hip'][0]
-        right_hip_x = landmarks['right_hip'][0]
-        hip_center_x = (left_hip_x + right_hip_x) / 2
-        hip_width = abs(left_hip_x - right_hip_x)
-        
-        # Get foot positions
-        left_foot_x = landmarks['left_foot_index'][0]
-        right_foot_x = landmarks['right_foot_index'][0]
-        
-        # Calculate distances from center line (negative = right of midline, positive = left of midline)
-        left_distance = left_foot_x - hip_center_x
-        right_distance = right_foot_x - hip_center_x
-        
-        # Check if feet cross or get too close to midline beyond the threshold
-        # From rear view: Left foot crossing over = left foot is left of ideal position (too close to or past midline)
-        # From rear view: Right foot crossing over = right foot is right of ideal position (too close to or past midline)
-        crossover_left = left_distance > -threshold * hip_width  # Left foot too far to the left (too close to midline)
-        crossover_right = right_distance < threshold * hip_width  # Right foot too far to the right (too close to midline)
-        
-        return {
-            "left_foot_crossover": crossover_left,
-            "right_foot_crossover": crossover_right,
-            "left_distance_from_midline": left_distance,
-            "right_distance_from_midline": right_distance
-        }
-    
-    def calculate_hip_drop(self, landmarks, threshold=0.015):
-        """
-        Detect hip drop (Trendelenburg gait) during running stance phase.
-        
-        Hip drop occurs when the pelvis tilts laterally during single-leg support,
-        indicating potential weakness in hip abductor muscles (primarily gluteus medius).
-        
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates with keys like 'left_hip', 'right_hip'.
-            Coordinates should be normalized (0-1 range) relative to image dimensions.
-        threshold : float, default=0.015
-            The minimum difference in normalized hip height to classify as hip drop.
-            Typically 1-2% of image height is appropriate for detection.
-            Can be adjusted based on camera angle and distance.
-        
-        Returns:
-        --------
-        dict
-            Contains the hip drop value (positive = right hip drops) and classification.
-            
-        Notes:
-        ------
-        For clinical assessment:
-        - Mild: < 3° drop (roughly 0.01-0.02 in normalized coordinates)
-        - Moderate: 3-10° drop (roughly 0.02-0.05)
-        - Severe: > 10° drop (roughly > 0.05)
-        
-        This function should ideally be used during single-leg stance phases
-        for accurate assessment, not during flight phases.
-        """
-        left_hip_y = landmarks['left_hip'][1]
-        right_hip_y = landmarks['right_hip'][1]
-        
-        # Calculate hip height difference (positive = right hip is lower/dropped)
-        hip_drop = right_hip_y - left_hip_y
-        
-        # Determine severity based on clinical thresholds
-        if abs(hip_drop) < threshold:
-            direction = "neutral"
-            severity = "none"
-        else:
-            direction = "right" if hip_drop > 0 else "left"
-            if abs(hip_drop) < 0.03:
-                severity = "mild"
-            elif abs(hip_drop) < 0.05:
-                severity = "moderate"
-            else:
-                severity = "severe"
-        
-        return {
-            "hip_drop_value": hip_drop,
-            "hip_drop_direction": direction,
-            "severity": severity
-        }
-
-    
-    def calculate_pelvic_tilt(self, landmarks):
-        """
-        Calculate lateral pelvic tilt angle in the frontal plane during running.
-        
-        Measures lateral pelvic tilt (frontal plane) which can indicate:
-        - Hip abductor weakness (primarily gluteus medius)
-        - Leg length discrepancy (functional or anatomical)
-        - Compensation patterns for other biomechanical issues
-        - Potential IT band, low back, or knee injury risk
-        
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates with keys like 'left_hip', 'right_hip'.
-            Coordinates should be normalized (0-1 range) relative to image dimensions.
-        
-        Returns:
-        --------
-        dict
-            Contains tilt angle in degrees, clinical interpretation and normalized values.
-            Positive angles indicate right side elevated, negative angles indicate left side elevated.
-        
-        Notes:
-        ------
-        Clinical reference:
-        - Normal range: ±2° during stance phase
-        - Mild tilt: 2-5° (potential early intervention)
-        - Moderate: 5-10° (intervention recommended)
-        - Severe: >10° (significant dysfunction)
-        
-        This measures frontal plane motion only and differs from anterior/posterior pelvic tilt 
-        (sagittal plane), which requires side-view analysis.
-        """
-        # Extract hip coordinates
-        left_hip_x, left_hip_y = landmarks['left_hip'][0], landmarks['left_hip'][1]
-        right_hip_x, right_hip_y = landmarks['right_hip'][0], landmarks['right_hip'][1]
-        
-        # Calculate horizontal distance between hips for normalization
-        hip_distance = abs(right_hip_x - left_hip_x)
-        
-        # Calculate tilt angle (positive = right side up, negative = left side up)
-        tilt_angle = np.degrees(np.arctan2(right_hip_y - left_hip_y,
-                                            right_hip_x - left_hip_x))
-        
-        # Apply coordinate system correction if needed
-        # Note: In many vision systems, y increases downward, so we may need to negate
-        # Uncomment if your coordinate system has y increasing upward
-        # tilt_angle = -tilt_angle
-        
-        # Determine severity
-        if abs(tilt_angle) <= 2:
-            severity = "normal"
-        elif abs(tilt_angle) <= 5:
-            severity = "mild"
-        elif abs(tilt_angle) <= 10:
-            severity = "moderate"
-        else:
-            severity = "severe"
-        
-        # Determine elevated side
-        if abs(tilt_angle) <= 2:
-            elevated_side = "neutral"
-        else:
-            elevated_side = "left" if tilt_angle > 0 else "right"
-        
-        return {
-            "tilt_angle_degrees": tilt_angle,
-            "elevated_side": elevated_side,
-            "severity": severity,
-            "normalized_tilt": tilt_angle / (np.arctan2(0.1, hip_distance) * 180/np.pi)
-        }
-
-    
-    def calculate_knee_alignment(self, landmarks):
-        """
-        Assess knee alignment during running to detect valgus (knock-knee) or varus (bow-leg) patterns.
-        
-        Dynamic knee valgus is particularly concerning in runners as it indicates:
-        - Potential weakness in hip abductors/external rotators
-        - Excessive foot pronation
-        - Risk factor for patellofemoral pain syndrome, ACL injuries, and IT band syndrome
-        
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates with keys like 'left_hip', 'left_knee', etc.
-        
-        Returns:
-        --------
-        dict
-            Contains assessment of knee alignment patterns and deviation measurements.
-        """
-        # Extract landmark coordinates
-        left_hip_x = landmarks['left_hip'][0]
-        left_knee_x = landmarks['left_knee'][0]
-        left_ankle_x = landmarks['left_ankle'][0]
-        
-        right_hip_x = landmarks['right_hip'][0]
-        right_knee_x = landmarks['right_knee'][0]
-        right_ankle_x = landmarks['right_ankle'][0]
-        
-        # Calculate alignment metrics
-        # For left leg (viewed from behind):
-        # - Valgus = knee is more medial (right) than the hip-ankle line
-        # - Varus = knee is more lateral (left) than the hip-ankle line
-        left_hip_to_ankle_x = left_ankle_x - left_hip_x
-        if left_hip_to_ankle_x != 0:  # Avoid division by zero
-            left_expected_knee_x = left_hip_x + left_hip_to_ankle_x * 0.5  # Simplified linear interpolation
-            left_deviation = left_knee_x - left_expected_knee_x
-            left_hip_width = abs(left_hip_x - right_hip_x)
-            # Normalize by hip width to account for different runner sizes and camera distances
-            left_normalized_deviation = left_deviation / left_hip_width if left_hip_width else 0
-        else:
-            left_normalized_deviation = 0
-        
-        # For right leg (viewed from behind):
-        # - Valgus = knee is more medial (left) than the hip-ankle line
-        # - Varus = knee is more lateral (right) than the hip-ankle line
-        right_hip_to_ankle_x = right_ankle_x - right_hip_x
-        if right_hip_to_ankle_x != 0:  # Avoid division by zero
-            right_expected_knee_x = right_hip_x + right_hip_to_ankle_x * 0.5  # Simplified linear interpolation
-            right_deviation = right_knee_x - right_expected_knee_x
-            right_hip_width = abs(left_hip_x - right_hip_x)
-            right_normalized_deviation = right_deviation / right_hip_width if right_hip_width else 0
-        else:
-            right_normalized_deviation = 0
-        
-        # Clinical thresholds for classification
-        threshold = 0.1  # 10% of hip width as a threshold for concern
-        
-        # Determine alignment patterns (from rear view)
-        left_valgus = left_normalized_deviation < -threshold  # Knee is too far medial (right)
-        left_varus = left_normalized_deviation > threshold    # Knee is too far lateral (left)
-        
-        right_valgus = right_normalized_deviation > threshold  # Knee is too far medial (left)
-        right_varus = right_normalized_deviation < -threshold  # Knee is too far lateral (right)
-        
-        # Return comprehensive assessment
-        return {
-            "left_knee_valgus": left_valgus,
-            "left_knee_varus": left_varus,
-            "right_knee_valgus": right_valgus,
-            "right_knee_varus": right_varus,
-            "left_normalized_deviation": left_normalized_deviation,
-            "right_normalized_deviation": right_normalized_deviation,
-            "severity_left": "normal" if abs(left_normalized_deviation) < threshold else 
-                            "mild" if abs(left_normalized_deviation) < threshold*1.5 else
-                            "moderate" if abs(left_normalized_deviation) < threshold*2 else "severe",
-            "severity_right": "normal" if abs(right_normalized_deviation) < threshold else 
-                            "mild" if abs(right_normalized_deviation) < threshold*1.5 else
-                            "moderate" if abs(right_normalized_deviation) < threshold*2 else "severe"
-        }
-    
-    def calculate_ankle_inversion(self, landmarks):
-        """
-        Measure ankle inversion/eversion patterns during running.
-        
-        Inversion = ankle rolls outward (supination)
-        Eversion = ankle rolls inward (pronation)
-        
-        From rear view:
-        - Excessive inversion is linked to lateral ankle sprains and insufficient shock absorption
-        - Excessive eversion is linked to medial tibial stress syndrome (shin splints) and plantar fasciitis
-        
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates with keys for ankle and heel positions
-        
-        Returns:
-        --------
-        dict
-            Analysis of ankle inversion/eversion patterns including normalized measurements and clinical assessment
-        """
-        # Extract landmark coordinates
-        left_ankle_x = landmarks['left_ankle'][0]
-        left_heel_x = landmarks['left_heel'][0]
-        left_foot_index_x = landmarks.get('left_foot_index', landmarks.get('left_toe', [0, 0]))[0]
-        
-        right_ankle_x = landmarks['right_ankle'][0]
-        right_heel_x = landmarks['right_heel'][0]
-        right_foot_index_x = landmarks.get('right_foot_index', landmarks.get('right_toe', [0, 0]))[0]
-        
-        # Calculate hip width for normalization
-        hip_width = abs(landmarks['left_hip'][0] - landmarks['right_hip'][0])
-        
-        # Calculate inversion values (positive = inversion, negative = eversion)
-        # From rear view:
-        # Left foot: heel to the left of ankle = inversion, heel to the right = eversion
-        # Right foot: heel to the right of ankle = inversion, heel to the left = eversion
-        left_inversion = left_ankle_x - left_heel_x  
-        right_inversion = right_heel_x - right_ankle_x
-        
-        # Normalize by hip width for better comparison across runners
-        left_normalized = left_inversion / hip_width if hip_width else 0
-        right_normalized = right_inversion / hip_width if hip_width else 0
-        
-        # Advanced: Calculate foot axis angle if toe landmarks are available
-        if left_foot_index_x and right_foot_index_x:
-            left_foot_angle = np.degrees(np.arctan2(landmarks['left_ankle'][1] - landmarks['left_heel'][1],
-                                                left_ankle_x - left_heel_x))
-            right_foot_angle = np.degrees(np.arctan2(landmarks['right_ankle'][1] - landmarks['right_heel'][1],
-                                                right_heel_x - right_ankle_x))
-        else:
-            left_foot_angle = right_foot_angle = None
-        
-        # Classify based on clinical thresholds
-        # Threshold values based on normalized measurements
-        inversion_threshold = 0.03  # 3% of hip width
-        
-        # Determine patterns
-        left_pattern = "neutral"
-        if left_normalized > inversion_threshold:
-            left_pattern = "inversion"
-        elif left_normalized < -inversion_threshold:
-            left_pattern = "eversion"
-            
-        right_pattern = "neutral"
-        if right_normalized > inversion_threshold:
-            right_pattern = "inversion"
-        elif right_normalized < -inversion_threshold:
-            right_pattern = "eversion"
-        
-        # Determine severity
-        def get_severity(value):
-            abs_value = abs(value)
-            if abs_value < inversion_threshold:
-                return "normal"
-            elif abs_value < inversion_threshold*2:
-                return "mild"
-            elif abs_value < inversion_threshold*3:
-                return "moderate"
-            else:
-                return "severe"
-        
-        return {
-            "left_inversion_value": left_inversion,
-            "right_inversion_value": right_inversion,
-            "left_normalized": left_normalized,
-            "right_normalized": right_normalized,
-            "left_pattern": left_pattern,
-            "right_pattern": right_pattern,
-            "left_severity": get_severity(left_normalized),
-            "right_severity": get_severity(right_normalized),
-            "left_foot_angle": left_foot_angle,
-            "right_foot_angle": right_foot_angle
-        }
-
-    
-    def calculate_step_width(self, landmarks):
-        """Distance between both feet."""
-        left_foot_x = landmarks['left_foot_index'][0]
-        right_foot_x = landmarks['right_foot_index'][0]
-        
-        step_width = abs(left_foot_x - right_foot_x) * 100  # Rough cm conversion
-        return step_width
-
-        
-    def calculate_stride_symmetry(self, landmarks):
-        """Compare stride or timing parameters over a cycle (requires frame history).
-         Placeholder uses foot x-delta."""
-        left_stride = landmarks['left_foot_index'][0] - landmarks['left_heel'][0]
-        right_stride = landmarks['right_foot_index'][0] - landmarks['right_heel'][0]
-        
-        symmetry = (right_stride - left_stride) / max(abs(right_stride), abs(left_stride) + 1e-6)
-        
-        return symmetry
-
-    def calculate_arm_swing_mechanics(self, landmarks):
-        """
-        Analyze arm swing mechanics during running from rear view.
-        
-        Efficient arm swing should:
-        - Move primarily in sagittal plane (front-to-back)
-        - Be symmetrical in timing and amplitude
-        - Maintain roughly 90° elbow flexion
-        - Counter-rotate with opposite leg
-        - Not cross midline excessively
-        
-        Parameters:
-        -----------
-        landmarks : dict
-            Dictionary containing body landmark coordinates
-        
-        Returns:
-        --------
-        dict
-            Comprehensive analysis of arm swing mechanics
-        """
-        # Extract relevant landmarks
-        left_shoulder = landmarks['left_shoulder']
-        right_shoulder = landmarks['right_shoulder']
-        left_elbow = landmarks['left_elbow']
-        right_elbow = landmarks['right_elbow']
-        left_wrist = landmarks['left_wrist'] 
-        right_wrist = landmarks['right_wrist']
-        
-        # 1. Vertical symmetry - detect if arms are at different heights
-        vertical_diff = abs(left_elbow[1] - right_elbow[1])
-        hip_width = abs(landmarks['left_hip'][0] - landmarks['right_hip'][0])
-        normalized_vertical_diff = vertical_diff / hip_width if hip_width else 0
-        
-        # 2. Crossover detection - arms crossing midline (from rear view)
-        shoulder_midpoint_x = (left_shoulder[0] + right_shoulder[0]) / 2
-        left_wrist_crossover = left_wrist[0] > shoulder_midpoint_x
-        right_wrist_crossover = right_wrist[0] < shoulder_midpoint_x
-        
-        # 3. Elbow angle (flexion) calculation
-        def calculate_angle(a, b, c):
-            """Calculate angle between three points (b is the vertex)"""
-            ba = np.array(a) - np.array(b)
-            bc = np.array(c) - np.array(b)
-            cosine = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
-            cosine = max(min(cosine, 1.0), -1.0)  # Clip to avoid numerical errors
-            return np.degrees(np.arccos(cosine))
-        
-        left_elbow_angle = calculate_angle(left_shoulder, left_elbow, left_wrist)
-        right_elbow_angle = calculate_angle(right_shoulder, right_elbow, right_wrist)
-        
-        # 4. Shoulder rotation (limited from rear view, but can detect excessive movement)
-        shoulder_height_diff = abs(left_shoulder[1] - right_shoulder[1])
-        normalized_shoulder_diff = shoulder_height_diff / hip_width if hip_width else 0
-        
-        # 5. Shoulder width stability (should be relatively constant during run)
-        shoulder_width = abs(left_shoulder[0] - right_shoulder[0])
-        normalized_shoulder_width = shoulder_width / hip_width if hip_width else 0
-        
-        # Classification based on clinical thresholds
-        sym_threshold = 0.05  # 5% of hip width
-        
-        return {
-            # Raw measurements
-            "vertical_elbow_diff": vertical_diff,
-            "normalized_vertical_diff": normalized_vertical_diff,
-            "left_elbow_angle": left_elbow_angle,
-            "right_elbow_angle": right_elbow_angle, 
-            "normalized_shoulder_diff": normalized_shoulder_diff,
-            "normalized_shoulder_width": normalized_shoulder_width,
-            
-            # Clinical assessments
-            "arm_height_symmetry": "good" if normalized_vertical_diff < sym_threshold else 
-                                "moderate" if normalized_vertical_diff < sym_threshold*2 else "poor",
-            "elbow_angle_left": "optimal" if 80 <= left_elbow_angle <= 110 else 
-                                "too_straight" if left_elbow_angle > 110 else "too_bent",
-            "elbow_angle_right": "optimal" if 80 <= right_elbow_angle <= 110 else 
-                                "too_straight" if right_elbow_angle > 110 else "too_bent",
-            "left_wrist_crossover": left_wrist_crossover,
-            "right_wrist_crossover": right_wrist_crossover,
-            "shoulder_rotation": "stable" if normalized_shoulder_diff < 0.03 else "excessive",
-        }
-    
-    class StancePhaseDetectorRear:
-        def __init__(self, calibration_frames_total=90, 
-                    ground_zone_percentage=0.15, # Defines the bottom X% of foot's RoM as ground zone
-                    visibility_threshold=0.5,
-                    foot_landmarks_to_use=None): # Allows customization of landmarks
-            """
-            Initializes the rear-view stance phase detector.
-
-            Args:
-                calibration_frames_total (int): Number of frames to use for calibration.
-                ground_zone_percentage (float): The bottom percentage of the foot's observed vertical 
-                                            range of motion that defines the ground contact zone.
-                                            (e.g., 0.3 means bottom 30%).
-                visibility_threshold (float): Minimum landmark visibility to be considered.
-                foot_landmarks_to_use (dict, optional): Specify which landmarks define the 'bottom'
-                                                        of each foot. Defaults to heel and foot_index.
-                                                        Example: {'left': ['left_ankle'], 'right': ['right_ankle']}
-            """
-            self.calibration_frames_total = calibration_frames_total
-            self.ground_zone_percentage = ground_zone_percentage
-            self.visibility_threshold = visibility_threshold
-            
-            self.frames_calibrated = 0
-            
-            # Stores all observed lowest Y positions of all visible feet during calibration
-            self._foot_y_samples_normalized = [] 
-            
-            self.calibrated_overall_max_y = None # Lowest point any foot reached (ground plane proxy)
-            self.calibrated_overall_min_y = None # Highest point any foot reached (peak swing proxy)
-            self.ground_contact_entry_threshold_y = None # Y value above which foot is considered in stance zone
-
-            if foot_landmarks_to_use is None:
-                self.foot_landmarks_to_check = {
-                    'left': ['left_foot_index', 'left_heel'],
-                    'right': ['right_foot_index', 'right_heel']
-                }
-            else:
-                self.foot_landmarks_to_check = foot_landmarks_to_use
-            
-            # Optional: For velocity checks (can be added later for more robustness)
-            # self._foot_y_history = {'left': [], 'right': []}
-            # self._max_velocity_history = 3
-            # self._velocity_threshold_normalized = 0.008 # Needs tuning
-
-        def _get_lowest_point_of_foot(self, landmarks, side_key):
-            """Gets the lowest Y coordinate for a given foot, considering visibility."""
-            foot_y_values = []
-            if side_key not in self.foot_landmarks_to_check:
-                return None
-
-            for lm_name in self.foot_landmarks_to_check[side_key]:
-                if lm_name in landmarks and landmarks[lm_name][3] >= self.visibility_threshold: # landmarks[lm_name] = (x,y,z,visibility)
-                    foot_y_values.append(landmarks[lm_name][1])
-            
-            if not foot_y_values:
-                return None 
-            return max(foot_y_values) # Max Y is lowest on screen (normalized 0-1, 1 is bottom)
-
-        def _collect_calibration_data(self, landmarks):
-            """Collects the lowest Y position of each visible foot in the current frame."""
-            left_lowest_y = self._get_lowest_point_of_foot(landmarks, 'left')
-            right_lowest_y = self._get_lowest_point_of_foot(landmarks, 'right')
-
-            if left_lowest_y is not None:
-                self._foot_y_samples_normalized.append(left_lowest_y)
-            if right_lowest_y is not None:
-                self._foot_y_samples_normalized.append(right_lowest_y)
-
-        def _finalize_calibration(self):
-            """Calculates calibration parameters from the collected foot Y samples."""
-            if not self._foot_y_samples_normalized or len(self._foot_y_samples_normalized) < self.calibration_frames_total * 0.5: # Require at least half of calibration frames to have some data
-                print("Warning: Insufficient data for rear stance detection calibration. Using broad defaults.")
-                self.calibrated_overall_max_y = 0.90 # Assumed ground
-                self.calibrated_overall_min_y = 0.50 # Assumed peak swing
-            else:
-                # Use percentiles for robustness against extreme outliers
-                self.calibrated_overall_max_y = np.percentile(self._foot_y_samples_normalized, 95) # Robust lowest point
-                self.calibrated_overall_min_y = np.percentile(self._foot_y_samples_normalized, 5)  # Robust highest point
-
-            # Ensure max_y (ground) is actually lower than min_y (peak swing)
-            if self.calibrated_overall_max_y <= self.calibrated_overall_min_y + 0.05: # Add small buffer
-                print("Warning: Rear stance calibration issue - foot motion range too small or ground not lower than peak swing. Adjusting.")
-                # If very little motion or inverted, use the most extreme sample for max_y and estimate min_y
-                if self._foot_y_samples_normalized:
-                    self.calibrated_overall_max_y = max(self._foot_y_samples_normalized)
-                    self.calibrated_overall_min_y = min(self.calibrated_overall_max_y - 0.1, min(self._foot_y_samples_normalized)) # Ensure some range
-                else: # No samples at all
-                    self.calibrated_overall_max_y = 0.90
-                    self.calibrated_overall_min_y = 0.50
-
-
-            height_range = self.calibrated_overall_max_y - self.calibrated_overall_min_y
-            
-            if height_range <= 0.02: # If very small range (e.g., standing still, or bad calibration)
-                print("Warning: Very small foot motion range detected in rear view calibration. Threshold may be sensitive.")
-                # Set threshold very close to the detected "ground"
-                self.ground_contact_entry_threshold_y = self.calibrated_overall_max_y - 0.015 
-            else:
-                # The stance zone starts this much *above* the lowest point (max_y)
-                # Or, equivalently, (1 - ground_zone_percentage) of the range from the highest point (min_y)
-                self.ground_contact_entry_threshold_y = self.calibrated_overall_max_y - (height_range * self.ground_zone_percentage)
-
-            print(f"Rear Stance Calibrated: OverallMaxY={self.calibrated_overall_max_y:.3f} (Ground), "
-                f"OverallMinY={self.calibrated_overall_min_y:.3f} (Peak Swing), "
-                f"ContactEntryThresholdY={self.ground_contact_entry_threshold_y:.3f}")
-
-        def detect_stance_phase(self, landmarks):
-            """
-            Detects stance phase from rear view landmarks.
-
-            Args:
-                landmarks (dict): Dictionary of landmark coordinates (x,y,z,visibility).
-            
-            Returns:
-                dict: {'is_stance_phase': bool, 'stance_foot': str|None, 'confidence': float}
-            """
-            if self.frames_calibrated < self.calibration_frames_total:
-                self._collect_calibration_data(landmarks)
-                self.frames_calibrated += 1
-                if self.frames_calibrated == self.calibration_frames_total:
-                    self._finalize_calibration()
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "calibrating"}
-
-            if self.ground_contact_entry_threshold_y is None: # Calibration failed or not yet run
-                print("Error: Rear stance detector not calibrated.")
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "not_calibrated"}
-
-            left_lowest_y = self._get_lowest_point_of_foot(landmarks, 'left')
-            right_lowest_y = self._get_lowest_point_of_foot(landmarks, 'right')
-
-            is_stance_phase = False
-            stance_foot = None
-            confidence = 0.0 # Default confidence for no stance / flight
-
-            # Check for missing landmarks for either foot
-            if left_lowest_y is None and right_lowest_y is None:
-                return {'is_stance_phase': False, 'stance_foot': None, 'confidence': 0.0, 'debug': "no_foot_data"}
-
-            # Determine if each foot is in the stance zone
-            # A foot is in stance if its Y value is at or below the entry threshold
-            left_in_stance = (left_lowest_y is not None) and (left_lowest_y >= self.ground_contact_entry_threshold_y)
-            right_in_stance = (right_lowest_y is not None) and (right_lowest_y >= self.ground_contact_entry_threshold_y)
-            
-            # Determine overall phase and stance foot
-            if left_in_stance and right_in_stance:
-                is_stance_phase = True
-                # Both feet in stance zone (double support or error) - choose the truly lower one
-                stance_foot = 'left' if left_lowest_y > right_lowest_y else 'right'
-                # Calculate confidence based on how deep the chosen foot is in the stance zone
-                active_foot_y = left_lowest_y if stance_foot == 'left' else right_lowest_y
-            elif left_in_stance:
-                is_stance_phase = True
-                stance_foot = 'left'
-                active_foot_y = left_lowest_y
-            elif right_in_stance:
-                is_stance_phase = True
-                stance_foot = 'right'
-                active_foot_y = right_lowest_y
-            
-            # Calculate confidence
-            if is_stance_phase and active_foot_y is not None:
-                # Zone for confidence: from ground_contact_entry_threshold_y to calibrated_overall_max_y
-                stance_zone_height = self.calibrated_overall_max_y - self.ground_contact_entry_threshold_y
-                if stance_zone_height > 1e-5: # Avoid division by zero if threshold is at max_y
-                    depth_ratio = (active_foot_y - self.ground_contact_entry_threshold_y) / stance_zone_height
-                    confidence = 0.5 + min(max(depth_ratio, 0), 1) * 0.49 # Scale from 0.5 (at threshold) to 0.99 (at max_y)
-                else: # Foot is at the threshold which is also the max_y
-                    confidence = 0.6 # Reasonably confident it's on the exact line
-            else: # No stance phase (flight)
-                # Confidence for flight: how far is the *highest* of the two feet from the stance threshold?
-                # (Higher foot is min_y of the two)
-                if left_lowest_y is not None or right_lowest_y is not None:
-                    highest_current_foot_y = min(left_lowest_y if left_lowest_y is not None else float('inf'), 
-                                                right_lowest_y if right_lowest_y is not None else float('inf'))
-                    if highest_current_foot_y < self.ground_contact_entry_threshold_y: # If it's above the stance threshold
-                        flight_zone_height = self.ground_contact_entry_threshold_y - self.calibrated_overall_min_y
-                        if flight_zone_height > 1e-5:
-                            clearance_ratio = (self.ground_contact_entry_threshold_y - highest_current_foot_y) / flight_zone_height
-                            confidence = 0.5 + min(max(clearance_ratio, 0), 1) * 0.49 # Confident it's in flight
-                        else:
-                            confidence = 0.6 # Clearly in flight, but small range
-                    else:
-                        confidence = 0.2 # Near threshold but not in stance
-                else:
-                    confidence = 0.1 # No foot data but not in stance
-
-            return {'is_stance_phase': is_stance_phase, 'stance_foot': stance_foot, 'confidence': round(confidence, 3)}
-    
-    def detect_stance_phase_rear(self, landmarks):
-        """Attempting a wrapper around G rewrite"""
-
-        if not hasattr(self, '_stance_detector_rear'):
-            self._stance_detector_rear = self.StancePhaseDetectorRear()
-        
-        return self._stance_detector_rear.detect_stance_phase(landmarks)
-
 
     def draw_rear_analysis(self, image, landmarks, frame_number):
         """Draw pose landmarks and metrics on image."""

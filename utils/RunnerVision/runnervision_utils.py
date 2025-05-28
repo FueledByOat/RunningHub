@@ -1623,17 +1623,13 @@ def run_analysis():
 
         for file in [analyzer.side_video, analyzer.rear_video]:
         
-            # video_angle = "SIDE" if "side" in file.lower() else "REAR" and file
             # Generate report
             if file and "side" in file.lower():
-                analyzer.generate_side_report() # turning off for now while rear and side are built
+                analyzer.generate_side_report() 
             elif file and "rear" in file.lower():
-                analyzer.generate_rear_report() # turning off for now while rear and side are built
+                analyzer.generate_rear_report() 
             else:
                 print("File Mismatch, No Report.")
-            
-        # assuming it makes it to here without error, delete or archive the original files
-        ## This assumes a multi-user approach and not just me
 
         print("Analysis complete!")
         
@@ -1647,14 +1643,3 @@ def run_analysis():
         'videos' + "/" + f"{analyzer.session_id}_rear_processed.mp4",
         'reports' + "/" + "RunnerVision_Side_Report.html",
         'videos' + "/" + f"{analyzer.session_id}_side_processed.mp4"]
-    # return [f"{analyzer.session_id}_rear_angle_report.html",
-    # f"{analyzer.session_id}_rear_processed.mp4",
-    # f"{analyzer.session_id}_side_angle_report.html",
-    # f"{analyzer.session_id}_side_processed.mp4"]
-
-
-def get_latest_file(directory, keyword, extension):
-    files = glob(os.path.join(directory, f"*{keyword}*.{extension}"))
-    if not files:
-        return None
-    return max(files, key=os.path.getmtime)

@@ -1076,3 +1076,68 @@ body.runstrong {
 .sortable-chosen {
   transform: scale(1.05);
 }
+
+.exercise-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem;
+}
+
+.exercise-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px var(--rs-shadow);
+  transition: transform 0.2s ease;
+  backdrop-filter: blur(10px);
+}
+
+.exercise-card:hover {
+  transform: translateY(-5px);
+}
+
+.exercise-title {
+  font-size: 1.3rem;
+  color: var(--rs-white);
+  margin-bottom: 0.5rem;
+}
+
+.exercise-type {
+  font-size: 0.95rem;
+  color: var(--rs-secondary);
+  margin-bottom: 1rem;
+}
+
+.expand-btn {
+  background: none;
+  color: var(--rs-accent);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  text-decoration: underline;
+}
+
+.exercise-details {
+  display: none;
+  margin-top: 1rem;
+  color: var(--rs-white);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.exercise-search {
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.exercise-search input {
+  padding: 10px;
+  width: 250px;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 2px solid var(--rs-accent);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--rs-accent);
+}

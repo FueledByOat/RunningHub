@@ -21,7 +21,7 @@ class RunStrongService(BaseService):
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                return cursor.execute("SELECT id, name FROM exercises").fetchall()
+                return cursor.execute("SELECT * FROM exercises").fetchall()
         except Exception as e:
             self.logger.error(f"Error getting exercises: {e}")
             raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
