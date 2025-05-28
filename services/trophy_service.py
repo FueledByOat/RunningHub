@@ -34,68 +34,32 @@ class TrophyService(BaseService):
                 
                 # Get records for standard distances
                 for distance_name, min_distance, max_distance in race_distances:
-                    record = self._get_distance_record(conn, distance_name, min_distance, max_distance, units)
-                    if record:
-                        records.append(record)
+                    try:
+                        record = db_utils.get_distance_record(conn, distance_name, min_distance, max_distance, units)
+                        if record:
+                            records.append(self._format_record(record, distance_name, units))
+                    except Exception as e:
+                        self.logger.error(f"Error getting {distance_name} record: {e}")
                 
                 # Get longest run
-                longest_run = self._get_longest_run(conn, units)
-                if longest_run:
-                    records.append(longest_run)
+                try:
+                    longest_run = db_utils.get_longest_run(conn, units)
+                    if longest_run:
+                        distance = (
+                        round(longest_run['distance'] / 1609, 2) if units == 'mi'
+                        else round(longest_run['distance'] / 1000, 2)
+                        )
+                        records.append(self._format_record(longest_run, f"Longest Run: {distance} {units}", units))
+                
+                except Exception as e:
+                    self.logger.error(f"Error getting longest run: {e}")
                 
                 return records
                 
         except Exception as e:
             self.logger.error(f"Error getting personal records: {e}")
             raise exception_utils.DatabaseError(f"Failed to get personal records: {e}")
-    
-    def _get_distance_record(self, conn: sqlite3.Connection, distance_name: str, 
-                           min_distance: int, max_distance: int, units: str) -> Optional[Dict[str, Any]]:
-        """Get personal record for a specific distance range."""
-        try:
-            result = conn.execute(
-                """SELECT id, name, distance, moving_time, start_date_local
-                   FROM activities
-                   WHERE type = 'Run' AND distance BETWEEN ? AND ?
-                   ORDER BY moving_time ASC
-                   LIMIT 1""",
-                (min_distance, max_distance)
-            ).fetchone()
-            
-            if not result:
-                return None
-            
-            return self._format_record(result, distance_name, units)
-            
-        except Exception as e:
-            self.logger.error(f"Error getting {distance_name} record: {e}")
-            return None
-    
-    def _get_longest_run(self, conn: sqlite3.Connection, units: str) -> Optional[Dict[str, Any]]:
-        """Get longest run record."""
-        try:
-            result = conn.execute(
-                """SELECT id, name, distance, moving_time, start_date_local
-                   FROM activities
-                   WHERE type = 'Run'
-                   ORDER BY distance DESC
-                   LIMIT 1"""
-            ).fetchone()
-            
-            if not result:
-                return None
-            
-            distance = (
-                round(result['distance'] / 1609, 2) if units == 'mi'
-                else round(result['distance'] / 1000, 2)
-            )
-            
-            return self._format_record(result, f"Longest Run: {distance} {units}", units)
-            
-        except Exception as e:
-            self.logger.error(f"Error getting longest run: {e}")
-            return None
-    
+        
     def _format_record(self, activity: Dict[str, Any], distance_name: str, units: str) -> Dict[str, Any]:
         """Format a personal record for display."""
         try:

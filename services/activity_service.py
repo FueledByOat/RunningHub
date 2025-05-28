@@ -16,38 +16,19 @@ class ActivityService(BaseService):
     """Service for handling activity-related operations."""
     
     def get_latest_activity_id(self) -> Optional[int]:
-        """Get the ID of the most recent activity."""
+        """Get the ID of the most recent run activity."""
         try:
             with self._get_connection() as conn:
-                return db_utils.get_latest_activity(conn=conn)
+                return db_utils.get_latest_activity_id(conn=conn, activity_types=['Run'])
         except Exception as e:
             self.logger.error(f"Error getting latest activity: {e}")
             return None
         
-    def get_activity_details(self, activity_id: int, units: str = 'mi') -> Optional[Dict[str, Any]]:
-        """Get detailed activity information with formatted data."""
+    def get_formatted_activity_page_details(self, activity_id: int, units: str = 'mi') -> Optional[Dict[str, Any]]:
+        """Retreives all activity information with formatted data."""
         try:
             with self._get_connection() as conn:
-                conn.row_factory = sqlite3.Row
-                cur = conn.cursor()
-                
-                query = """
-                    SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name
-                    FROM activities as a
-                    LEFT JOIN gear as g ON a.gear_id = g.gear_id
-                    WHERE a.id = ?
-                    AND a.gear_id IS NOT NULL AND a.gear_id != ''
-                    AND a.type IN ('Run', 'Ride')
-                    ORDER BY a.start_date DESC LIMIT 1
-                """
-                
-                cur.execute(query, (activity_id,))
-                result = cur.fetchone()
-                
-                if not result:
-                    return None
-                
-                activity = dict(result)
+                activity = db_utils.get_activity_details_by_id(conn=conn, activity_id=activity_id)
                 return self._format_activity_data(activity, units)
                 
         except sqlite3.Error as e:
@@ -55,7 +36,7 @@ class ActivityService(BaseService):
             raise exception_utils.DatabaseError(f"Failed to get activity data: {e}")
     
     def _format_activity_data(self, activity: Dict[str, Any], units: str) -> Dict[str, Any]:
-        """Format activity data for display."""
+        """Format activity data for display, including unit conversion for miles and kilometers."""
         # Distance conversion
         distance_meters = activity['distance']
         if units == 'mi':

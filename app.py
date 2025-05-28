@@ -151,7 +151,7 @@ class ActivityRoutes:
                 abort(400, "Activity ID is required")
             
             try:
-                activity_data = activity_service.get_activity_details(activity_id, units)
+                activity_data = activity_service.get_formatted_activity_page_details(activity_id, units)
                 if not activity_data:
                     abort(404, "Activity not found")
                

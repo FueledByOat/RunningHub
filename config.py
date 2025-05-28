@@ -1,4 +1,4 @@
-# config.py (project root)
+# config.py
 import logging
 import os
 from typing import Optional

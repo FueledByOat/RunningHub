@@ -29,15 +29,15 @@ class StatisticsService(BaseService):
                 conn.row_factory = db_utils.dict_factory
                 
                 # Get summary statistics
-                summary_stats = self._get_summary_statistics(conn, start_date, units)
+                summary_stats = self._get_summary_statistics(start_date, units)
                 
                 # Get chart data
-                weekly_distances = self._get_weekly_distances(conn, now)
-                pace_data = self._get_pace_trends(conn, units)
+                weekly_distances = self._get_weekly_distances(now)
+                pace_data = self._get_pace_trends(units)
                 
                 # Get shoe data and recent activities
-                shoe_data = self._get_shoe_usage(conn, start_date, units)
-                recent_activities = self._get_recent_activities(conn, units)
+                shoe_data = self._get_shoe_usage(start_date, units)
+                recent_activities = self._get_recent_activities(units)
                 
                 return {
                     'period': period,
@@ -78,52 +78,55 @@ class StatisticsService(BaseService):
         }
         return labels.get(period, 'All time')
     
-    def _get_summary_statistics(self, conn: sqlite3.Connection, start_date: str, units: str) -> Dict[str, Any]:
+    def _get_summary_statistics(self, start_date: str, units: str) -> Dict[str, Any]:
         """Get summary statistics for the period."""
         # Total activities
-        total_activities = conn.execute(
-            "SELECT COUNT(*) as count FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()['count']
+        try:
+            with self._get_connection() as conn:
+                total_activities = db_utils.get_total_activities_count(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting total activity count statistics: {e}")
         
         # Total elevation
-        total_elevation = conn.execute(
-            "SELECT SUM(total_elevation_gain) as count FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()['count'] or 0
-        
+        try:
+            with self._get_connection() as conn:
+                total_elevation = db_utils.get_total_elevation_count(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting total activity elevation statistics: {e}")
+
         # Total distance
-        distance_result = conn.execute(
-            "SELECT SUM(distance) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
+        try:
+            with self._get_connection() as conn:
+                total_distance_meters = db_utils.get_total_distance_count(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting total activity distance statistics: {e}")
         
-        total_distance_meters = distance_result['total'] or 0
         total_distance = (
             round(total_distance_meters / 1609, 2) if units == 'mi' 
             else round(total_distance_meters / 1000, 2)
         )
         
         # Total time
-        time_result = conn.execute(
-            "SELECT SUM(moving_time) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
+        try:
+            with self._get_connection() as conn:
+                total_seconds = db_utils.get_total_time(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting total activity time statistics: {e}")
         
-        total_seconds = time_result['total'] or 0
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         total_time = f"{hours}h {minutes}m"
         
         # Total calories (estimated from kilojoules)
-        calories_result = conn.execute(
-            "SELECT SUM(kilojoules) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
+        try:
+            with self._get_connection() as conn:
+                calories_result = db_utils.get_total_calories(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting total activity calorie statistics: {e}")
         
         total_calories = (
-            round(calories_result['total'] / 4.184) 
-            if calories_result['total'] else 0
+            round(calories_result / 4.184) 
+            if calories_result else 0
         )
         
         return {
@@ -134,18 +137,16 @@ class StatisticsService(BaseService):
             'total_elevation': total_elevation
         }
     
-    def _get_weekly_distances(self, conn: sqlite3.Connection, now: datetime) -> List[float]:
+    def _get_weekly_distances(self, now: datetime) -> List[float]:
         """Get distances for the last 7 days."""
         weekly_distances = [0] * 7
         seven_days_ago = now - timedelta(days=7)
         
-        activities = conn.execute(
-            """SELECT start_date_local, distance 
-               FROM activities 
-               WHERE start_date_local >= ? AND type = 'Run'
-               ORDER BY start_date_local""",
-            (seven_days_ago.strftime('%Y-%m-%d'),)
-        ).fetchall()
+        try:
+            with self._get_connection() as conn:
+                activities = db_utils.get_weekly_distances(conn, seven_days_ago)
+        except Exception as e:
+            self.logger.error(f"Error getting weekly distance statistics: {e}")
         
         for activity in activities:
             try:
@@ -161,16 +162,14 @@ class StatisticsService(BaseService):
         
         return weekly_distances
     
-    def _get_pace_trends(self, conn: sqlite3.Connection, units: str) -> Dict[str, List]:
-        """Get pace trends for the last 10 activities."""
-        activities = conn.execute(
-            """SELECT start_date_local, distance, moving_time 
-               FROM activities 
-               WHERE type = 'Run' AND distance > 0 AND moving_time > 0
-               ORDER BY start_date_local DESC 
-               LIMIT 10"""
-        ).fetchall()
-        
+    def _get_pace_trends(self, units: str) -> Dict[str, List]:
+        """Get pace trends for the last 10 activities."""        
+        try:
+            with self._get_connection() as conn:
+                activities = db_utils.get_pace_trends(conn)
+        except Exception as e:
+            self.logger.error(f"Error getting pace trend statistics: {e}")
+
         dates = []
         values = []
         
@@ -193,22 +192,15 @@ class StatisticsService(BaseService):
         
         return {'dates': dates, 'values': values}
     
-    def _get_shoe_usage(self, conn: sqlite3.Connection, start_date: str, units: str) -> List[Dict[str, Any]]:
+    def _get_shoe_usage(self, start_date: str, units: str) -> List[Dict[str, Any]]:
         """Get shoe usage statistics."""
-        shoes = conn.execute(
-            """SELECT COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_id, 
-                      COUNT(*) as activities,
-                      SUM(a.distance) as total_distance,
-                      MAX(start_date_local) as last_used
-               FROM activities as a
-               LEFT JOIN gear as g ON a.gear_id = g.gear_id
-               WHERE a.gear_id IS NOT NULL AND a.gear_id != ''
-               GROUP BY a.gear_id
-               HAVING MAX(start_date_local) >= ?
-               ORDER BY last_used DESC""",
-            (start_date,)
-        ).fetchall()
-        
+
+        try:
+            with self._get_connection() as conn:
+                shoes = db_utils.get_shoe_usage(conn, start_date)
+        except Exception as e:
+            self.logger.error(f"Error getting shoe usage statistics: {e}")
+
         shoe_data = []
         for shoe in shoes:
             if shoe['total_distance'] and shoe['last_used']:
@@ -230,16 +222,15 @@ class StatisticsService(BaseService):
         
         return shoe_data
     
-    def _get_recent_activities(self, conn: sqlite3.Connection, units: str) -> List[Dict[str, Any]]:
+    def _get_recent_activities(self, units: str) -> List[Dict[str, Any]]:
         """Get recent activities with formatted data."""
-        activities = conn.execute(
-            """SELECT id, name, distance, moving_time, start_date_local
-               FROM activities
-               WHERE type = 'Run'
-               ORDER BY start_date_local DESC
-               LIMIT 5"""
-        ).fetchall()
-        
+
+        try:
+            with self._get_connection() as conn:
+                activities = db_utils.get_recent_activities(conn)
+        except Exception as e:
+            self.logger.error(f"Error getting recent activity statistics: {e}")
+
         activities_list = []
         for activity in activities:
             date_str = datetime.strptime(
