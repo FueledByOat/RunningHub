@@ -13,8 +13,8 @@ function loadExercises() {
       data.exercises.forEach(ex => {
         const li = document.createElement("li");
         li.className = "draggable";
-        li.dataset.id = ex[0];  // ex[0] is id, ex[1] is name
-        li.textContent = ex[1];
+        li.dataset.id = ex['id'];  // ex[0] is id, ex[1] is name
+        li.textContent = ex['name'];
         pool.appendChild(li);
       });
     })
@@ -132,8 +132,8 @@ function loadRoutines() {
       
       data.routines.forEach(r => {
         const opt = document.createElement("option");
-        opt.value = r[0];  // r[0] is id, r[1] is name
-        opt.textContent = r[1];
+        opt.value = r['id'];  // r[0] is id, r[1] is name
+        opt.textContent = r['name'];
         selector.appendChild(opt);
       });
     })
@@ -165,8 +165,8 @@ document.getElementById("load-routine").addEventListener("click", () => {
       data.exercises.forEach(ex => {
         const li = document.createElement("li");
         li.className = "draggable from-routine";
-        li.dataset.id = ex[0];  // ex[0] is id, ex[1] is name
-        li.textContent = ex[1];
+        li.dataset.id = ex['id'];  // ex[0] is id, ex[1] is name
+        li.textContent = ex['name'];
         addRemoveButton(li);
         list.appendChild(li);
       });

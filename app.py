@@ -154,7 +154,7 @@ class ActivityRoutes:
                 activity_data = activity_service.get_activity_details(activity_id, units)
                 if not activity_data:
                     abort(404, "Activity not found")
-                
+               
                 return render_template("activity.html", 
                                      activity=activity_data, units=units)
             except exception_utils.DatabaseError as e:

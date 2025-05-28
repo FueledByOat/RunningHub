@@ -28,7 +28,7 @@ class BaseService(ABC):
     """Abstract base class for all services."""
     
     def __init__(self, db_path: str):
-        self.db_path = Config.DB_PATH
+        self.db_path = db_path
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def _get_connection(self) -> sqlite3.Connection:

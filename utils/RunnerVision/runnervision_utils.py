@@ -56,28 +56,6 @@ class RunAnalyzer:
             raise FileNotFoundError(f"Video directory not found: {self.videos_upload_dir}")
         
         all_files = os.listdir(self.videos_upload_dir)
-
-        # if self.session_id:
-        #     # Filter files by session ID
-        #     session_files = [f for f in all_files if self.session_id in f]
-        #     if not session_files:
-        #         raise FileNotFoundError(f"No files found for session ID: {self.session_id}")
-        # else:
-        #     # Find the most recent session
-        #     session_prefixes = set()
-        #     for filename in all_files:
-        #         if filename.startswith('session_'):
-        #             parts = filename.split('_')
-        #             if len(parts) >= 3:
-        #                 prefix = f"session_{parts[1]}_{parts[2]}"
-        #                 session_prefixes.add(prefix)
-            
-        #     if not session_prefixes:
-        #         raise FileNotFoundError("No session files found")
-            
-        #     # Get the latest session
-        #     self.session_id = sorted(session_prefixes)[-1]
-        #     session_files = [f for f in all_files if self.session_id in f]
         
         # Identify side and rear videos
         self.side_video = next((os.path.join(self.videos_upload_dir, f) for f in all_files if "side" in f.lower()), None)

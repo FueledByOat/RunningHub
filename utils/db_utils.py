@@ -56,7 +56,7 @@ class ConnectionPool:
 # Global connection pool
 _connection_pool = None
 
-def get_connection_pool(db_path: str = Config.DB_PATH) -> ConnectionPool:
+def get_connection_pool(db_path: str) -> ConnectionPool:
     """Get or create global connection pool."""
     global _connection_pool
     if _connection_pool is None:
@@ -67,7 +67,7 @@ def get_connection_pool(db_path: str = Config.DB_PATH) -> ConnectionPool:
 
 
 @contextmanager
-def get_db_connection(db_path: str = Config.DB_PATH):
+def get_db_connection(db_path: str):
     """Context manager for pooled database connections."""
     pool = get_connection_pool(db_path)
     with pool.get_connection() as conn:
@@ -87,7 +87,7 @@ def dict_factory(cursor: sqlite3.Cursor, row: sqlite3.Row) -> Dict[str, Any]:
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
 
-def get_latest_activity(activity_types: List[str] = None, db_path: str = Config.DB_PATH) -> Optional[int]:
+def get_latest_activity(conn) -> Optional[int]:
     """Retrieve latest activity ID by type.
     
     Args:
@@ -100,8 +100,7 @@ def get_latest_activity(activity_types: List[str] = None, db_path: str = Config.
     Raises:
         DatabaseError: If database query fails
     """
-    if activity_types is None:
-        activity_types = ["Run", "Ride"]
+    activity_types = ["Run"]
     
     placeholders = ",".join("?" * len(activity_types))
     query = f"""
@@ -112,16 +111,15 @@ def get_latest_activity(activity_types: List[str] = None, db_path: str = Config.
     """
     
     try:
-        with get_db_connection(db_path) as conn:
-            cur = conn.cursor()
-            cur.execute(query, activity_types)
-            row = cur.fetchone()
-            
-            if row:
-                return row['id']
-            else:
-                logger.warning(f"No activities found for types: {activity_types}")
-                return None
+        cur = conn.cursor()
+        cur.execute(query, activity_types)
+        row = cur.fetchone()
+        
+        if row:
+            return row['id']
+        else:
+            logger.warning(f"No activities found for types: {activity_types}")
+            return None
                 
     except exception_utils.DatabaseError:
         raise
@@ -1219,6 +1217,21 @@ def init_runstrong_db():
             name TEXT,
             date_created DATE
             );
+        ''')
+        conn.commit()
+        c.execute('''                 
+        CREATE TABLE IF NOT EXISTS routine_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            routine_id INTEGER,
+            exercise_id INTEGER,
+            sets INTEGER,
+            reps INTEGER,
+            load_lbs FLOAT,
+            order_index INTEGER,
+            notes TEXT,
+            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
+            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+            )
         ''')
         conn.commit()
         c.execute('''                 

@@ -18,11 +18,12 @@ class ActivityService(BaseService):
     def get_latest_activity_id(self) -> Optional[int]:
         """Get the ID of the most recent activity."""
         try:
-            return db_utils.get_latest_activity()
+            with self._get_connection() as conn:
+                return db_utils.get_latest_activity(conn=conn)
         except Exception as e:
             self.logger.error(f"Error getting latest activity: {e}")
             return None
-    
+        
     def get_activity_details(self, activity_id: int, units: str = 'mi') -> Optional[Dict[str, Any]]:
         """Get detailed activity information with formatted data."""
         try:

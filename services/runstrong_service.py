@@ -15,17 +15,13 @@ from config import Config
 
 class RunStrongService(BaseService):
     """Service for RunStrong strength training operations."""
-    
-    def __init__(self, db_path: str):
-        self.db_path = Config.DB_PATH_RUNSTRONG
 
     def get_exercises(self) -> List[Tuple[int, str]]:
         """Get all available exercises."""
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT id, name FROM exercises")
-                return cursor.fetchall()
+                return cursor.execute("SELECT id, name FROM exercises").fetchall()
         except Exception as e:
             self.logger.error(f"Error getting exercises: {e}")
             raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
