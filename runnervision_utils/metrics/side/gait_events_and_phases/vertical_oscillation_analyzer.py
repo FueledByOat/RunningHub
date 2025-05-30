@@ -577,7 +577,7 @@ class VerticalOscillationAnalyzer:
 
 def vertical_oscillation_wrapper(
     landmarks: LandmarksDict,
-    detector_instance: Optional[VerticalOscillationAnalyzer]    
+    detector_instance: Optional[VerticalOscillationAnalyzer] = None  
 ) -> OscillationResult:
     """
     Standalone wrapper function for vertical oscillation detection.
@@ -603,7 +603,7 @@ def vertical_oscillation_wrapper(
             logger.info("Created default VerticalOscillationAnalyzer instance")
         detector = vertical_oscillation_wrapper._default_detector
 
-    return detector.get_analysis_summary(landmarks)
+    return detector.update(landmarks)
 
 # Example usage and testing
 def example_usage():

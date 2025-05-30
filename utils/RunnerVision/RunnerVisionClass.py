@@ -295,11 +295,11 @@ class RunnerVisionAnalyzer:
         # Calculate knee angle
         knee_angle_right = side_metrics.calculate_knee_angle(landmark_coords, 'right')
         knee_angle_left = side_metrics.calculate_knee_angle(landmark_coords, 'left')
-        self.side_metrics['knee_angle_left'].append(knee_angle_left)
-        self.side_metrics['knee_angle_right'].append(knee_angle_right)
+        self.side_metrics['knee_angle_left'].append(knee_angle_left['knee_angle'])
+        self.side_metrics['knee_angle_right'].append(knee_angle_right['knee_angle'])
 
         # Estimate stride length
-        stride_length = side_metrics.estimate_stride_length(landmark_coords)
+        stride_length = side_metrics.estimate_stride_length(landmark_coords)[0]
         self.side_metrics['stride_instantaneous_estimate_cm'].append(stride_length['instantaneous_estimate_cm'])
         self.side_metrics['stride_length_cm'].append(stride_length['stride_length_cm'])
         self.side_metrics['normalized_stride_length'].append(stride_length['normalized_stride_length'])
@@ -2377,6 +2377,92 @@ class RunnerVisionAnalyzer:
 # -------------------------------------
 # Rear Metrics Sections
 # -------------------------------------
+
+    def extract_rear_metrics(self, landmarks, frame_number, timestamp):
+        """Extract running biomechanics metrics from a single frame
+        for a video shot from the side of a runner, AKA the frontal plane."""
+        # Get normalized landmark positions
+        landmark_coords = {}
+        for name, landmark_id in self.key_points.items():
+            landmark = landmarks.landmark[landmark_id]
+            landmark_coords[name] = (landmark.x, landmark.y, landmark.z, landmark.visibility)
+        
+        # Detect stance phase rear
+        stance_phase_rear = rear_metrics.detect_stance_phase_rear(landmark_coords)
+        self.rear_metrics['stance_phase_detected'].append(stance_phase_rear['is_stance_phase'])
+        self.rear_metrics['stance_foot'].append(stance_phase_rear['stance_foot'])
+        self.rear_metrics['stance_confidence'].append(stance_phase_rear['confidence'])
+
+        # Store basic timestamp data
+        self.rear_metrics['timestamp'].append(timestamp)
+        self.rear_metrics['frame_number'].append(frame_number)
+        
+        # Calculate foot crossover
+        foot_crossover = rear_metrics.calculate_foot_crossover(landmark_coords)
+        self.rear_metrics['left_foot_crossover'].append(foot_crossover["left_foot_crossover"])
+        self.rear_metrics['right_foot_crossover'].append(foot_crossover["right_foot_crossover"])
+        self.rear_metrics['left_distance_from_midline'].append(foot_crossover["left_distance_from_midline"])
+        self.rear_metrics['right_distance_from_midline'].append(foot_crossover["right_distance_from_midline"])
+        
+        # Calculate hip drop
+        hip_drop = rear_metrics.calculate_hip_drop(landmark_coords)
+        self.rear_metrics['hip_drop_value'].append(hip_drop["hip_drop_value"])
+        self.rear_metrics['hip_drop_direction'].append(hip_drop["hip_drop_direction"])
+        self.rear_metrics['hip_drop_severity'].append(hip_drop["severity"])
+
+        # Calculate pelic tilt angle
+        pelvic_tilt = rear_metrics.calculate_pelvic_tilt(landmark_coords)
+        self.rear_metrics['pelvic_tilt_angle'].append(pelvic_tilt["tilt_angle_degrees"])
+        self.rear_metrics['pelvic_tilt_elevated_side'].append(pelvic_tilt["elevated_side"])
+        self.rear_metrics['pelvic_tilt_severity'].append(pelvic_tilt["severity"])
+        self.rear_metrics['pelvic_tilt_normalized'].append(pelvic_tilt["normalized_tilt"])
+        
+        # Calculate knee_alignment
+        knee_alignment = rear_metrics.calculate_knee_alignment(landmark_coords)
+        self.rear_metrics['left_knee_valgus'].append(knee_alignment["left_knee_valgus"])
+        self.rear_metrics['right_knee_valgus'].append(knee_alignment["right_knee_valgus"])   
+        self.rear_metrics['left_knee_varus'].append(knee_alignment["left_knee_varus"])
+        self.rear_metrics['right_knee_varus'].append(knee_alignment["right_knee_varus"]) 
+        self.rear_metrics['left_knee_normalized_deviation'].append(knee_alignment["left_normalized_deviation"])
+        self.rear_metrics['right_knee_normalized_deviation'].append(knee_alignment["right_normalized_deviation"])    
+        self.rear_metrics['knee_severity_left'].append(knee_alignment["severity_left"])
+        self.rear_metrics['knee_severity_right'].append(knee_alignment["severity_right"]) 
+
+        # Calculate ankle_inversion
+        ankle_inversion = rear_metrics.calculate_ankle_inversion(landmark_coords)
+        self.rear_metrics['left_ankle_inversion_value'].append(ankle_inversion["left_inversion_value"])
+        self.rear_metrics['right_ankle_inversion_value'].append(ankle_inversion["right_inversion_value"])
+        self.rear_metrics['left_ankle_normalized_value'].append(ankle_inversion["left_normalized"])
+        self.rear_metrics['right_ankle_normalized_value'].append(ankle_inversion["right_normalized"])
+        self.rear_metrics['left_ankle_pattern'].append(ankle_inversion["left_pattern"])
+        self.rear_metrics['right_ankle_pattern'].append(ankle_inversion["right_pattern"])
+        self.rear_metrics['left_ankle_severity'].append(ankle_inversion["left_severity"])
+        self.rear_metrics['right_ankle_severity'].append(ankle_inversion["right_severity"])
+        self.rear_metrics['left_ankle_angle'].append(ankle_inversion["left_foot_angle"])
+        self.rear_metrics['right_ankle_angle'].append(ankle_inversion["right_foot_angle"])
+
+        # Estimate step_width
+        step_width = rear_metrics.calculate_step_width(landmark_coords)
+        self.rear_metrics['step_width'].append(step_width)
+        
+        # Detect stride_symmetry
+        stride_symmetry = rear_metrics.calculate_stride_symmetry(landmark_coords)
+        self.rear_metrics['symmetry'].append(stride_symmetry)
+
+        # Detect arm_swing_symmetry,
+        arm_swing_mechanics = rear_metrics.calculate_arm_swing_mechanics(landmark_coords)
+        self.rear_metrics['vertical_elbow_diff'].append(arm_swing_mechanics['vertical_elbow_diff'])
+        self.rear_metrics['normalized_vertical_diff'].append(arm_swing_mechanics['normalized_vertical_diff'])
+        self.rear_metrics['left_elbow_angle'].append(arm_swing_mechanics['left_elbow_angle'])
+        self.rear_metrics['right_elbow_angle'].append(arm_swing_mechanics['right_elbow_angle'])
+        self.rear_metrics['normalized_shoulder_diff'].append(arm_swing_mechanics['normalized_shoulder_diff'])
+        self.rear_metrics['normalized_shoulder_width'].append(arm_swing_mechanics['normalized_shoulder_width'])
+        self.rear_metrics['arm_height_symmetry'].append(arm_swing_mechanics['arm_height_symmetry'])
+        self.rear_metrics['elbow_angle_left'].append(arm_swing_mechanics['elbow_angle_left'])
+        self.rear_metrics['elbow_angle_right'].append(arm_swing_mechanics['elbow_angle_right'])
+        self.rear_metrics['left_wrist_crossover'].append(arm_swing_mechanics['left_wrist_crossover'])
+        self.rear_metrics['right_wrist_crossover'].append(arm_swing_mechanics['right_wrist_crossover'])
+        self.rear_metrics['shoulder_rotation'].append(arm_swing_mechanics['shoulder_rotation'])
 
     def draw_rear_analysis(self, image, landmarks, frame_number):
         """Draw pose landmarks and metrics on image."""

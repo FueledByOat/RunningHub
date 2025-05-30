@@ -29,7 +29,7 @@ def estimate_stride_length(
     frame_index: Optional[int] = None,
     height_cm: Optional[float] = None,
     temporal_tracking: Optional[TemporalTrackingData] = None,
-    fps: float = 30.0,
+    fps: float = 60.0,
     threshold_proportion: float = 0.25
 ) -> Tuple[StrideAnalysisResult, Optional[TemporalTrackingData]]:
     """

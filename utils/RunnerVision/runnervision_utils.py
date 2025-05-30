@@ -108,7 +108,7 @@ class RunAnalyzer:
             print(f"Processing side video: {self.side_video}")
             side_output = os.path.join(self.videos_output_dir, f"{self.session_id}_side_processed.mp4")
             self.side_metrics = self.analyzer.process_video(self.side_video, side_output)
-            
+            self.side_video_file = f"{self.session_id}_side_processed.mp4"
             # Save side metrics
             side_metrics_path = os.path.join(self.data_dir, f"{self.session_id}_side_metrics.csv")
             self.side_metrics.to_csv(side_metrics_path, index=False)
@@ -120,7 +120,7 @@ class RunAnalyzer:
         if self.rear_video:
             print(f"Processing rear video: {self.rear_video}")
             rear_output = os.path.join(self.videos_output_dir, f"{self.session_id}_rear_processed.mp4")
-            
+            self.rear_video_file = f"{self.session_id}_rear_processed.mp4"
             # Create a new analyzer instance for rear view
             # This ensures metrics from side view aren't carried over
             rear_analyzer = RunnerVisionAnalyzer()
@@ -184,6 +184,7 @@ class RunAnalyzer:
                 # report_file_path is handled by generate_html_file or can be passed if needed
             )
             generated_report_path = side_report_generator.generate_html_file(output_filename_base="side_angle") # Matches your previous output
+            self.side_report_file = side_report_generator.report_file_name
             if generated_report_path:
                  print(f"Side view report generated: {generated_report_path}") # Or use logging
             else:
@@ -206,7 +207,6 @@ class RunAnalyzer:
         
         # Create report filename
         report_file = os.path.join(self.reports_dir, f"{self.session_id}_rear_angle_report.{output_format}")
-        
         if output_format == 'html':
             rear_report_generator = RearViewReportGenerator(
                 metrics_df=self.rear_metrics,
@@ -215,7 +215,7 @@ class RunAnalyzer:
                 metadata=self.metadata
             )
             generated_report_path = rear_report_generator.generate_html_file(output_filename_base="rear_angle")
-
+            self.rear_report_file = rear_report_generator.report_file_name
             if generated_report_path:
                  print(f"Rear view report generated: {generated_report_path}") # Or use logging
             else:
@@ -1664,10 +1664,11 @@ def run_analysis():
         print(f"An error occurred: {e}")
         import traceback
         traceback.print_exc()
-    return ['reports' + "/" + "RunnerVision_Rear_Report.html",
-        'videos' + "/" + f"{analyzer.session_id}_rear_processed.mp4",
-        'reports' + "/" + "RunnerVision_Side_Report.html",
-        'videos' + "/" + f"{analyzer.session_id}_side_processed.mp4"]
+    # This return is very frail
+    return ['reports' + "/" + analyzer.rear_report_file if hasattr(analyzer, "rear_report_file") else "",
+        'videos' + "/" + analyzer.rear_video_file if hasattr(analyzer, "rear_video_file") else "",
+        'reports' + "/" + analyzer.side_report_file if hasattr(analyzer, "side_report_file") else "",
+        'videos' + "/" + analyzer.side_video_file if hasattr(analyzer, "side_video_file") else ""]
 
 def get_latest_file(directory, keyword, extension):
     files = glob(os.path.join(directory, f"*{keyword}*.{extension}"))

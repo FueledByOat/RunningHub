@@ -175,6 +175,7 @@ class BaseReportGenerator:
     def generate_html_file(self, output_filename_base):
         """Generates the HTML report and saves it to a file."""
         self.report_file_path = os.path.join(self.reports_dir, f"{self.session_id}_{output_filename_base}_{self.view_name.lower()}_report.html")
+        self.report_file_name = f"{self.session_id}_{output_filename_base}_{self.view_name.lower()}_report.html"
         html_content = []
         self._generate_main_report_structure(html_content) # Call the main structure builder
 
@@ -227,7 +228,7 @@ class SideViewReportGenerator(BaseReportGenerator):
         summary_metrics_data = {} # populate this
 
         def add_summary_metric(col_name, title, unit="", val_format="{:.1f}", is_categorical=False, cat_sub_text_format="({percent:.1f}% dominance)"):
-            mean, std, primary, percent = self._get_series_stats(col_name)
+            mean, std, primary, percent = self._get_series_stats(self.metrics_df, col_name)
             
             if is_categorical:
                 summary_metrics_data[f"{col_name}_primary"] = primary
@@ -329,7 +330,7 @@ class SideViewReportGenerator(BaseReportGenerator):
 
         # Arm Swing Amplitude
         if has_amp:
-            amp_mean, _, _, _ = self._get_series_stats('arm_swing_amplitude')
+            amp_mean, _, _, _ = self._get_series_stats(self.metrics_df, 'arm_swing_amplitude')
             summary_data['arm_swing_amplitude_mean'] = amp_mean
             if amp_mean is not None and not pd.isna(amp_mean):
                 amp_rating_text, amp_rating_class, amp_rating_key = "Limited", self.RATING_CLASSES["needs-work"], "needs-work"

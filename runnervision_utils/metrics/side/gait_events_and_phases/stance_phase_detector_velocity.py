@@ -283,8 +283,7 @@ class StancePhaseDetectorVelocity:
 
 def stance_detector_velocity_wrapper(
     landmarks: LandmarksDict,
-    detector_instance: Optional[StancePhaseDetectorVelocity] 
-    
+    detector_instance: Optional[StancePhaseDetectorVelocity] = None
 ) -> StancePhaseResult:
     """
     Standalone wrapper function for stance phase detection.

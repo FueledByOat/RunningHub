@@ -357,7 +357,8 @@ class GroundContactTimeAnalyzer:
         logger.info("GroundContactTimeAnalyzer state reset")
 
 
-def ground_contact_wrapper(landmarks: LandmarksDict, detector_instance: Optional[GroundContactTimeAnalyzer] ) -> GroundContactResult:
+def ground_contact_wrapper(landmarks: LandmarksDict, 
+                           detector_instance: Optional[GroundContactTimeAnalyzer]  = None) -> GroundContactResult:
     """
     Standalone wrapper function for ground contact analysis.
     
@@ -381,7 +382,7 @@ def ground_contact_wrapper(landmarks: LandmarksDict, detector_instance: Optional
             logger.info("Created default GroundContactTimeAnalyzer instance")
         detector = ground_contact_wrapper._default_detector
 
-    return analyzer.update(landmarks)
+    return detector.update(landmarks)
 
 
 if __name__ == "__main__":

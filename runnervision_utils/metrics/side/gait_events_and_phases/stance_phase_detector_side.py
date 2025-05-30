@@ -529,7 +529,7 @@ class StancePhaseDetectorSide:
 
 def stance_detector_side_wrapper( 
     landmarks: LandmarksDict,
-    detector_instance: Optional[StancePhaseDetectorSide]
+    detector_instance: Optional[StancePhaseDetectorSide] = None
 ) -> StanceResult:
     """
     Standalone wrapper function for stance phase detection.

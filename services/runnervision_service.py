@@ -37,7 +37,7 @@ class RunnerVisionService:
             video_side = rv_utils.get_latest_file(base_path, 'side', 'mp4')
             
             return {
-                'report_rear': report_rear,
+                'report_rear': report_rear.replace("static/", "") if report_rear else None,
                 'report_side': report_side.replace("static/", "") if report_side else None,
                 'video_rear': video_rear.replace("static/", "") if video_rear else None,
                 'video_side': video_side.replace("static/", "") if video_side else None
