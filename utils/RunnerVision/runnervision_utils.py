@@ -19,6 +19,8 @@ import cv2
 from datetime import datetime
 from glob import glob
 
+from runnervision_utils.reports.report_generators import SideViewReportGenerator, RearViewReportGenerator
+
 # Import the RunnerVisionAnalyzer class from the core implementation
 from utils.RunnerVision.RunnerVisionClass import RunnerVisionAnalyzer
 
@@ -174,7 +176,18 @@ class RunAnalyzer:
         report_file = os.path.join(self.reports_dir, f"{self.session_id}_side_angle_report.{output_format}")
         
         if output_format == 'html':
-            self._generate_side_html_report(report_file)
+            side_report_generator = SideViewReportGenerator(
+                metrics_df=self.side_metrics,
+                session_id=self.session_id,
+                reports_dir=self.reports_dir, # Pass the base reports directory
+                metadata=self.metadata
+                # report_file_path is handled by generate_html_file or can be passed if needed
+            )
+            generated_report_path = side_report_generator.generate_html_file(output_filename_base="side_angle") # Matches your previous output
+            if generated_report_path:
+                 print(f"Side view report generated: {generated_report_path}") # Or use logging
+            else:
+                 print(f"Failed to generate side view report for session: {self.session_id}")
         elif output_format == 'pdf':
             self._generate_pdf_report(report_file)
         else:
@@ -195,7 +208,19 @@ class RunAnalyzer:
         report_file = os.path.join(self.reports_dir, f"{self.session_id}_rear_angle_report.{output_format}")
         
         if output_format == 'html':
-            self._generate_rear_html_report(report_file)
+            rear_report_generator = RearViewReportGenerator(
+                metrics_df=self.rear_metrics,
+                session_id=self.session_id,
+                reports_dir=self.reports_dir,
+                metadata=self.metadata
+            )
+            generated_report_path = rear_report_generator.generate_html_file(output_filename_base="rear_angle")
+
+            if generated_report_path:
+                 print(f"Rear view report generated: {generated_report_path}") # Or use logging
+            else:
+                 print(f"Failed to generate rear view report for session: {self.session_id}")
+
         elif output_format == 'pdf':
             self._generate_pdf_report(report_file)
         else:
@@ -204,482 +229,482 @@ class RunAnalyzer:
         
         print(f"Report generated: {report_file}")
     
-    def _generate_rear_html_report(self, report_file):
-        """Generate an HTML report with interactive plots."""
-        class RearReportGenerator:
-            def __init__(self, rear_metrics, reports_dir, session_id, metadata=None):
-                # Initialize with None and then create empty DataFrames if None is passed
-                self.rear_metrics = rear_metrics if rear_metrics is not None and not rear_metrics.empty else pd.DataFrame()
-                self.session_id = session_id
-                self.metadata = metadata if metadata else {}
-                self.report_file_path = reports_dir
-                self.reports_dir = reports_dir
+    # def _generate_rear_html_report(self, report_file):
+    #     """Generate an HTML report with interactive plots."""
+    #     class RearReportGenerator:
+    #         def __init__(self, rear_metrics, reports_dir, session_id, metadata=None):
+    #             # Initialize with None and then create empty DataFrames if None is passed
+    #             self.rear_metrics = rear_metrics if rear_metrics is not None and not rear_metrics.empty else pd.DataFrame()
+    #             self.session_id = session_id
+    #             self.metadata = metadata if metadata else {}
+    #             self.report_file_path = reports_dir
+    #             self.reports_dir = reports_dir
 
-                # Summary data cache for recommendations or other inter-method use
-                self.summary_data_cache = {}
+    #             # Summary data cache for recommendations or other inter-method use
+    #             self.summary_data_cache = {}
 
 
-                # --- Reusable Styling and Rating Definitions ---
-                self.RATING_CLASSES = {
-                    "optimal": "rating-optimal",
-                    "good": "rating-good",
-                    "fair": "rating-fair",
-                    "needs-work": "rating-needs-work",
-                }
-                self.PROGRESS_COLORS = {
-                    "optimal": "#2ecc71", # Green
-                    "good": "#3498db",    # Blue
-                    "fair": "#f39c12",    # Orange
-                    "needs-work": "#e74c3c", # Red
-                }
+    #             # --- Reusable Styling and Rating Definitions ---
+    #             self.RATING_CLASSES = {
+    #                 "optimal": "rating-optimal",
+    #                 "good": "rating-good",
+    #                 "fair": "rating-fair",
+    #                 "needs-work": "rating-needs-work",
+    #             }
+    #             self.PROGRESS_COLORS = {
+    #                 "optimal": "#2ecc71", # Green
+    #                 "good": "#3498db",    # Blue
+    #                 "fair": "#f39c12",    # Orange
+    #                 "needs-work": "#e74c3c", # Red
+    #             }
 
-            # --- Reusable Helper functions for HTML generation (from previous refactoring) ---
-            def _add_html_head(self, html_content, report_title="Analysis Report"):
-                # (Identical to the one provided in the side_view refactoring)
-                # (Ensure 'RunnerVisionLogo_transparent.png' is accessible)
-                html_content.extend([
-                    "<!DOCTYPE html>",
-                    "<html lang='en'>",
-                    "<head>",
-                    "    <meta charset='UTF-8'>",
-                    "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>",
-                    f"    <title>{report_title}</title>",
-                    "    <img src='RunnerVisionLogo_transparent.png' alt='RunnerVision Logo' width='503' height='195' style='display: block; margin: 20px auto;'>",
-                    "    <style>",
-                    "        body { font-family: Arial, sans-serif; margin: 0; padding:0; background-color: #f4f4f4; color: #333; }",
-                    "        .container { max-width: 1200px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }",
-                    "        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; }",
-                    "        .header h1 { color: #2c3e50; margin-bottom: 5px; } .header h2 { color: #34495e; margin-top:0; font-size: 1.2em;}",
-                    "        .section { margin-bottom: 30px; padding: 20px; background-color: #fdfdfd; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.07);}",
-                    "        .section h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top:0; margin-bottom:20px; font-size: 1.5em; }",
-                    "        .section h3 { color: #34495e; margin-top: 15px; margin-bottom: 10px; font-size: 1.2em;}",
-                    "        .metric-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e9e9e9; min-height: 120px; display: flex; flex-direction: column; justify-content: flex-start; }",
-                    "        .metric-title { font-size: 1em; color: #555; margin-bottom: 8px; font-weight: bold; }",
-                    "        .metric-value { font-size: 1.8em; font-weight: bold; color: #2980b9; margin-bottom: 5px; }",
-                    "        .metric-value-small { font-size: 1.5em; }",
-                    "        .metric-std { font-size: 0.8em; color: #7f8c8d; }",
-                    "        .row { display: flex; flex-wrap: wrap; margin-left: -10px; margin-right: -10px; }",
-                    "        .column { flex: 1 1 300px; padding: 10px; box-sizing: border-box; }",
-                    "        .chart-container { width: 100%; margin-bottom: 20px; }",
-                    "        img.chart { max-width: 100%; height: auto; border-radius: 5px; border: 1px solid #ddd; }",
-                    "        .rating { font-size: 0.95em; font-weight: bold; padding: 3px 0; }",
-                    f"       .rating-optimal {{ color: {self.PROGRESS_COLORS['optimal']}; }}",
-                    f"       .rating-good {{ color: {self.PROGRESS_COLORS['good']}; }}",
-                    f"       .rating-fair {{ color: {self.PROGRESS_COLORS['fair']}; }}",
-                    f"       .rating-needs-work {{ color: {self.PROGRESS_COLORS['needs-work']}; }}",
-                    "        .metric-comparison { display: flex; align-items: center; margin-top: 10px; justify-content: space-around; background-color: #f0f0f0; padding: 15px; border-radius: 5px;}",
-                    "        .metric-comparison-item { flex: 1; text-align: center; }",
-                    "        .comparison-divider { font-size: 1.2em; margin: 0 15px; color: #7f8c8d; }",
-                    "        .data-table { width: 100%; border-collapse: collapse; margin-top: 0px; }",
-                    "        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size:0.9em; }",
-                    "        .data-table th { background-color: #3498db; color: white; font-weight:bold; }",
-                    "        .data-table tr:nth-child(even) { background-color: #f9f9f9; }",
-                    "        .progress-container { width: 100%; background-color: #e0e0e0; border-radius: 5px; margin-top: 5px; height: 20px; overflow: hidden; }",
-                    "        .progress-bar { height: 100%; border-radius: 5px; text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.5s ease-in-out; }",
-                    f"       .progress-bar.optimal {{ background-color: {self.PROGRESS_COLORS['optimal']}; }}",
-                    f"       .progress-bar.good {{ background-color: {self.PROGRESS_COLORS['good']}; }}",
-                    f"       .progress-bar.fair {{ background-color: {self.PROGRESS_COLORS['fair']}; }}",
-                    f"       .progress-bar.needs-work {{ background-color: {self.PROGRESS_COLORS['needs-work']}; }}",
-                    "        ul { padding-left: 20px; margin-top: 5px;} li { margin-bottom: 8px; font-size: 0.95em; }",
-                    "        .sub-text { font-size: 0.8em; color: #666; margin-top: 5px; }",
-                    "    </style>",
-                    "</head>",
-                    "<body>",
-                    "    <div class='container'>",
-                    f"        <div class='header'><h1>Rear View Running Analysis</h1><h2>Session: {self.session_id}</h2></div>"
-                ])
+    #         # --- Reusable Helper functions for HTML generation (from previous refactoring) ---
+    #         def _add_html_head(self, html_content, report_title="Analysis Report"):
+    #             # (Identical to the one provided in the side_view refactoring)
+    #             # (Ensure 'RunnerVisionLogo_transparent.png' is accessible)
+    #             html_content.extend([
+    #                 "<!DOCTYPE html>",
+    #                 "<html lang='en'>",
+    #                 "<head>",
+    #                 "    <meta charset='UTF-8'>",
+    #                 "    <meta name='viewport' content='width=device-width, initial-scale=1.0'>",
+    #                 f"    <title>{report_title}</title>",
+    #                 "    <img src='RunnerVisionLogo_transparent.png' alt='RunnerVision Logo' width='503' height='195' style='display: block; margin: 20px auto;'>",
+    #                 "    <style>",
+    #                 "        body { font-family: Arial, sans-serif; margin: 0; padding:0; background-color: #f4f4f4; color: #333; }",
+    #                 "        .container { max-width: 1200px; margin: 20px auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }",
+    #                 "        .header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #e0e0e0; }",
+    #                 "        .header h1 { color: #2c3e50; margin-bottom: 5px; } .header h2 { color: #34495e; margin-top:0; font-size: 1.2em;}",
+    #                 "        .section { margin-bottom: 30px; padding: 20px; background-color: #fdfdfd; border-radius: 8px; box-shadow: 0 0 8px rgba(0,0,0,0.07);}",
+    #                 "        .section h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-top:0; margin-bottom:20px; font-size: 1.5em; }",
+    #                 "        .section h3 { color: #34495e; margin-top: 15px; margin-bottom: 10px; font-size: 1.2em;}",
+    #                 "        .metric-box { background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e9e9e9; min-height: 120px; display: flex; flex-direction: column; justify-content: flex-start; }",
+    #                 "        .metric-title { font-size: 1em; color: #555; margin-bottom: 8px; font-weight: bold; }",
+    #                 "        .metric-value { font-size: 1.8em; font-weight: bold; color: #2980b9; margin-bottom: 5px; }",
+    #                 "        .metric-value-small { font-size: 1.5em; }",
+    #                 "        .metric-std { font-size: 0.8em; color: #7f8c8d; }",
+    #                 "        .row { display: flex; flex-wrap: wrap; margin-left: -10px; margin-right: -10px; }",
+    #                 "        .column { flex: 1 1 300px; padding: 10px; box-sizing: border-box; }",
+    #                 "        .chart-container { width: 100%; margin-bottom: 20px; }",
+    #                 "        img.chart { max-width: 100%; height: auto; border-radius: 5px; border: 1px solid #ddd; }",
+    #                 "        .rating { font-size: 0.95em; font-weight: bold; padding: 3px 0; }",
+    #                 f"       .rating-optimal {{ color: {self.PROGRESS_COLORS['optimal']}; }}",
+    #                 f"       .rating-good {{ color: {self.PROGRESS_COLORS['good']}; }}",
+    #                 f"       .rating-fair {{ color: {self.PROGRESS_COLORS['fair']}; }}",
+    #                 f"       .rating-needs-work {{ color: {self.PROGRESS_COLORS['needs-work']}; }}",
+    #                 "        .metric-comparison { display: flex; align-items: center; margin-top: 10px; justify-content: space-around; background-color: #f0f0f0; padding: 15px; border-radius: 5px;}",
+    #                 "        .metric-comparison-item { flex: 1; text-align: center; }",
+    #                 "        .comparison-divider { font-size: 1.2em; margin: 0 15px; color: #7f8c8d; }",
+    #                 "        .data-table { width: 100%; border-collapse: collapse; margin-top: 0px; }",
+    #                 "        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size:0.9em; }",
+    #                 "        .data-table th { background-color: #3498db; color: white; font-weight:bold; }",
+    #                 "        .data-table tr:nth-child(even) { background-color: #f9f9f9; }",
+    #                 "        .progress-container { width: 100%; background-color: #e0e0e0; border-radius: 5px; margin-top: 5px; height: 20px; overflow: hidden; }",
+    #                 "        .progress-bar { height: 100%; border-radius: 5px; text-align: center; line-height: 20px; color: white; font-size: 12px; transition: width 0.5s ease-in-out; }",
+    #                 f"       .progress-bar.optimal {{ background-color: {self.PROGRESS_COLORS['optimal']}; }}",
+    #                 f"       .progress-bar.good {{ background-color: {self.PROGRESS_COLORS['good']}; }}",
+    #                 f"       .progress-bar.fair {{ background-color: {self.PROGRESS_COLORS['fair']}; }}",
+    #                 f"       .progress-bar.needs-work {{ background-color: {self.PROGRESS_COLORS['needs-work']}; }}",
+    #                 "        ul { padding-left: 20px; margin-top: 5px;} li { margin-bottom: 8px; font-size: 0.95em; }",
+    #                 "        .sub-text { font-size: 0.8em; color: #666; margin-top: 5px; }",
+    #                 "    </style>",
+    #                 "</head>",
+    #                 "<body>",
+    #                 "    <div class='container'>",
+    #                 f"        <div class='header'><h1>Rear View Running Analysis</h1><h2>Session: {self.session_id}</h2></div>"
+    #             ])
 
-            def _add_metric_box(self, html_content, title, value_str, unit="", std_dev_str=None, rating_text=None, rating_class=None, progress_percent=None, progress_bar_class_key=None, sub_text=None):
-                # (Identical to the one provided in the side_view refactoring)
-                html_content.append("            <div class='column'>")
-                html_content.append("                <div class='metric-box'>")
-                html_content.append(f"                    <div class='metric-title'>{title}</div>")
-                main_value_display = f"{value_str}{unit}"
-                if std_dev_str:
-                    main_value_display += f" <span class='metric-std'>&plusmn; {std_dev_str}{unit}</span>"
-                html_content.append(f"                    <div class='metric-value'>{main_value_display}</div>")
-                if rating_text and rating_class:
-                    html_content.append(f"                    <div class='rating {rating_class}'>{rating_text}</div>")
-                if progress_percent is not None and progress_bar_class_key:
-                    progress_text_val = f"{progress_percent:.0f}%"
-                    # Customize progress bar text if needed for specific metrics
-                    # if title == "Specific Metric": progress_text_val = f"{value_str}"
-                    html_content.append("                    <div class='progress-container'>")
-                    html_content.append(f"                        <div class='progress-bar {progress_bar_class_key}' style='width: {min(float(progress_percent), 100)}%;'>{progress_text_val}</div>")
-                    html_content.append("                    </div>")
-                if sub_text:
-                    html_content.append(f"                    <div class='sub-text'>{sub_text}</div>")
-                html_content.append("                </div>")
-                html_content.append("            </div>")
+    #         def _add_metric_box(self, html_content, title, value_str, unit="", std_dev_str=None, rating_text=None, rating_class=None, progress_percent=None, progress_bar_class_key=None, sub_text=None):
+    #             # (Identical to the one provided in the side_view refactoring)
+    #             html_content.append("            <div class='column'>")
+    #             html_content.append("                <div class='metric-box'>")
+    #             html_content.append(f"                    <div class='metric-title'>{title}</div>")
+    #             main_value_display = f"{value_str}{unit}"
+    #             if std_dev_str:
+    #                 main_value_display += f" <span class='metric-std'>&plusmn; {std_dev_str}{unit}</span>"
+    #             html_content.append(f"                    <div class='metric-value'>{main_value_display}</div>")
+    #             if rating_text and rating_class:
+    #                 html_content.append(f"                    <div class='rating {rating_class}'>{rating_text}</div>")
+    #             if progress_percent is not None and progress_bar_class_key:
+    #                 progress_text_val = f"{progress_percent:.0f}%"
+    #                 # Customize progress bar text if needed for specific metrics
+    #                 # if title == "Specific Metric": progress_text_val = f"{value_str}"
+    #                 html_content.append("                    <div class='progress-container'>")
+    #                 html_content.append(f"                        <div class='progress-bar {progress_bar_class_key}' style='width: {min(float(progress_percent), 100)}%;'>{progress_text_val}</div>")
+    #                 html_content.append("                    </div>")
+    #             if sub_text:
+    #                 html_content.append(f"                    <div class='sub-text'>{sub_text}</div>")
+    #             html_content.append("                </div>")
+    #             html_content.append("            </div>")
 
-            def _get_series_stats(self, df, col_name, drop_na_val="not_applicable"):
-                # (Modified to take df as argument, otherwise identical)
-                if col_name not in df.columns or df[col_name].dropna().empty:
-                    return None, None, "N/A", 0
+    #         def _get_series_stats(self, df, col_name, drop_na_val="not_applicable"):
+    #             # (Modified to take df as argument, otherwise identical)
+    #             if col_name not in df.columns or df[col_name].dropna().empty:
+    #                 return None, None, "N/A", 0
 
-                series = df[col_name]
-                if series.dtype == 'object':
-                    try:
-                        series_numeric = pd.to_numeric(series, errors='coerce')
-                        if not series_numeric.isna().all(): series = series_numeric
-                    except Exception: pass
+    #             series = df[col_name]
+    #             if series.dtype == 'object':
+    #                 try:
+    #                     series_numeric = pd.to_numeric(series, errors='coerce')
+    #                     if not series_numeric.isna().all(): series = series_numeric
+    #                 except Exception: pass
 
-                if pd.api.types.is_numeric_dtype(series):
-                    series_cleaned = series[~pd.isna(series) & ~np.isinf(series)]
-                    if series_cleaned.empty: return None, None, "N/A", 0
-                    return series_cleaned.mean(), series_cleaned.std(), None, None
-                else:
-                    cleaned_series = series.replace([drop_na_val, 'unknown', 'None', None, ''], pd.NA).dropna()
-                    if cleaned_series.empty: return None, None, "N/A", 0
-                    counts = cleaned_series.value_counts()
-                    if counts.empty: return None, None, "N/A", 0
-                    primary_val = str(counts.idxmax())
-                    percent_val = (counts.max() / counts.sum()) * 100 if counts.sum() > 0 else 0
-                    return None, None, primary_val, percent_val
+    #             if pd.api.types.is_numeric_dtype(series):
+    #                 series_cleaned = series[~pd.isna(series) & ~np.isinf(series)]
+    #                 if series_cleaned.empty: return None, None, "N/A", 0
+    #                 return series_cleaned.mean(), series_cleaned.std(), None, None
+    #             else:
+    #                 cleaned_series = series.replace([drop_na_val, 'unknown', 'None', None, ''], pd.NA).dropna()
+    #                 if cleaned_series.empty: return None, None, "N/A", 0
+    #                 counts = cleaned_series.value_counts()
+    #                 if counts.empty: return None, None, "N/A", 0
+    #                 primary_val = str(counts.idxmax())
+    #                 percent_val = (counts.max() / counts.sum()) * 100 if counts.sum() > 0 else 0
+    #                 return None, None, primary_val, percent_val
 
-            def _generate_session_info_section(self, html_content):
-                # (Identical to the one provided in the side_view refactoring)
-                if self.metadata:
-                    html_content.extend([
-                        "        <div class='section'>",
-                        "            <h2>Session Information</h2>",
-                        "            <div class='metric-box' style='padding: 5px 15px 15px 15px; min-height:auto;'>",
-                        "                <table class='data-table'>",
-                    ])
-                    for key, value in self.metadata.items():
-                        html_content.append(f"                    <tr><td><strong>{key.replace('_', ' ').title()}:</strong></td><td>{value}</td></tr>")
-                    html_content.extend([
-                        "                </table>",
-                        "            </div>",
-                        "        </div>",
-                    ])
+    #         def _generate_session_info_section(self, html_content):
+    #             # (Identical to the one provided in the side_view refactoring)
+    #             if self.metadata:
+    #                 html_content.extend([
+    #                     "        <div class='section'>",
+    #                     "            <h2>Session Information</h2>",
+    #                     "            <div class='metric-box' style='padding: 5px 15px 15px 15px; min-height:auto;'>",
+    #                     "                <table class='data-table'>",
+    #                 ])
+    #                 for key, value in self.metadata.items():
+    #                     html_content.append(f"                    <tr><td><strong>{key.replace('_', ' ').title()}:</strong></td><td>{value}</td></tr>")
+    #                 html_content.extend([
+    #                     "                </table>",
+    #                     "            </div>",
+    #                     "        </div>",
+    #                 ])
 
-            # --- Rear View Specific Section Generators ---
-            def _generate_rear_metrics_summary_section(self, html_content):
-                if self.rear_metrics.empty:
-                    html_content.append("<div class='section'><h2>Rear Metrics Summary</h2><div class='metric-box'><p>No rear view metrics data available.</p></div></div>")
-                    return {}
+    #         # --- Rear View Specific Section Generators ---
+    #         def _generate_rear_metrics_summary_section(self, html_content):
+    #             if self.rear_metrics.empty:
+    #                 html_content.append("<div class='section'><h2>Rear Metrics Summary</h2><div class='metric-box'><p>No rear view metrics data available.</p></div></div>")
+    #                 return {}
 
-                html_content.extend([
-                    "        <div class='section'>",
-                    "            <h2>Rear Metrics Summary</h2>",
-                    "            <div class='row'>"
-                ])
+    #             html_content.extend([
+    #                 "        <div class='section'>",
+    #                 "            <h2>Rear Metrics Summary</h2>",
+    #                 "            <div class='row'>"
+    #             ])
 
-                summary_data = {}
+    #             summary_data = {}
 
-                # Crossover Percentages (Special Calculation)
-                for side in ['left', 'right']:
-                    if f'{side}_foot_crossover' in self.rear_metrics.columns and \
-                    'stance_foot' in self.rear_metrics.columns and \
-                    'stance_phase_detected' in self.rear_metrics.columns:
+    #             # Crossover Percentages (Special Calculation)
+    #             for side in ['left', 'right']:
+    #                 if f'{side}_foot_crossover' in self.rear_metrics.columns and \
+    #                 'stance_foot' in self.rear_metrics.columns and \
+    #                 'stance_phase_detected' in self.rear_metrics.columns:
                         
-                        side_stance_frames = self.rear_metrics[
-                            (self.rear_metrics['stance_foot'] == side) &
-                            (self.rear_metrics['stance_phase_detected'] == True)
-                        ]
+    #                     side_stance_frames = self.rear_metrics[
+    #                         (self.rear_metrics['stance_foot'] == side) &
+    #                         (self.rear_metrics['stance_phase_detected'] == True)
+    #                     ]
                         
-                        if not side_stance_frames.empty:
-                            crossover_frames = side_stance_frames[side_stance_frames[f'{side}_foot_crossover'] == True]
-                            crossover_percent = (len(crossover_frames) / len(side_stance_frames)) * 100 if len(side_stance_frames) > 0 else 0
-                        else:
-                            crossover_percent = 0.0 # No stance frames for this side, so 0% crossover
+    #                     if not side_stance_frames.empty:
+    #                         crossover_frames = side_stance_frames[side_stance_frames[f'{side}_foot_crossover'] == True]
+    #                         crossover_percent = (len(crossover_frames) / len(side_stance_frames)) * 100 if len(side_stance_frames) > 0 else 0
+    #                     else:
+    #                         crossover_percent = 0.0 # No stance frames for this side, so 0% crossover
 
-                        summary_data[f'{side}_crossover_percent'] = crossover_percent
+    #                     summary_data[f'{side}_crossover_percent'] = crossover_percent
                         
-                        # Rating for crossover (lower is better, e.g. <5% optimal, <10% good)
-                        rating_text, rating_class, rating_key = "High", self.RATING_CLASSES["needs-work"], "needs-work"
-                        if crossover_percent < 5: rating_text, rating_class, rating_key = "Optimal", self.RATING_CLASSES["optimal"], "optimal"
-                        elif crossover_percent < 10: rating_text, rating_class, rating_key = "Good", self.RATING_CLASSES["good"], "good"
-                        elif crossover_percent < 20: rating_text, rating_class, rating_key = "Fair", self.RATING_CLASSES["fair"], "fair"
+    #                     # Rating for crossover (lower is better, e.g. <5% optimal, <10% good)
+    #                     rating_text, rating_class, rating_key = "High", self.RATING_CLASSES["needs-work"], "needs-work"
+    #                     if crossover_percent < 5: rating_text, rating_class, rating_key = "Optimal", self.RATING_CLASSES["optimal"], "optimal"
+    #                     elif crossover_percent < 10: rating_text, rating_class, rating_key = "Good", self.RATING_CLASSES["good"], "good"
+    #                     elif crossover_percent < 20: rating_text, rating_class, rating_key = "Fair", self.RATING_CLASSES["fair"], "fair"
 
-                        self._add_metric_box(html_content, f"{side.capitalize()} Foot Crossover", f"{crossover_percent:.1f}%",
-                                            rating_text=rating_text, rating_class=rating_class,
-                                            progress_percent=(100 - crossover_percent), # Inverted for "good" bar
-                                            progress_bar_class_key=rating_key,
-                                            sub_text="% of stance phase frames crossing midline.")
-                    else:
-                        summary_data[f'{side}_crossover_percent'] = None
-                        self._add_metric_box(html_content, f"{side.capitalize()} Foot Crossover", "N/A", sub_text="Data not available.")
+    #                     self._add_metric_box(html_content, f"{side.capitalize()} Foot Crossover", f"{crossover_percent:.1f}%",
+    #                                         rating_text=rating_text, rating_class=rating_class,
+    #                                         progress_percent=(100 - crossover_percent), # Inverted for "good" bar
+    #                                         progress_bar_class_key=rating_key,
+    #                                         sub_text="% of stance phase frames crossing midline.")
+    #                 else:
+    #                     summary_data[f'{side}_crossover_percent'] = None
+    #                     self._add_metric_box(html_content, f"{side.capitalize()} Foot Crossover", "N/A", sub_text="Data not available.")
 
 
-                # Other Rear Metrics
-                def add_rear_metric(col_name, title, unit="", val_format="{:.2f}", std_val_format="{:.2f}", is_categorical=False):
-                    mean, std, primary, percent = self._get_series_stats(self.rear_metrics, col_name)
+    #             # Other Rear Metrics
+    #             def add_rear_metric(col_name, title, unit="", val_format="{:.2f}", std_val_format="{:.2f}", is_categorical=False):
+    #                 mean, std, primary, percent = self._get_series_stats(self.rear_metrics, col_name)
                     
-                    if is_categorical:
-                        summary_data[f"{col_name}_primary"] = primary
-                        summary_data[f"{col_name}_percent"] = percent
-                        sub_text = f"({percent:.1f}% dominance)" if primary != "N/A" else None
-                        self._add_metric_box(html_content, title, primary if primary else "N/A", sub_text=sub_text)
-                    else:
-                        summary_data[f"{col_name}_mean"] = mean
-                        summary_data[f"{col_name}_std"] = std
-                        value_str = val_format.format(mean) if mean is not None else "N/A"
-                        std_str = std_val_format.format(std) if std is not None else None
-                        # Add rating logic here if applicable for these metrics
-                        self._add_metric_box(html_content, title, value_str, unit=unit, std_dev_str=std_str)
+    #                 if is_categorical:
+    #                     summary_data[f"{col_name}_primary"] = primary
+    #                     summary_data[f"{col_name}_percent"] = percent
+    #                     sub_text = f"({percent:.1f}% dominance)" if primary != "N/A" else None
+    #                     self._add_metric_box(html_content, title, primary if primary else "N/A", sub_text=sub_text)
+    #                 else:
+    #                     summary_data[f"{col_name}_mean"] = mean
+    #                     summary_data[f"{col_name}_std"] = std
+    #                     value_str = val_format.format(mean) if mean is not None else "N/A"
+    #                     std_str = std_val_format.format(std) if std is not None else None
+    #                     # Add rating logic here if applicable for these metrics
+    #                     self._add_metric_box(html_content, title, value_str, unit=unit, std_dev_str=std_str)
                 
-                # Note: Original 'hip_drop_value' format was .4f for mean and .4 for std. Adjusting to .2f for consistency.
-                add_rear_metric('hip_drop_value', "Hip Drop Value", unit="cm", val_format="{:.2f}", std_val_format="{:.2f}")
-                add_rear_metric('pelvic_tilt_angle', "Pelvic Tilt Angle", unit="°")
-                add_rear_metric('symmetry', "Stride Symmetry", unit="%", val_format="{:.1f}") # Assuming 'symmetry' is numeric %
-                add_rear_metric('shoulder_rotation', "Shoulder Rotation", is_categorical=True)
+    #             # Note: Original 'hip_drop_value' format was .4f for mean and .4 for std. Adjusting to .2f for consistency.
+    #             add_rear_metric('hip_drop_value', "Hip Drop Value", unit="cm", val_format="{:.2f}", std_val_format="{:.2f}")
+    #             add_rear_metric('pelvic_tilt_angle', "Pelvic Tilt Angle", unit="°")
+    #             add_rear_metric('symmetry', "Stride Symmetry", unit="%", val_format="{:.1f}") # Assuming 'symmetry' is numeric %
+    #             add_rear_metric('shoulder_rotation', "Shoulder Rotation", is_categorical=True)
 
-                # Watch Data (can be duplicated from side view if the source df is the same or merged)
-                for col, title, unit, fmt in [
-                    ('vertical_oscillation', "Vertical Oscillation", "cm", "{:.1f}"),
-                    ('ground_contact_time', "Ground Contact Time", "ms", "{:.0f}"),
-                    ('stride_length', "Stride Length", "cm", "{:.1f}"), # Assuming this is 'stride_length_cm' from side
-                    ('cadence', "Cadence", "spm", "{:.0f}")
-                ]:
-                    if col in self.rear_metrics.columns: # Check if watch data is in rear_metrics
-                        add_rear_metric(col, title, unit, fmt)
+    #             # Watch Data (can be duplicated from side view if the source df is the same or merged)
+    #             for col, title, unit, fmt in [
+    #                 ('vertical_oscillation', "Vertical Oscillation", "cm", "{:.1f}"),
+    #                 ('ground_contact_time', "Ground Contact Time", "ms", "{:.0f}"),
+    #                 ('stride_length', "Stride Length", "cm", "{:.1f}"), # Assuming this is 'stride_length_cm' from side
+    #                 ('cadence', "Cadence", "spm", "{:.0f}")
+    #             ]:
+    #                 if col in self.rear_metrics.columns: # Check if watch data is in rear_metrics
+    #                     add_rear_metric(col, title, unit, fmt)
 
-                html_content.extend(["            </div>", "        </div>"])
-                self.summary_data_cache['rear'] = summary_data # Cache for later use (e.g. recommendations)
-                return summary_data
+    #             html_content.extend(["            </div>", "        </div>"])
+    #             self.summary_data_cache['rear'] = summary_data # Cache for later use (e.g. recommendations)
+    #             return summary_data
 
-            def _generate_rear_plots_section(self, html_content, report_file_path):
-                # (Structurally identical to _generate_plots_section, but calls _save_rear_metric_plots)
-                if self.rear_metrics.empty: return
+    #         def _generate_rear_plots_section(self, html_content, report_file_path):
+    #             # (Structurally identical to _generate_plots_section, but calls _save_rear_metric_plots)
+    #             if self.rear_metrics.empty: return
 
-                plot_files = self._save_rear_metric_plots() # Specific to rear view
+    #             plot_files = self._save_rear_metric_plots() # Specific to rear view
 
-                if not plot_files:
-                    html_content.append("<div class='section'><h2>Rear Metrics Visualization</h2><div class='metric-box'><p>No plots generated or available for rear view.</p></div></div>")
-                    return
+    #             if not plot_files:
+    #                 html_content.append("<div class='section'><h2>Rear Metrics Visualization</h2><div class='metric-box'><p>No plots generated or available for rear view.</p></div></div>")
+    #                 return
 
-                html_content.extend(["        <div class='section'>", "            <h2>Rear Metrics Visualization</h2>"])
-                for i, plot_file in enumerate(plot_files):
-                    if i % 2 == 0:
-                        if i > 0: html_content.append("            </div>")
-                        html_content.append("            <div class='row'>")
+    #             html_content.extend(["        <div class='section'>", "            <h2>Rear Metrics Visualization</h2>"])
+    #             for i, plot_file in enumerate(plot_files):
+    #                 if i % 2 == 0:
+    #                     if i > 0: html_content.append("            </div>")
+    #                     html_content.append("            <div class='row'>")
                     
-                    base_dir = os.path.dirname(report_file_path) if report_file_path else "."
-                    rel_path = plot_file
-                    try:
-                        if os.path.isabs(plot_file) and os.path.commonprefix([plot_file, os.path.abspath(base_dir)]):
-                            rel_path = os.path.relpath(plot_file, base_dir)
-                    except ValueError: pass
+    #                 base_dir = os.path.dirname(report_file_path) if report_file_path else "."
+    #                 rel_path = plot_file
+    #                 try:
+    #                     if os.path.isabs(plot_file) and os.path.commonprefix([plot_file, os.path.abspath(base_dir)]):
+    #                         rel_path = os.path.relpath(plot_file, base_dir)
+    #                 except ValueError: pass
 
-                    html_content.extend([
-                        "                <div class='column'>",
-                        "                    <div class='chart-container'>",
-                        f"                        <img src='{rel_path}' alt='Rear View Plot {i+1}' class='chart'>",
-                        "                    </div>",
-                        "                </div>"
-                    ])
-                if plot_files: html_content.append("            </div>")
-                html_content.append("        </div>")
+    #                 html_content.extend([
+    #                     "                <div class='column'>",
+    #                     "                    <div class='chart-container'>",
+    #                     f"                        <img src='{rel_path}' alt='Rear View Plot {i+1}' class='chart'>",
+    #                     "                    </div>",
+    #                     "                </div>"
+    #                 ])
+    #             if plot_files: html_content.append("            </div>")
+    #             html_content.append("        </div>")
 
 
-            def _generate_rear_recommendations_section(self, html_content):
-                # (Structurally identical, calls _generate_rear_recommendations)
-                if self.rear_metrics.empty: return
+    #         def _generate_rear_recommendations_section(self, html_content):
+    #             # (Structurally identical, calls _generate_rear_recommendations)
+    #             if self.rear_metrics.empty: return
                 
-                recommendations = self._generate_rear_recommendations()
+    #             recommendations = self._generate_rear_recommendations()
 
-                html_content.append("<div class='section'><h2>Rear View Gait Analysis & Recommendations</h2><div class='metric-box' style='min-height:auto; padding: 5px 15px 15px 15px;'>")
-                if recommendations:
-                    html_content.append("<h3>Form Recommendations (Rear View)</h3><ul>")
-                    for rec in recommendations:
-                        html_content.append(f"    <li>{rec}</li>")
-                    html_content.append("</ul>")
-                else:
-                    html_content.append("<p>No specific rear view recommendations generated. Focus on overall balance and symmetry.</p>")
-                html_content.append("</div></div>")
+    #             html_content.append("<div class='section'><h2>Rear View Gait Analysis & Recommendations</h2><div class='metric-box' style='min-height:auto; padding: 5px 15px 15px 15px;'>")
+    #             if recommendations:
+    #                 html_content.append("<h3>Form Recommendations (Rear View)</h3><ul>")
+    #                 for rec in recommendations:
+    #                     html_content.append(f"    <li>{rec}</li>")
+    #                 html_content.append("</ul>")
+    #             else:
+    #                 html_content.append("<p>No specific rear view recommendations generated. Focus on overall balance and symmetry.</p>")
+    #             html_content.append("</div></div>")
 
-            # --- Main public method for rear report ---
-            def generate_rear_html_report(self, report_file_path):
-                self.report_file_path = report_file_path # Store for use by plot path generation
-                html_content = []
+    #         # --- Main public method for rear report ---
+    #         def generate_rear_html_report(self, report_file_path):
+    #             self.report_file_path = report_file_path # Store for use by plot path generation
+    #             html_content = []
 
-                self._add_html_head(html_content, report_title="Rear View Running Analysis")
-                self._generate_session_info_section(html_content)
+    #             self._add_html_head(html_content, report_title="Rear View Running Analysis")
+    #             self._generate_session_info_section(html_content)
                 
-                if not self.rear_metrics.empty:
-                    _ = self._generate_rear_metrics_summary_section(html_content) # summary_data stored in cache
-                    # Add any rear-specific advanced analysis sections here if needed
-                    # e.g., self._generate_pelvic_stability_analysis_section(html_content, summary_data_rear)
-                    self._generate_rear_plots_section(html_content, report_file_path)
-                    self._generate_rear_recommendations_section(html_content)
-                else:
-                    html_content.append("<div class='section'><div class='metric-box'><p>No rear view data loaded. Unable to generate a full report.</p></div></div>")
+    #             if not self.rear_metrics.empty:
+    #                 _ = self._generate_rear_metrics_summary_section(html_content) # summary_data stored in cache
+    #                 # Add any rear-specific advanced analysis sections here if needed
+    #                 # e.g., self._generate_pelvic_stability_analysis_section(html_content, summary_data_rear)
+    #                 self._generate_rear_plots_section(html_content, report_file_path)
+    #                 self._generate_rear_recommendations_section(html_content)
+    #             else:
+    #                 html_content.append("<div class='section'><div class='metric-box'><p>No rear view data loaded. Unable to generate a full report.</p></div></div>")
 
-                html_content.extend(["    </div>", "</body>", "</html>"])
+    #             html_content.extend(["    </div>", "</body>", "</html>"])
                 
-                try:
-                    with open(report_file_path, 'w', encoding='utf-8') as f:
-                        f.write("\n".join(html_content))
-                    print(f"✅ Rear view report successfully generated: {report_file_path}")
-                except IOError as e:
-                    print(f"❌ Error writing rear view report file: {e}")
-                except Exception as e:
-                    print(f"❌ An unexpected error occurred during rear report generation: {e}")
+    #             try:
+    #                 with open(report_file_path, 'w', encoding='utf-8') as f:
+    #                     f.write("\n".join(html_content))
+    #                 print(f"✅ Rear view report successfully generated: {report_file_path}")
+    #             except IOError as e:
+    #                 print(f"❌ Error writing rear view report file: {e}")
+    #             except Exception as e:
+    #                 print(f"❌ An unexpected error occurred during rear report generation: {e}")
 
-            def _save_rear_metric_plots(self):
-                """Create and save plots of running metrics."""
-                if self.rear_metrics is None:
-                    return []
+    #         def _save_rear_metric_plots(self):
+    #             """Create and save plots of running metrics."""
+    #             if self.rear_metrics is None:
+    #                 return []
                 
-                # Create a directory for plots
-                plots_dir = os.path.join(self.reports_dir, 'plots')
-                os.makedirs(plots_dir, exist_ok=True)
+    #             # Create a directory for plots
+    #             plots_dir = os.path.join(self.reports_dir, 'plots')
+    #             os.makedirs(plots_dir, exist_ok=True)
                 
-                plot_files = []
+    #             plot_files = []
                 
-                # Plot 1: Foot distance from midline
-                plt.figure(figsize=(10, 6))
-                plt.plot(self.rear_metrics['frame_number'], -self.rear_metrics['left_distance_from_midline'], 'bo-', label='Left Foot')
-                plt.plot(self.rear_metrics['frame_number'], -self.rear_metrics['right_distance_from_midline'], 'ro-', label='Right Foot')
-                plt.axhline(y=0, color='k', linestyle='-', alpha=0.5)
-                plt.xlabel('Frame Number')
-                plt.ylabel('Distance from Midline')
-                plt.title('Foot Distance from Midline Over Time')
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
+    #             # Plot 1: Foot distance from midline
+    #             plt.figure(figsize=(10, 6))
+    #             plt.plot(self.rear_metrics['frame_number'], -self.rear_metrics['left_distance_from_midline'], 'bo-', label='Left Foot')
+    #             plt.plot(self.rear_metrics['frame_number'], -self.rear_metrics['right_distance_from_midline'], 'ro-', label='Right Foot')
+    #             plt.axhline(y=0, color='k', linestyle='-', alpha=0.5)
+    #             plt.xlabel('Frame Number')
+    #             plt.ylabel('Distance from Midline')
+    #             plt.title('Foot Distance from Midline Over Time')
+    #             plt.legend()
+    #             plt.grid(True)
+    #             plt.tight_layout()
                 
-                # Save plot
-                plot_file = os.path.join(plots_dir, f"{self.session_id}_foot_distance_midline.png")
-                plt.savefig(plot_file)
-                plot_files.append(plot_file)
-                plt.close()
+    #             # Save plot
+    #             plot_file = os.path.join(plots_dir, f"{self.session_id}_foot_distance_midline.png")
+    #             plt.savefig(plot_file)
+    #             plot_files.append(plot_file)
+    #             plt.close()
 
-                # Plot 3: Hip drop with direction indicator
-                plt.figure(figsize=(10, 6))
-                colors = []
-                for direction in self.rear_metrics['hip_drop_direction']:
-                    if direction == 'left':
-                        colors.append('blue')
-                    elif direction == 'right':
-                        colors.append('red')
-                    else:  # neutral
-                        colors.append('green')
+    #             # Plot 3: Hip drop with direction indicator
+    #             plt.figure(figsize=(10, 6))
+    #             colors = []
+    #             for direction in self.rear_metrics['hip_drop_direction']:
+    #                 if direction == 'left':
+    #                     colors.append('blue')
+    #                 elif direction == 'right':
+    #                     colors.append('red')
+    #                 else:  # neutral
+    #                     colors.append('green')
 
-                plt.bar(self.rear_metrics['frame_number'], self.rear_metrics['hip_drop_value'], color=colors)
-                plt.xlabel('Frame Number')
-                plt.ylabel('Hip Drop Value (m)')
-                plt.title('Hip Drop with Direction')
+    #             plt.bar(self.rear_metrics['frame_number'], self.rear_metrics['hip_drop_value'], color=colors)
+    #             plt.xlabel('Frame Number')
+    #             plt.ylabel('Hip Drop Value (m)')
+    #             plt.title('Hip Drop with Direction')
 
-                # Create custom legend
-                from matplotlib.patches import Patch
-                legend_elements = [
-                    Patch(facecolor='blue', label='Left Drop'),
-                    Patch(facecolor='red', label='Right Drop'),
-                    Patch(facecolor='green', label='Neutral')
-                ]
-                plt.legend(handles=legend_elements)
-                plt.grid(True, axis='y')
-                plt.tight_layout()
+    #             # Create custom legend
+    #             from matplotlib.patches import Patch
+    #             legend_elements = [
+    #                 Patch(facecolor='blue', label='Left Drop'),
+    #                 Patch(facecolor='red', label='Right Drop'),
+    #                 Patch(facecolor='green', label='Neutral')
+    #             ]
+    #             plt.legend(handles=legend_elements)
+    #             plt.grid(True, axis='y')
+    #             plt.tight_layout()
                 
-                # Save plot
-                plot_file = os.path.join(plots_dir, f"{self.session_id}_hip_drop.png")
-                plt.savefig(plot_file)
-                plot_files.append(plot_file)
-                plt.close()
+    #             # Save plot
+    #             plot_file = os.path.join(plots_dir, f"{self.session_id}_hip_drop.png")
+    #             plt.savefig(plot_file)
+    #             plot_files.append(plot_file)
+    #             plt.close()
 
-                # Plot 4: Pelvic tilt angle with elevated side indicator
-                plt.figure(figsize=(10, 6))
-                markers = []
-                for side in self.rear_metrics['pelvic_tilt_elevated_side']:
-                    if side == 'left':
-                        markers.append('^')  # triangle up
-                    elif side == 'right':
-                        markers.append('v')  # triangle down
-                    else:  # neutral
-                        markers.append('o')  # circle
+    #             # Plot 4: Pelvic tilt angle with elevated side indicator
+    #             plt.figure(figsize=(10, 6))
+    #             markers = []
+    #             for side in self.rear_metrics['pelvic_tilt_elevated_side']:
+    #                 if side == 'left':
+    #                     markers.append('^')  # triangle up
+    #                 elif side == 'right':
+    #                     markers.append('v')  # triangle down
+    #                 else:  # neutral
+    #                     markers.append('o')  # circle
 
-                for i, (x, y, marker) in enumerate(zip(self.rear_metrics['frame_number'], self.rear_metrics['pelvic_tilt_angle'], markers)):
-                    if self.rear_metrics['pelvic_tilt_elevated_side'][i] == 'left':
-                        plt.plot(x, y, marker, color='blue', markersize=10, label='Left Elevated' if i == 0 else "")
-                    elif self.rear_metrics['pelvic_tilt_elevated_side'][i] == 'right':
-                        plt.plot(x, y, marker, color='red', markersize=10, label='Right Elevated' if i == 1 else "")
-                    else:  # neutral
-                        plt.plot(x, y, marker, color='green', markersize=10, label='Neutral' if i == 2 else "")
+    #             for i, (x, y, marker) in enumerate(zip(self.rear_metrics['frame_number'], self.rear_metrics['pelvic_tilt_angle'], markers)):
+    #                 if self.rear_metrics['pelvic_tilt_elevated_side'][i] == 'left':
+    #                     plt.plot(x, y, marker, color='blue', markersize=10, label='Left Elevated' if i == 0 else "")
+    #                 elif self.rear_metrics['pelvic_tilt_elevated_side'][i] == 'right':
+    #                     plt.plot(x, y, marker, color='red', markersize=10, label='Right Elevated' if i == 1 else "")
+    #                 else:  # neutral
+    #                     plt.plot(x, y, marker, color='green', markersize=10, label='Neutral' if i == 2 else "")
 
-                plt.plot(self.rear_metrics['frame_number'], self.rear_metrics['pelvic_tilt_angle'], 'k--', alpha=0.5)
-                plt.axhline(y=3, color='g', linestyle='--', alpha=0.7, label='Optimal')
-                plt.axhline(y=6, color='y', linestyle='--', alpha=0.5, label='Moderate Limit')
-                plt.axhline(y=10, color='r', linestyle='--', alpha=0.5, label='Severe Limit')
-                plt.xlabel('Frame Number')
-                plt.ylabel('Pelvic Tilt Angle (degrees)')
-                plt.title('Pelvic Tilt Angle with Elevated Side')
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
+    #             plt.plot(self.rear_metrics['frame_number'], self.rear_metrics['pelvic_tilt_angle'], 'k--', alpha=0.5)
+    #             plt.axhline(y=3, color='g', linestyle='--', alpha=0.7, label='Optimal')
+    #             plt.axhline(y=6, color='y', linestyle='--', alpha=0.5, label='Moderate Limit')
+    #             plt.axhline(y=10, color='r', linestyle='--', alpha=0.5, label='Severe Limit')
+    #             plt.xlabel('Frame Number')
+    #             plt.ylabel('Pelvic Tilt Angle (degrees)')
+    #             plt.title('Pelvic Tilt Angle with Elevated Side')
+    #             plt.legend()
+    #             plt.grid(True)
+    #             plt.tight_layout()
                 
-                # Save plot
-                plot_file = os.path.join(plots_dir, f"{self.session_id}_pelvic_tilt.png")
-                plt.savefig(plot_file)
-                plot_files.append(plot_file)
-                plt.close()
+    #             # Save plot
+    #             plot_file = os.path.join(plots_dir, f"{self.session_id}_pelvic_tilt.png")
+    #             plt.savefig(plot_file)
+    #             plot_files.append(plot_file)
+    #             plt.close()
 
-                # # Plot 5: Combined biomechanics plot
-                # plt.figure(figsize=(12, 8))
+    #             # # Plot 5: Combined biomechanics plot
+    #             # plt.figure(figsize=(12, 8))
 
-                # # Normalize values for comparison
-                # max_dist = max(max(abs(min(self.rear_metrics['left_distance_from_midline'])), max(self.rear_metrics['right_distance_from_midline'])))
-                # normalized_left = [x / max_dist for x in self.rear_metrics['left_distance_from_midline']]
-                # normalized_right = [x / max_dist for x in self.rear_metrics['right_distance_from_midline']]
-                # normalized_hip = [x / max(abs(min(self.rear_metrics['hip_drop_value'])), max(self.rear_metrics['hip_drop_value'])) for x in self.side_metrics['hip_drop_value']]
-                # normalized_pelvic = [x / max(abs(min(self.rear_metrics['pelvic_tilt_angle'])), max(self.rear_metrics['pelvic_tilt_angle'])) for x in self.side_metrics['pelvic_tilt_angle']]
+    #             # # Normalize values for comparison
+    #             # max_dist = max(max(abs(min(self.rear_metrics['left_distance_from_midline'])), max(self.rear_metrics['right_distance_from_midline'])))
+    #             # normalized_left = [x / max_dist for x in self.rear_metrics['left_distance_from_midline']]
+    #             # normalized_right = [x / max_dist for x in self.rear_metrics['right_distance_from_midline']]
+    #             # normalized_hip = [x / max(abs(min(self.rear_metrics['hip_drop_value'])), max(self.rear_metrics['hip_drop_value'])) for x in self.side_metrics['hip_drop_value']]
+    #             # normalized_pelvic = [x / max(abs(min(self.rear_metrics['pelvic_tilt_angle'])), max(self.rear_metrics['pelvic_tilt_angle'])) for x in self.side_metrics['pelvic_tilt_angle']]
 
-                # plt.plot(self.rear_metrics['frame_number'], normalized_left, 'b-', label='Left Foot Position (norm)')
-                # plt.plot(self.rear_metrics['frame_number'], normalized_right, 'r-', label='Right Foot Position (norm)')
-                # plt.plot(self.rear_metrics['frame_number'], normalized_hip, 'g-', label='Hip Drop (norm)')
-                # plt.plot(self.rear_metrics['frame_number'], normalized_pelvic, 'y-', label='Pelvic Tilt (norm)')
+    #             # plt.plot(self.rear_metrics['frame_number'], normalized_left, 'b-', label='Left Foot Position (norm)')
+    #             # plt.plot(self.rear_metrics['frame_number'], normalized_right, 'r-', label='Right Foot Position (norm)')
+    #             # plt.plot(self.rear_metrics['frame_number'], normalized_hip, 'g-', label='Hip Drop (norm)')
+    #             # plt.plot(self.rear_metrics['frame_number'], normalized_pelvic, 'y-', label='Pelvic Tilt (norm)')
 
-                # # Add stride phase indicators (assuming frame 2 is mid-stride)
-                # plt.axvline(x=2, color='purple', linestyle='--', alpha=0.5, label='Mid-stride')
+    #             # # Add stride phase indicators (assuming frame 2 is mid-stride)
+    #             # plt.axvline(x=2, color='purple', linestyle='--', alpha=0.5, label='Mid-stride')
 
-                # plt.xlabel('Frame Number')
-                # plt.ylabel('Normalized Values')
-                # plt.title('Combined Running Biomechanics')
-                # plt.legend()
-                # plt.grid(True)
-                # plt.tight_layout()
+    #             # plt.xlabel('Frame Number')
+    #             # plt.ylabel('Normalized Values')
+    #             # plt.title('Combined Running Biomechanics')
+    #             # plt.legend()
+    #             # plt.grid(True)
+    #             # plt.tight_layout()
                 
-                # # Save plot
-                # plot_file = os.path.join(plots_dir, f"{self.session_id}_rear_initial_combined.png")
-                # plt.savefig(plot_file)
-                # plot_files.append(plot_file)
-                # plt.close()
+    #             # # Save plot
+    #             # plot_file = os.path.join(plots_dir, f"{self.session_id}_rear_initial_combined.png")
+    #             # plt.savefig(plot_file)
+    #             # plot_files.append(plot_file)
+    #             # plt.close()
 
                 
-                return plot_files
+    #             return plot_files
 
 
-            def _generate_rear_recommendations(self):
-                """Generate running form recommendations based on metrics."""
-                if self.rear_metrics is None:
-                    return []
+    #         def _generate_rear_recommendations(self):
+    #             """Generate running form recommendations based on metrics."""
+    #             if self.rear_metrics is None:
+    #                 return []
                 
-                recommendations = []
+    #             recommendations = []
                 
-                # Add general recommendations if list is short
-                if len(recommendations) < 3:
-                    recommendations.append(
-                        "Maintain a consistent running cadence between 170-180 steps per minute for optimal efficiency. "
-                        "A metronome app can help you achieve this rhythm."
-                    )
+    #             # Add general recommendations if list is short
+    #             if len(recommendations) < 3:
+    #                 recommendations.append(
+    #                     "Maintain a consistent running cadence between 170-180 steps per minute for optimal efficiency. "
+    #                     "A metronome app can help you achieve this rhythm."
+    #                 )
                     
-                    recommendations.append(
-                        "Focus on relaxed shoulders and a proper arm swing that moves forward and backward, not across your body. "
-                        "This helps maintain rotational balance and overall efficiency."
-                    )
+    #                 recommendations.append(
+    #                     "Focus on relaxed shoulders and a proper arm swing that moves forward and backward, not across your body. "
+    #                     "This helps maintain rotational balance and overall efficiency."
+    #                 )
                 
-                return recommendations
+    #             return recommendations
 
-            # You would also have the side-view report generation methods here if it's one combined class
-            # e.g., generate_side_html_report, _generate_side_metrics_summary_section, etc.
-            # For brevity, I'm omitting the full side-view code previously provided.
-            # Just ensure helper methods like _add_html_head are shared.
+    #         # You would also have the side-view report generation methods here if it's one combined class
+    #         # e.g., generate_side_html_report, _generate_side_metrics_summary_section, etc.
+    #         # For brevity, I'm omitting the full side-view code previously provided.
+    #         # Just ensure helper methods like _add_html_head are shared.
 
-        # Instantiate ReportGenerator with both (or just rear if only doing rear)
-        report_gen_rear = RearReportGenerator(rear_metrics=self.rear_metrics, session_id="Run_May24_Test001", reports_dir = self.reports_dir)
-        report_gen_rear.generate_rear_html_report(self.reports_dir + "/RunnerVision_Rear_Report.html")
+    #     # Instantiate ReportGenerator with both (or just rear if only doing rear)
+    #     report_gen_rear = RearReportGenerator(rear_metrics=self.rear_metrics, session_id="Run_May24_Test001", reports_dir = self.reports_dir)
+    #     # report_gen_rear.generate_rear_html_report(self.reports_dir + "/RunnerVision_Rear_Report.html")
     
     
     def _generate_side_html_report(self, report_file):
@@ -1532,7 +1557,7 @@ class RunAnalyzer:
         # A simple way is to assign it to an instance variable if needed by other methods not directly in the call chain
         report_gen.summary_data_for_recs = report_gen._generate_metrics_summary_section([]) # Calc for recs, discard HTML list
         
-        report_gen.generate_html_report(self.reports_dir + "/RunnerVision_Side_Report.html")
+        # report_gen.generate_html_report(self.reports_dir + "/RunnerVision_Side_Report.html")
     
 
     def process_direct_video(self, video_path, output_dir=None, watch_data_path=None):
@@ -1643,3 +1668,9 @@ def run_analysis():
         'videos' + "/" + f"{analyzer.session_id}_rear_processed.mp4",
         'reports' + "/" + "RunnerVision_Side_Report.html",
         'videos' + "/" + f"{analyzer.session_id}_side_processed.mp4"]
+
+def get_latest_file(directory, keyword, extension):
+    files = glob(os.path.join(directory, f"*{keyword}*.{extension}"))
+    if not files:
+        return None
+    return max(files, key=os.path.getmtime)

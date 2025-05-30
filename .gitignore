@@ -19,3 +19,4 @@ strava_data_pipeline.py
 *.csv
 dev.ipynb
 /__pycache__
+*.ipynb
