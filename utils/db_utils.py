@@ -1409,8 +1409,7 @@ def init_runstrong_db():
         ''')
         conn.commit()
 
-def add_exercise(data):
-    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
+def add_exercise(conn, data):
         c = conn.cursor()
         c.execute('''
         INSERT INTO exercises (
@@ -1436,3 +1435,69 @@ def add_exercise(data):
             data.get('duration_minutes'), data.get('popularity_score'), json.dumps(data.get('alternatives')), json.dumps(data.get('supersets_well_with'))
         ])
         conn.commit()
+
+## Begin LLM section
+
+def update_daily_training_metrics(conn: sqlite3.Connection, df, user_id=1):
+    """
+    Inserts or updates daily training metrics into SQLite.
+
+    Args:
+        df (DataFrame): Must have columns ['date', 'tss', 'CTL', 'ATL', 'TSB']
+        user_id (int): The athlete identifier
+        db_path (str): Path to SQLite database
+    """
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS daily_training_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date DATE UNIQUE,
+            user_id INTEGER,
+            total_tss FLOAT,
+            ctl FLOAT,
+            atl FLOAT,
+            tsb FLOAT,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    for _, row in df.iterrows():
+        conn.execute("""
+            INSERT INTO daily_training_metrics (
+                date, user_id, total_tss, ctl, atl, tsb
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+                total_tss = excluded.total_tss,
+                ctl = excluded.ctl,
+                atl = excluded.atl,
+                tsb = excluded.tsb;
+        """, (
+            row['date'].date(),  # Ensure date only, no time
+            user_id,
+            row['tss'],
+            row['CTL'],
+            row['ATL'],
+            row['TSB']
+        ))
+
+    conn.commit()
+    conn.close()
+
+def get_latest_daily_training_metrics(conn: sqlite3.Connection):
+    """
+    Retreives latest day's data from the daily_training_metrics table.
+
+    Args:
+        conn
+    """
+    c = conn.cursor()
+    query = """
+        SELECT date, total_tss, ctl, atl, tsb
+        FROM daily_training_metrics
+        ORDER BY date DESC
+        LIMIT 1;
+    """
+    result = c.execute(query).fetchall()
+
+    return result

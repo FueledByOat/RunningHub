@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+<head>
+    <meta charset="UTF-8" />
+    <title>RUNSTRONG | Workout Journal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .runstrong-container { padding: 20px; max-width: 1000px; margin: 20px auto; background-color: var(--rs-primary); border-radius: 8px; box-shadow: 0 4px 15px var(--rs-shadow); }
+        .session-entry { border: 1px solid var(--rs-secondary); padding: 15px; margin-bottom: 20px; border-radius: 6px; background-color: #3a0150; }
+        .session-entry h3 { margin-top: 0; color: var(--rs-accent); border-bottom: 1px solid var(--rs-highlight); padding-bottom: 0.5rem; margin-bottom: 1rem;}
+        .session-details p { margin: 0.3rem 0; }
+        .exercise-group { margin-top: 1rem; padding-left: 1rem; border-left: 3px solid var(--rs-accent); }
+        .exercise-group strong { color: var(--rs-highlight); }
+        .exercise-group .set-info { margin-left:1.5rem; font-size:0.9em; }
+        .exercise-group .exercise-notes { font-style: italic; color: #ccc; margin-left:1.5rem; font-size:0.9em; margin-bottom:0.5rem; }
+    </style>
+</head>
+<body class="runstrong">
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('runstrong') }}">Home</a>
+        <a href="{{ url_for('exercise_library') }}">Library</a>
+        <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('journal') }}">Journal</a>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('strength_log_page') }}">Log Strength</a>
+    </div>
+    <div class="runnervision-header">
+        <a href="{{ url_for('home') }}">
+            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo" class="runstrong-logo" />
+        </a>
+    </div>
+
+    <div class="runstrong-container">
+        <h2>Workout Journal</h2>
+        {% if sessions %}
+            {% for session in sessions %}
+                <div class="session-entry">
+                    <h3>
+                        {{ session.session_name if session.session_name else "Workout" }} - 
+                        <small>{{ session.session_date | format_datetime }}</small>
+                    </h3>
+                    <div class="session-details">
+                        <p><strong>Duration:</strong> {{ session.duration_minutes if session.duration_minutes else "N/A" }} minutes</p>
+                        <p><strong>RPE:</strong> {{ session.perceived_exertion if session.perceived_exertion else "N/A" }}</p>
+                        {% if session.notes %}
+                            <p><strong>Session Notes:</strong> {{ session.notes }}</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if session.grouped_exercises_list %}
+                        <h4 style="margin-top:1.5rem; color: var(--rs-secondary);">Exercises Performed:</h4>
+                        {% for exercise in session.grouped_exercises_list %}
+                            <div class="exercise-group">
+                                <p><strong>{{ exercise.name }}</strong></p>
+                                {% if exercise.exercise_session_notes %}
+                                    <p class="exercise-notes">Notes: {{ exercise.exercise_session_notes }}</p>
+                                {% endif %}
+                                {% for set_item in exercise.sets %}
+                                    <p class="set-info">Set {{ set_item.set_number }}: {{ set_item.reps }} reps @ {{ set_item.weight }} lbs</p>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No specific exercises logged for this session.</p>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No workouts logged yet. <a href="{{ url_for('strength_log_page') }}" style="color: var(--rs-accent);">Log your first workout!</a></p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -25,6 +25,16 @@ class RunStrongService(BaseService):
         except Exception as e:
             self.logger.error(f"Error getting exercises: {e}")
             raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
+        
+    def add_exercise(self, data: dict) -> None:
+        """Add single exercise to db."""
+        try:
+            with self._get_connection() as conn:
+                db_utils.add_exercise(conn, data)
+            self.logger.info(f"Added exercise routine: {data['name']} to database")
+        except Exception as e:
+            self.logger.error(f"Error getting exercises: {e}")
+            raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
     
     def save_routine(self, routine_name: str, routine_exercises: List[Dict[str, Any]]) -> None:
         """Save a workout routine."""

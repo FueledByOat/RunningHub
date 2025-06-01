@@ -240,6 +240,18 @@ class RunStrongRoutes:
             except Exception as e:
                 logger.error(f"Error getting exercises: {e}")
                 return jsonify({'error': 'Failed to load exercises'}), 500
+            
+        @app.route('/runstrong/exercises/add', methods=['GET', 'POST'])
+        def add_exercise():
+            if request.method == 'POST':
+                try:
+                    data = request.get_json()
+                    runstrong_service.add_exercise(data)
+                    return jsonify({'message': 'Exercise added successfully!'})
+                except Exception as e:
+                    logger.error(f"Error adding exercise: {e}")
+                    return jsonify({'error': 'Failed to add exercise.'}), 500
+            return render_template('add_exercise.html')
         
         @app.route('/runstrong/save-routine', methods=['POST'])
         def save_routine():

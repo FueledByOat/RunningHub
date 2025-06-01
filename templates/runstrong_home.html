@@ -5,7 +5,6 @@
     <meta charset="UTF-8" />
     <title>RUNSTRONG | Performance Hub</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <!-- <script src="{{ url_for('static', filename='js/runstrong_home.js') }}" defer></script> -->
 </head>
 
 <body class="runstrong">
@@ -14,14 +13,15 @@
         <a href="{{ url_for('runstrong') }}">Home</a>
         <a href="{{ url_for('exercise_library') }}">Library</a>
         <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('add_exercise') }}">Add</a>
         <a href="{{ url_for('journal') }}">Journal</a>
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
     </div>
 
-        <div class="runnervision-header">
+    <div class="runnervision-header">
         <a href="{{ url_for('home') }}">
-            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}"
-                alt="RunStrong Logo" class="runstrong-logo" />
+            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
         </a>
     </div>
 
@@ -32,6 +32,9 @@
         <div class="runstrong-button-grid">
             <a href="{{ url_for('exercise_library') }}">
                 <button>Exercise Library</button>
+            </a> 
+            <a href="{{ url_for('add_exercise') }}">
+                <button>Add Exercise</button>
             </a>
             <a href="{{ url_for('planner') }}">
                 <button>Workout Planner</button>
@@ -44,6 +47,11 @@
             </a>
         </div>
     </div>
+
+<div class="runnervision-header">
+    <img src="{{ url_for('static', filename='images/stacking_bricks.png') }}" alt="RunStrong Logo" >
+
+</div>
 
 </body>
 

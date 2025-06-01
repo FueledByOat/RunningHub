@@ -10,12 +10,12 @@ from functools import lru_cache
 from transformers import pipeline
 from huggingface_hub import login
 
-from utils import exception_utils
+from utils import exception_utils, db_utils
 from config import Config
 
 logger = logging.getLogger(__name__)
 
-class SQLGenerator:
+class LanguageModel:
     """Natural language to SQL query generator using Hugging Face models."""
     
     def __init__(self):
@@ -184,15 +184,46 @@ Write a SQL query to return the relevant columns to answer the question:"""
             logger.error(f"SQL extraction failed: {e}")
             raise exception_utils.LanguageModelError(f"Failed to extract SQL: {e}") from e
 
+    def generate_daily_training_summary(self):
+        
+        try:
+            with db_utils.get_db_connection(Config.DB_PATH) as conn:
+                training_metrics = db_utils.get_latest_daily_training_metrics(conn=conn)
+        except Exception as e:
+            raise exception_utils.LanguageModelError(f"Failed to extract SQL: {e}") from e
+
+        print(training_metrics[0]['total_tss'])
+
+        prompt = f"""
+            You are a running coach assistant. Summarize today's training load.
+
+            Date: {training_metrics[0]['date']}
+            Total TSS: {round(training_metrics[0]['total_tss'], 1)}
+            CTL (Chronic Training Load): {round(training_metrics[0]['ctl'], 1)}
+            ATL (Acute Training Load): {round(training_metrics[0]['atl'], 1)}
+            TSB (Training Stress Balance): {round(training_metrics[0]['tsb'], 1)}
+
+            Guidelines:
+            - If TSS is high (e.g. > 100), mention that it was a heavy training day.
+            - If ATL is significantly higher than CTL, caution that fatigue is building.
+            - If TSB is negative, suggest the user may be accumulating fatigue.
+            - If TSB is positive, highlight it might be a good day to do hard training or race.
+            - Use a concise, motivational tone.
+
+            Respond with 2-4 sentences.
+            """
+        
+        return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
+
 
 # Global instance
 _sql_generator = None
 
-def get_sql_generator() -> SQLGenerator:
+def get_sql_generator() -> LanguageModel:
     """Get or create global SQL generator instance."""
     global _sql_generator
     if _sql_generator is None:
-        _sql_generator = SQLGenerator()
+        _sql_generator = LanguageModel()
     return _sql_generator
 
 def generate_sql_from_natural_language(user_input: str) -> str:

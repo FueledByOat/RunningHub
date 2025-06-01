@@ -1,10 +1,9 @@
-# Example structure for report_generators.py
+# report_generators.py
 
 import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-# from .plotting_utils import save_plot # (See modularization section)
 
 class BaseReportGenerator:
     def __init__(self, metrics_df, session_id, reports_dir, metadata=None, report_file_path=None):
@@ -114,7 +113,7 @@ class BaseReportGenerator:
         html_content.append("            </div>")
 
     def _get_series_stats(self, df, col_name, drop_na_val="not_applicable"):
-        # ... (common stats logic, ensure df is explicitly passed)
+
         if col_name not in df.columns or df[col_name].dropna().empty:
                     return None, None, "N/A", 0
 
@@ -139,7 +138,7 @@ class BaseReportGenerator:
             return None, None, primary_val, percent_val
 
     def _generate_session_info_section(self, html_content):
-        # ... (common session info HTML logic)
+
         if self.metadata:
             html_content.extend([
                 "        <div class='section'>",
