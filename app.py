@@ -78,7 +78,7 @@ class FlaskAppFactory:
         """Register all application routes."""
         # Initialize services
         activity_service = ActivityService(config.DB_PATH)
-        runstrong_service = RunStrongService(config.DB_PATH_RUNSTRONG)
+        runstrong_service = RunStrongService(config.DB_PATH)
         runnervision_service = RunnerVisionService(config)
         query_service = QueryService(config.DB_PATH)
         statistics_service = StatisticsService(config.DB_PATH)
@@ -299,6 +299,115 @@ class RunStrongRoutes:
         @app.route('/runstrong/dashboard')
         def dashboard():
             return render_template('dashboard.html')
+        
+        # late night C team
+        # API Routes for Planner
+        @app.route('/api/exercises', methods=['GET'])
+        def get_exercises():
+            """Get all exercises for the planner"""
+            try:
+                exercises = runstrong_service.get_exercises()
+                return jsonify(exercises)
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @app.route('/api/routines', methods=['GET'])
+        def get_routines():
+            """Get all workout routines"""
+            try:
+                routines = runstrong_service.get_all_routines()
+                return jsonify(routines)
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @app.route('/api/routines', methods=['POST'])
+        def create_routine():
+            """Create a new workout routine with exercises"""
+            try:
+                data = request.get_json()
+                routine_name = data.get('name')
+                exercises = data.get('exercises', [])
+                
+                if not routine_name:
+                    return jsonify({'error': 'Routine name is required'}), 400
+                
+                # Create the routine
+                routine_id = runstrong_service.create_routine(routine_name)
+                
+                # Add exercises to the routine
+                for exercise_data in exercises:
+                    runstrong_service.add_exercise_to_routine(
+                        routine_id=routine_id,
+                        exercise_id=exercise_data['exercise']['id'],
+                        sets=exercise_data['sets'],
+                        reps=exercise_data['reps'],
+                        load_lbs=exercise_data['load_lbs'],
+                        order_index=exercise_data['order_index'],
+                        notes=exercise_data.get('notes', '')
+                    )
+                
+                return jsonify({'message': 'Routine created successfully', 'routine_id': routine_id})
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @app.route('/api/routines/<int:routine_id>/exercises', methods=['GET'])
+        def get_routine_exercises(routine_id):
+            """Get a specific routine with its exercises"""
+            try:
+                routine = runstrong_service.get_routine_by_id(routine_id)
+                if not routine:
+                    return jsonify({'error': 'Routine not found'}), 404
+                
+                exercises = runstrong_service.get_routine_exercises(routine_id)
+                
+                return jsonify({
+                    'routine': routine,
+                    'exercises': exercises
+                })
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        # API Routes for Journal
+        @app.route('/api/workout-performance', methods=['POST'])
+        def save_workout_performance():
+            """Save workout performance data"""
+            try:
+                data = request.get_json()
+                routine_id = data.get('routine_id')
+                workout_date = data.get('workout_date')
+                exercises = data.get('exercises', [])
+                
+                if not routine_id or not workout_date:
+                    return jsonify({'error': 'Routine ID and workout date are required'}), 400
+                
+                # Save performance data for each exercise
+                for exercise_data in exercises:
+                    runstrong_service.save_workout_performance(
+                        routine_id=exercise_data['routine_id'],
+                        exercise_id=exercise_data['exercise_id'],
+                        workout_date=exercise_data['workout_date'],
+                        planned_sets=exercise_data['planned_sets'],
+                        actual_sets=exercise_data['actual_sets'],
+                        planned_reps=exercise_data['planned_reps'],
+                        actual_reps=exercise_data['actual_reps'],
+                        planned_load_lbs=exercise_data['planned_load_lbs'],
+                        actual_load_lbs=exercise_data['actual_load_lbs'],
+                        notes=exercise_data.get('notes', ''),
+                        completion_status=exercise_data.get('completion_status', 'completed')
+                    )
+                
+                return jsonify({'message': 'Workout performance saved successfully'})
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @app.route('/api/workout-performance/<int:routine_id>', methods=['GET'])
+        def get_workout_history(routine_id):
+            """Get workout history for a specific routine"""
+            try:
+                history = runstrong_service.get_workout_history(routine_id)
+                return jsonify(history)
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
 
 
 class QueryRoutes:

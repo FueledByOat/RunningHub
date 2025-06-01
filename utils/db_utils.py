@@ -86,6 +86,14 @@ def dict_factory(cursor: sqlite3.Cursor, row: sqlite3.Row) -> Dict[str, Any]:
     """
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
+def dict_from_row(row) -> Dict:
+    """Convert sqlite3.Row to dictionary"""
+    return dict(row) if row else {}
+
+def dicts_from_rows(rows) -> List[Dict]:
+    """Convert list of sqlite3.Row to list of dictionaries"""
+    return [dict(row) for row in rows] if rows else []
+
 # -------------------------------------
 # Activity Page SQL Logic
 # -------------------------------------
@@ -1315,100 +1323,6 @@ def get_lifetime_achievements(weekly_df: pd.DataFrame) -> dict:
         'total_weeks_trained': len(weekly_df)
     }
 
-def init_runstrong_db():
-    with sqlite3.connect(Config.DB_PATH_RUNSTRONG) as conn:
-        c = conn.cursor()
-        c.execute('''
-        CREATE TABLE IF NOT EXISTS exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            description TEXT,
-            instructions TEXT,
-            exercise_type TEXT,
-            movement_pattern TEXT,
-
-            primary_muscles TEXT,
-            secondary_muscles TEXT,
-            muscle_groups TEXT,
-            unilateral BOOLEAN,
-
-            difficulty_rating TEXT,
-            prerequisites TEXT,
-            progressions TEXT,
-            regressions TEXT,
-
-            equipment_required TEXT,
-            equipment_optional TEXT,
-            setup_time INTEGER,
-            space_required TEXT,
-
-            rep_range_min INTEGER,
-            rep_range_max INTEGER,
-            tempo TEXT,
-            range_of_motion TEXT,
-            compound_vs_isolation TEXT,
-
-            injury_risk_level TEXT,
-            contraindications TEXT,
-            common_mistakes TEXT,
-            safety_notes TEXT,
-
-            image_url TEXT,
-            video_url TEXT,
-            gif_url TEXT,
-            diagram_url TEXT,
-
-            category TEXT,
-            training_style TEXT,
-            experience_level TEXT,
-            goals TEXT,
-
-            duration_minutes INTEGER,
-            popularity_score INTEGER,
-            alternatives TEXT,
-            supersets_well_with TEXT
-        );
-        ''')
-        conn.commit()
-        c.execute('''                  
-        CREATE TABLE IF NOT EXISTS workout_routines (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            date_created DATE
-            );
-        ''')
-        conn.commit()
-        c.execute('''                 
-        CREATE TABLE IF NOT EXISTS routine_exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            routine_id INTEGER,
-            exercise_id INTEGER,
-            sets INTEGER,
-            reps INTEGER,
-            load_lbs FLOAT,
-            order_index INTEGER,
-            notes TEXT,
-            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
-            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
-            )
-        ''')
-        conn.commit()
-        c.execute('''                 
-        CREATE TABLE IF NOT EXISTS routine_exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            routine_id INTEGER,
-            exercise_id INTEGER,
-            sets INTEGER,
-            reps INTEGER,
-            load_lbs FLOAT,
-            order_index INTEGER,
-            notes TEXT,
-            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
-            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
-            )
-        ''')
-        conn.commit()
-
 def add_exercise(conn, data):
         c = conn.cursor()
         c.execute('''
@@ -1435,6 +1349,300 @@ def add_exercise(conn, data):
             data.get('duration_minutes'), data.get('popularity_score'), json.dumps(data.get('alternatives')), json.dumps(data.get('supersets_well_with'))
         ])
         conn.commit()
+
+# C team late add
+
+# Exercise functions
+def get_all_exercises(conn: sqlite3.Connection) -> List[Dict]:
+    """Get all exercises from the database"""
+    cursor = conn.execute("SELECT * FROM exercises ORDER BY name")
+    result = cursor.fetchall()
+    return dicts_from_rows(result)
+
+def get_exercise_by_id(conn: sqlite3.Connection, exercise_id: int) -> Optional[Dict]:
+    """Get a specific exercise by ID"""
+    cursor = conn.execute("SELECT * FROM exercises WHERE id = ?", (exercise_id,))
+    result = cursor.fetchone()
+    return dict_from_row(result)
+
+# Routine functions
+def get_all_routines(conn: sqlite3.Connection) -> List[Dict]:
+    """Get all workout routines with exercise count"""
+    cursor = conn.execute("""
+            SELECT 
+                wr.*,
+                COUNT(re.id) as exercise_count
+            FROM workout_routines wr
+            LEFT JOIN routine_exercises re ON wr.id = re.routine_id
+            GROUP BY wr.id
+            ORDER BY wr.date_created DESC
+        """)
+    result = cursor.fetchall()
+    return dicts_from_rows(result)
+
+def get_routine_by_id(conn: sqlite3.Connection, routine_id: int) -> Optional[Dict]:
+    """Get a specific routine by ID"""
+    cursor = conn.execute("SELECT * FROM workout_routines WHERE id = ?", (routine_id,))
+    result = cursor.fetchone()
+    return dict_from_row(result)
+
+def create_routine(conn: sqlite3.Connection, name: str) -> int:
+    """Create a new workout routine and return its ID"""
+    cursor = conn.execute(
+        "INSERT INTO workout_routines (name, date_created) VALUES (?, ?)",
+        (name, datetime.datetime.now().date())
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+def add_exercise_to_routine(conn: sqlite3.Connection, routine_id: int, exercise_id: int, sets: int, 
+                          reps: int, load_lbs: float, order_index: int, notes: str = '') -> int:
+    """Add an exercise to a routine"""
+    cursor = conn.execute("""
+        INSERT INTO routine_exercises 
+        (routine_id, exercise_id, sets, reps, load_lbs, order_index, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (routine_id, exercise_id, sets, reps, load_lbs, order_index, notes))
+    conn.commit()
+    return cursor.lastrowid
+
+def get_routine_exercises(conn: sqlite3.Connection, routine_id: int) -> List[Dict]:
+    """Get all exercises for a specific routine"""
+    cursor = conn.execute("""
+            SELECT 
+                re.*,
+                e.name,
+                e.description,
+                e.primary_muscles,
+                e.secondary_muscles,
+                e.equipment_required,
+                e.instructions
+            FROM routine_exercises re
+            JOIN exercises e ON re.exercise_id = e.id
+            WHERE re.routine_id = ?
+            ORDER BY re.order_index
+        """, (routine_id,))
+    exercises = cursor.fetchall()
+    return dicts_from_rows(exercises)
+
+def delete_routine(conn: sqlite3.Connection, routine_id: int) -> bool:
+    """Delete a routine and all associated exercises"""
+    # Delete routine exercises first due to foreign key constraint
+    conn.execute("DELETE FROM routine_exercises WHERE routine_id = ?", (routine_id,))
+    # Delete the routine
+    cursor = conn.execute("DELETE FROM workout_routines WHERE id = ?", (routine_id,))
+    conn.commit()
+    return cursor.rowcount > 0
+
+# Workout performance functions
+def save_workout_performance(conn: sqlite3.Connection, routine_id: int, exercise_id: int, workout_date: str,
+                           planned_sets: int, actual_sets: int, planned_reps: int,
+                           actual_reps: int, planned_load_lbs: float, actual_load_lbs: float,
+                           notes: str = '', completion_status: str = 'completed') -> int:
+    """Save workout performance data"""
+    cursor = conn.execute("""
+            INSERT INTO workout_performance 
+            (routine_id, exercise_id, workout_date, planned_sets, actual_sets,
+             planned_reps, actual_reps, planned_load_lbs, actual_load_lbs,
+             notes, completion_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (routine_id, exercise_id, workout_date, planned_sets, actual_sets,
+              planned_reps, actual_reps, planned_load_lbs, actual_load_lbs,
+              notes, completion_status))
+    conn.commit()
+    return cursor.lastrowid
+
+def get_workout_history(conn: sqlite3.Connection, routine_id: int) -> List[Dict]:
+    """Get workout history for a specific routine"""
+    cursor = conn.execute("""
+            SELECT 
+                wp.*,
+                e.name as exercise_name,
+                e.primary_muscles
+            FROM workout_performance wp
+            JOIN exercises e ON wp.exercise_id = e.id
+            WHERE wp.routine_id = ?
+            ORDER BY wp.workout_date DESC, wp.created_at DESC
+        """, (routine_id,))
+    history = cursor.fetchall()
+    return dicts_from_rows(history)
+
+def get_workout_performance_by_date(conn: sqlite3.Connection, routine_id: int, workout_date: str) -> List[Dict]:
+    """Get workout performance for a specific routine and date"""
+    cursor = conn.execute("""
+            SELECT 
+                wp.*,
+                e.name as exercise_name,
+                e.primary_muscles
+            FROM workout_performance wp
+            JOIN exercises e ON wp.exercise_id = e.id
+            WHERE wp.routine_id = ? AND wp.workout_date = ?
+            ORDER BY wp.created_at
+        """, (routine_id, workout_date))
+    performance = cursor.fetchall()
+    return dicts_from_rows(performance)
+
+def get_exercise_progress(conn: sqlite3.Connection, exercise_id: int, limit: int = 10) -> List[Dict]:
+    """Get progress history for a specific exercise"""
+    cursor = conn.execute("""
+            SELECT 
+                wp.*,
+                wr.name as routine_name
+            FROM workout_performance wp
+            JOIN workout_routines wr ON wp.routine_id = wr.id
+            WHERE wp.exercise_id = ?
+            ORDER BY wp.workout_date DESC, wp.created_at DESC
+            LIMIT ?
+        """, (exercise_id, limit))
+    progress = cursor.fetchall()
+    return dicts_from_rows(progress)
+
+def get_recent_workouts(conn: sqlite3.Connection, limit: int = 10) -> List[Dict]:
+    """Get recent workout sessions"""
+    cursor = conn.execute("""
+            SELECT 
+                wp.workout_date,
+                wp.routine_id,
+                wr.name as routine_name,
+                COUNT(wp.id) as exercises_completed,
+                AVG(CASE WHEN wp.completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as completion_rate
+            FROM workout_performance wp
+            JOIN workout_routines wr ON wp.routine_id = wr.id
+            GROUP BY wp.workout_date, wp.routine_id
+            ORDER BY wp.workout_date DESC
+            LIMIT ?
+        """, (limit,))
+    workouts = cursor.fetchall()
+    return dicts_from_rows(workouts)
+
+def get_workout_stats(conn: sqlite3.Connection, routine_id: int = None) -> Dict:
+    """Get workout statistics"""
+    cursor = conn.cursor()
+    
+    if routine_id:
+        # Stats for specific routine
+        cursor.execute("""
+            SELECT 
+                COUNT(DISTINCT workout_date) as total_sessions,
+                COUNT(*) as total_exercises,
+                AVG(CASE WHEN completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as avg_completion_rate,
+                MAX(workout_date) as last_workout
+            FROM workout_performance
+            WHERE routine_id = ?
+        """, (routine_id,))
+    else:
+        # Overall stats
+        cursor.execute("""
+            SELECT 
+                COUNT(DISTINCT workout_date || '-' || routine_id) as total_sessions,
+                COUNT(*) as total_exercises,
+                AVG(CASE WHEN completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as avg_completion_rate,
+                MAX(workout_date) as last_workout
+            FROM workout_performance
+        """)
+    
+    stats = cursor.fetchone()
+    return dict_from_row(stats)
+
+# Utility functions for database setup
+def initialize_runstrong_database(conn: sqlite3.Connection) -> bool:
+    """Initialize the database with all required tables"""
+    cursor = conn.cursor()
+    
+    # Create exercises table
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE,
+            description TEXT,
+            instructions TEXT,
+            exercise_type TEXT,
+            movement_pattern TEXT,
+            primary_muscles TEXT,
+            secondary_muscles TEXT,
+            muscle_groups TEXT,
+            unilateral BOOLEAN,
+            difficulty_rating TEXT,
+            prerequisites TEXT,
+            progressions TEXT,
+            regressions TEXT,
+            equipment_required TEXT,
+            equipment_optional TEXT,
+            setup_time INTEGER,
+            space_required TEXT,
+            rep_range_min INTEGER,
+            rep_range_max INTEGER,
+            tempo TEXT,
+            range_of_motion TEXT,
+            compound_vs_isolation TEXT,
+            injury_risk_level TEXT,
+            contraindications TEXT,
+            common_mistakes TEXT,
+            safety_notes TEXT,
+            image_url TEXT,
+            video_url TEXT,
+            gif_url TEXT,
+            diagram_url TEXT,
+            category TEXT,
+            training_style TEXT,
+            experience_level TEXT,
+            goals TEXT,
+            duration_minutes INTEGER,
+            popularity_score INTEGER,
+            alternatives TEXT,
+            supersets_well_with TEXT
+        )
+    ''')
+    
+    # Create workout_routines table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS workout_routines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            date_created DATE
+        )
+    ''')
+    
+    # Create routine_exercises table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS routine_exercises (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            routine_id INTEGER,
+            exercise_id INTEGER,
+            sets INTEGER,
+            reps INTEGER,
+            load_lbs FLOAT,
+            order_index INTEGER,
+            notes TEXT,
+            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
+            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+        )
+    ''')
+    
+    # Create workout_performance table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS workout_performance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            routine_id INTEGER,
+            exercise_id INTEGER,
+            workout_date DATE,
+            planned_sets INTEGER,
+            actual_sets INTEGER,
+            planned_reps INTEGER,
+            actual_reps INTEGER,
+            planned_load_lbs FLOAT,
+            actual_load_lbs FLOAT,
+            notes TEXT,
+            completion_status TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
+            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
+        )
+    ''')
+    
+    conn.commit()
+    return True
 
 ## Begin LLM section
 

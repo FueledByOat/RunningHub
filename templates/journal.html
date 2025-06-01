@@ -4,70 +4,217 @@
     <meta charset="UTF-8" />
     <title>RUNSTRONG | Workout Journal</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <style>
-        .runstrong-container { padding: 20px; max-width: 1000px; margin: 20px auto; background-color: var(--rs-primary); border-radius: 8px; box-shadow: 0 4px 15px var(--rs-shadow); }
-        .session-entry { border: 1px solid var(--rs-secondary); padding: 15px; margin-bottom: 20px; border-radius: 6px; background-color: #3a0150; }
-        .session-entry h3 { margin-top: 0; color: var(--rs-accent); border-bottom: 1px solid var(--rs-highlight); padding-bottom: 0.5rem; margin-bottom: 1rem;}
-        .session-details p { margin: 0.3rem 0; }
-        .exercise-group { margin-top: 1rem; padding-left: 1rem; border-left: 3px solid var(--rs-accent); }
-        .exercise-group strong { color: var(--rs-highlight); }
-        .exercise-group .set-info { margin-left:1.5rem; font-size:0.9em; }
-        .exercise-group .exercise-notes { font-style: italic; color: #ccc; margin-left:1.5rem; font-size:0.9em; margin-bottom:0.5rem; }
-    </style>
+    
 </head>
 <body class="runstrong">
     <div class="runstrong-navbar">
         <a href="{{ url_for('runstrong') }}">Home</a>
         <a href="{{ url_for('exercise_library') }}">Library</a>
-        <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('planner') }}">Routines</a>
+        <a href="{{ url_for('add_exercise') }}">Add</a>
         <a href="{{ url_for('journal') }}">Journal</a>
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('strength_log_page') }}">Log Strength</a>
     </div>
     <div class="runnervision-header">
         <a href="{{ url_for('home') }}">
-            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo" class="runstrong-logo" />
+            <img src="{{ url_for('static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
         </a>
     </div>
-
     <div class="runstrong-container">
-        <h2>Workout Journal</h2>
-        {% if sessions %}
-            {% for session in sessions %}
-                <div class="session-entry">
-                    <h3>
-                        {{ session.session_name if session.session_name else "Workout" }} - 
-                        <small>{{ session.session_date | format_datetime }}</small>
-                    </h3>
-                    <div class="session-details">
-                        <p><strong>Duration:</strong> {{ session.duration_minutes if session.duration_minutes else "N/A" }} minutes</p>
-                        <p><strong>RPE:</strong> {{ session.perceived_exertion if session.perceived_exertion else "N/A" }}</p>
-                        {% if session.notes %}
-                            <p><strong>Session Notes:</strong> {{ session.notes }}</p>
-                        {% endif %}
+        <h1 style="text-align: center; color: var(--rs-white); margin-bottom: 2rem;">Workout Journal</h1>
+        
+        <!-- Routine Selection Section -->
+        <div class="journal-section" id="routine-selection">
+            <h2>Select a Routine</h2>
+            <div class="routine-list" id="routine-list">
+                <!-- Routines will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Workout Form Section -->
+        <div class="workout-form" id="workout-form">
+            <div class="workout-header">
+                <h2 id="routine-title">Workout Session</h2>
+                <div class="date-selector">
+                    <label for="workout-date">Date:</label>
+                    <input type="date" id="workout-date" required>
+                    <button type="button" class="btn-secondary" onclick="goBack()">Back to Routines</button>
+                </div>
+            </div>
+            
+            <div id="exercises-container">
+                <!-- Exercise entries will be loaded here -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <button type="button" class="btn-primary" onclick="saveWorkout()">Save Workout</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentRoutine = null;
+        let routineExercises = [];
+
+        // Load routines on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRoutines();
+            // Set today's date as default
+            document.getElementById('workout-date').value = new Date().toISOString().split('T')[0];
+        });
+
+        async function loadRoutines() {
+            try {
+                const response = await fetch('/api/routines');
+                const routines = await response.json();
+                displayRoutines(routines);
+            } catch (error) {
+                console.error('Error loading routines:', error);
+            }
+        }
+
+        function displayRoutines(routines) {
+            const routineList = document.getElementById('routine-list');
+            
+            if (routines.length === 0) {
+                routineList.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6);">No routines found. Create one in the Planner first.</p>';
+                return;
+            }
+            
+            routineList.innerHTML = routines.map(routine => `
+                <div class="routine-card" onclick="selectRoutine(${routine.id})">
+                    <h3>${routine.name}</h3>
+                    <p>Created: ${new Date(routine.date_created).toLocaleDateString()}</p>
+                    <p>${routine.exercise_count || 0} exercises</p>
+                </div>
+            `).join('');
+        }
+
+        async function selectRoutine(routineId) {
+            try {
+                const response = await fetch(`/api/routines/${routineId}/exercises`);
+                const data = await response.json();
+                
+                currentRoutine = data.routine;
+                routineExercises = data.exercises;
+                
+                document.getElementById('routine-title').textContent = currentRoutine.name;
+                document.getElementById('routine-selection').style.display = 'none';
+                document.getElementById('workout-form').style.display = 'block';
+                
+                displayExerciseEntries();
+            } catch (error) {
+                console.error('Error loading routine exercises:', error);
+            }
+        }
+
+        function displayExerciseEntries() {
+            const container = document.getElementById('exercises-container');
+            
+            container.innerHTML = routineExercises.map((exercise, index) => `
+                <div class="exercise-entry">
+                    <div class="exercise-header">
+                        <div class="exercise-name">${exercise.name}</div>
+                        <div class="planned-info">
+                            Planned: ${exercise.sets} sets × ${exercise.reps} reps @ ${exercise.load_lbs} lbs
+                        </div>
                     </div>
                     
-                    {% if session.grouped_exercises_list %}
-                        <h4 style="margin-top:1.5rem; color: var(--rs-secondary);">Exercises Performed:</h4>
-                        {% for exercise in session.grouped_exercises_list %}
-                            <div class="exercise-group">
-                                <p><strong>{{ exercise.name }}</strong></p>
-                                {% if exercise.exercise_session_notes %}
-                                    <p class="exercise-notes">Notes: {{ exercise.exercise_session_notes }}</p>
-                                {% endif %}
-                                {% for set_item in exercise.sets %}
-                                    <p class="set-info">Set {{ set_item.set_number }}: {{ set_item.reps }} reps @ {{ set_item.weight }} lbs</p>
-                                {% endfor %}
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <p>No specific exercises logged for this session.</p>
-                    {% endif %}
+                    <div class="status-selector">
+                        <label style="margin-right: 1rem;">Status:</label>
+                        <button type="button" class="status-btn active" onclick="setStatus(${index}, 'completed', this)">Completed</button>
+                        <button type="button" class="status-btn" onclick="setStatus(${index}, 'partial', this)">Partial</button>
+                        <button type="button" class="status-btn" onclick="setStatus(${index}, 'skipped', this)">Skipped</button>
+                    </div>
+                    
+                    <div class="performance-grid">
+                        <div class="form-group">
+                            <label for="actual-sets-${index}">Actual Sets:</label>
+                            <input type="number" id="actual-sets-${index}" min="0" value="${exercise.sets}">
+                        </div>
+                        <div class="form-group">
+                            <label for="actual-reps-${index}">Actual Reps:</label>
+                            <input type="number" id="actual-reps-${index}" min="0" value="${exercise.reps}">
+                        </div>
+                        <div class="form-group">
+                            <label for="actual-load-${index}">Actual Load (lbs):</label>
+                            <input type="number" id="actual-load-${index}" min="0" step="0.5" value="${exercise.load_lbs}">
+                        </div>
+                        <div class="form-group" style="grid-column: 1 / -1;">
+                            <label for="notes-${index}">Notes:</label>
+                            <textarea id="notes-${index}" placeholder="How did this exercise feel? Any observations?">${exercise.notes || ''}</textarea>
+                        </div>
+                    </div>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p>No workouts logged yet. <a href="{{ url_for('strength_log_page') }}" style="color: var(--rs-accent);">Log your first workout!</a></p>
-        {% endif %}
-    </div>
+            `).join('');
+        }
+
+        function setStatus(exerciseIndex, status, button) {
+            // Remove active class from all status buttons for this exercise
+            const exerciseEntry = button.closest('.exercise-entry');
+            exerciseEntry.querySelectorAll('.status-btn').forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Store status data
+            routineExercises[exerciseIndex].status = status;
+        }
+
+        async function saveWorkout() {
+            const workoutDate = document.getElementById('workout-date').value;
+            
+            if (!workoutDate) {
+                alert('Please select a workout date.');
+                return;
+            }
+            
+            const performanceData = routineExercises.map((exercise, index) => ({
+                routine_id: currentRoutine.id,
+                exercise_id: exercise.exercise_id,
+                workout_date: workoutDate,
+                planned_sets: exercise.sets,
+                actual_sets: parseInt(document.getElementById(`actual-sets-${index}`).value) || 0,
+                planned_reps: exercise.reps,
+                actual_reps: parseInt(document.getElementById(`actual-reps-${index}`).value) || 0,
+                planned_load_lbs: exercise.load_lbs,
+                actual_load_lbs: parseFloat(document.getElementById(`actual-load-${index}`).value) || 0,
+                notes: document.getElementById(`notes-${index}`).value,
+                completion_status: exercise.status || 'completed'
+            }));
+            
+            try {
+                const response = await fetch('/api/workout-performance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        routine_id: currentRoutine.id,
+                        workout_date: workoutDate,
+                        exercises: performanceData
+                    })
+                });
+                
+                if (response.ok) {
+                    alert('Workout saved successfully!');
+                    goBack();
+                } else {
+                    alert('Error saving workout. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error saving workout:', error);
+                alert('Error saving workout. Please try again.');
+            }
+        }
+
+        function goBack() {
+            document.getElementById('workout-form').style.display = 'none';
+            document.getElementById('routine-selection').style.display = 'block';
+            currentRoutine = null;
+            routineExercises = [];
+        }
+    </script>
 </body>
 </html>

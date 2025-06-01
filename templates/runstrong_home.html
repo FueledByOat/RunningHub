@@ -12,7 +12,7 @@
     <div class="runstrong-navbar">
         <a href="{{ url_for('runstrong') }}">Home</a>
         <a href="{{ url_for('exercise_library') }}">Library</a>
-        <a href="{{ url_for('planner') }}">Planner</a>
+        <a href="{{ url_for('planner') }}">Routines</a>
         <a href="{{ url_for('add_exercise') }}">Add</a>
         <a href="{{ url_for('journal') }}">Journal</a>
         <a href="{{ url_for('dashboard') }}">Dashboard</a>
@@ -26,18 +26,18 @@
     </div>
 
     <div class="runstrong-container">
-        <h1 class="runstrong-header">Welcome to Runstrong</h1>
-        <p class="runstrong-tagline">Your strength & performance planning hub</p>
 
         <div class="runstrong-button-grid">
+
             <a href="{{ url_for('exercise_library') }}">
                 <button>Exercise Library</button>
-            </a> 
+            </a>
+
+            <a href="{{ url_for('planner') }}">
+                <button>Routines</button>
+            </a>
             <a href="{{ url_for('add_exercise') }}">
                 <button>Add Exercise</button>
-            </a>
-            <a href="{{ url_for('planner') }}">
-                <button>Workout Planner</button>
             </a>
             <a href="{{ url_for('journal') }}">
                 <button>Workout Journal</button>
@@ -48,10 +48,12 @@
         </div>
     </div>
 
-<div class="runnervision-header">
-    <img src="{{ url_for('static', filename='images/stacking_bricks.png') }}" alt="RunStrong Logo" >
-
-</div>
+    <div style="padding: 2%;">
+        <video controls autoplay muted style="display: block; margin: auto; width: 25%; padding: 2%;">
+            <source src="{{ url_for('static', filename='videos/coach_g_drops_bricks.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
 
 </body>
 
