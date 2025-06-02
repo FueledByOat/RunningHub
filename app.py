@@ -23,6 +23,7 @@ from density_dash import create_density_dash
 from services.activity_service import ActivityService
 from services.runstrong_service import RunStrongService
 from services.runnervision_service import RunnerVisionService
+from services.coach_g_service import CoachGService
 from services.query_service import QueryService
 from services.statistics_service import StatisticsService
 from services.trophy_service import TrophyService
@@ -80,6 +81,7 @@ class FlaskAppFactory:
         activity_service = ActivityService(config.DB_PATH)
         runstrong_service = RunStrongService(config.DB_PATH)
         runnervision_service = RunnerVisionService(config)
+        coach_g_service = CoachGService(config.DB_PATH)
         query_service = QueryService(config.DB_PATH)
         statistics_service = StatisticsService(config.DB_PATH)
         trophy_service = TrophyService(config.DB_PATH)
@@ -89,6 +91,7 @@ class FlaskAppFactory:
         ActivityRoutes.register(app, activity_service)
         RunnerVisionRoutes.register(app, runnervision_service)
         RunStrongRoutes.register(app, runstrong_service)
+        CoachGRoutes.register(app, coach_g_service)
         QueryRoutes.register(app, query_service)
         StatisticsRoutes.register(app, statistics_service)
         TrophyRoutes.register(app, trophy_service)
@@ -132,12 +135,6 @@ class HomeRoutes:
             except Exception as e:
                 logger.error(f"Error loading home page: {e}")
                 return render_template("home.html", activity=None)
-            
-        # temporary coach G
-        @app.route("/coach_g")
-        def coach_g():
-            """temporary coach g"""
-            return render_template("coach_g.html")
 
 
 class ActivityRoutes:
@@ -414,6 +411,43 @@ class RunStrongRoutes:
                 return jsonify(history)
             except Exception as e:
                 return jsonify({'error': str(e)}), 500
+
+class CoachGRoutes:
+    """Fix Later"""
+    
+    @staticmethod
+    def register(app: Flask, coach_g_service: CoachGService) -> None:
+        """Register query routes."""
+        
+        # temporary coach G
+        @app.route("/coach-g")
+        def coach_g():
+            """temporary coach g"""
+            return render_template("coach_g.html")
+
+        @app.route('/api/coach-g/', methods=['POST'])
+        def coach_g_chat():
+            data = request.get_json()
+            user_message = data.get('message', '')
+            
+            # Replace this with your actual LLM API call
+            # Example with OpenAI:
+            # response = openai.chat.completions.create(
+            #     model="gpt-3.5-turbo",
+            #     messages=[
+            #         {"role": "system", "content": "You are Coach G, a friendly running coach..."},
+            #         {"role": "user", "content": user_message}
+            #     ]
+            # )
+            # coach_reply = response.choices[0].message.content
+            
+            # For now, a simple response:
+            # coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
+            
+            # real reply
+            coach_reply = coach_g_service.daily_training_summary()
+
+            return jsonify({'response': coach_reply})
 
 
 class QueryRoutes:

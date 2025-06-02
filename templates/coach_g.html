@@ -48,8 +48,8 @@
                         <div class="coach_g_quick_questions_title">Quick questions:</div>
                         <div class="coach_g_quick_questions_list">
                             <button class="coach_g_quick_question"
-                                onclick="sendQuickQuestion('How do I start a running routine?')">
-                                How do I start running?
+                                onclick="sendQuickQuestion('Whats my training status for today?')">
+                                Current Status
                             </button>
                             <button class="coach_g_quick_question"
                                 onclick="sendQuickQuestion('What should I eat before a long run?')">
@@ -57,11 +57,11 @@
                             </button>
                             <button class="coach_g_quick_question"
                                 onclick="sendQuickQuestion('How do I prevent running injuries?')">
-                                Injury prevention
+                                Fatigue Level
                             </button>
                             <button class="coach_g_quick_question"
                                 onclick="sendQuickQuestion('What is a good 5K training plan?')">
-                                5K training plan
+                                Training Plan
                             </button>
                         </div>
                     </div>
@@ -129,10 +129,23 @@
             showTypingIndicator();
 
             // Simulate Coach G response (replace with actual API call)
-            setTimeout(() => {
-                hideTypingIndicator();
-                addCoachResponse("Thanks for your question! I'm Coach G, and I'm here to help with your running journey. This is where my response would appear based on your training question.");
-            }, 2000);
+            fetch('/api/coach-g/', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ message: message })
+})
+.then(response => response.json())
+.then(data => {
+    hideTypingIndicator();
+    addCoachResponse(data.response);
+})
+.catch(error => {
+    hideTypingIndicator();
+    addCoachResponse("Sorry, I'm busy at the track right now. Please try again later.");
+    console.error('Error:', error);
+});
         }
 
         function sendQuickQuestion(question) {
@@ -150,7 +163,6 @@
             if (sender === 'coach_g_user') {
                 avatar.innerHTML = '<i class="fas fa-user"></i>';
             } else {
-                // For Coach G - you can replace this with an actual image
                 avatar.innerHTML = '<img src="static/images/coach_g_profile_pic.png" alt="Coach G" class="coach_g_coach_image" onerror="this.parentElement.innerHTML=\'<i class=&quot;fas fa-user-tie&quot;></i>\'">';
             }
 

@@ -195,7 +195,7 @@ Write a SQL query to return the relevant columns to answer the question:"""
         print(training_metrics[0]['total_tss'])
 
         prompt = f"""
-            You are a running coach assistant. Summarize today's training load.
+            You are a running coach assistant, Coach G. Summarize today's training load.
 
             Date: {training_metrics[0]['date']}
             Total TSS: {round(training_metrics[0]['total_tss'], 1)}
