@@ -192,8 +192,6 @@ Write a SQL query to return the relevant columns to answer the question:"""
         except Exception as e:
             raise exception_utils.LanguageModelError(f"Failed to extract SQL: {e}") from e
 
-        print(training_metrics[0]['total_tss'])
-
         prompt = f"""
             You are a running coach assistant, Coach G. Summarize today's training load.
 
@@ -215,6 +213,15 @@ Write a SQL query to return the relevant columns to answer the question:"""
         
         return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
 
+    def generate_general_coach_g_reply(self, user_query: str) -> Optional[str]:
+        
+        prompt = f"""
+            You are a running coach assistant, Coach G. 
+            Reply to the following query respond with 2-4 sentences,
+            citing any running, physiological, or clinic insights that may be relevant. 
+            """ + user_query
+        
+        return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
 
 # Global instance
 _sql_generator = None

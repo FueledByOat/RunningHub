@@ -4,124 +4,9 @@
     <meta charset="UTF-8" />
     <title>RUNSTRONG | Workout Planner</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <style>
-        .planner-section {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2rem;
-            margin: 1rem 0;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-        }
-        .exercise-list {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid var(--rs-accent);
-            border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem 0;
-        }
-        .exercise-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .exercise-item:hover {
-            background-color: rgba(255, 0, 128, 0.1);
-        }
-        .exercise-details {
-            display: none;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-        }
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .form-group label {
-            color: var(--rs-white);
-            font-weight: bold;
-        }
-        .form-group input, .form-group textarea, .form-group select {
-            padding: 0.5rem;
-            border: 1px solid var(--rs-accent);
-            border-radius: 4px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--rs-white);
-        }
-        .form-group input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-        .routine-builder {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 2rem;
-            border-radius: 10px;
-            margin: 1rem 0;
-        }
-        .routine-exercise {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            background: rgba(255, 0, 128, 0.1);
-            border-radius: 8px;
-        }
-        .btn-primary {
-            background-color: var(--rs-accent);
-            color: var(--rs-white);
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background-color 0.2s;
-        }
-        .btn-primary:hover {
-            background-color: var(--rs-highlight);
-        }
-        .btn-secondary {
-            background-color: var(--rs-secondary);
-            color: var(--rs-white);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .btn-danger {
-            background-color: #dc3545;
-            color: var(--rs-white);
-            border: none;
-            padding: 0.3rem 0.8rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-        .search-box {
-            width: 100%;
-            padding: 0.8rem;
-            margin-bottom: 1rem;
-            border: 2px solid var(--rs-accent);
-            border-radius: 8px;
-            background-color: rgba(255, 255, 255, 0.1);
-            color: var(--rs-white);
-            font-size: 1rem;
-        }
-        .search-box::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-    </style>
+    <script src="{{ url_for('static', filename='js/runstrong_planner.js') }}" defer></script>
 </head>
-<body class="runstrong">
+<body class="runstrong planner-page">
     <div class="runstrong-navbar">
         <a href="{{ url_for('runstrong') }}">Home</a>
         <a href="{{ url_for('exercise_library') }}">Library</a>
@@ -137,14 +22,16 @@
         </a>
     </div>
     <div class="runstrong-container">
-        <h1 style="text-align: center; color: var(--rs-white); margin-bottom: 2rem;">Workout Planner</h1>
+        <h1 class="main-title">Workout Planner</h1>
         
         <!-- Routine Creation Section -->
         <div class="planner-section">
             <h2>Create New Routine</h2>
-            <div class="form-group">
-                <label for="routine-name">Routine Name:</label>
-                <input type="text" id="routine-name" placeholder="Enter routine name..." required>
+            <div class="routine-name-group">
+                <div class="form-group">
+                    <label for="routine-name">Routine Name:</label>
+                    <input type="text" id="routine-name" placeholder="Enter routine name..." required>
+                </div>
             </div>
         </div>
 
@@ -176,7 +63,7 @@
                 <label for="exercise-notes">Notes:</label>
                 <textarea id="exercise-notes" rows="3" placeholder="Optional notes..."></textarea>
             </div>
-            <div class="form-group">
+            <div class="form-group-inline">
                 <button type="button" class="btn-secondary" onclick="addExerciseToRoutine()">Add to Routine</button>
                 <button type="button" class="btn-secondary" onclick="cancelExerciseSelection()">Cancel</button>
             </div>
@@ -186,160 +73,11 @@
         <div class="routine-builder">
             <h2>Current Routine</h2>
             <div id="routine-exercises">
-                <p style="color: rgba(255, 255, 255, 0.6);">No exercises added yet.</p>
+                <p class="no-exercises-message">No exercises added yet.</p>
             </div>
             <button type="button" class="btn-primary" onclick="saveRoutine()">Save Routine</button>
         </div>
     </div>
 
-    <script>
-        let currentExercises = [];
-        let selectedExercise = null;
-        let routineExercises = [];
-
-        // Load exercises on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadExercises();
-        });
-
-        async function loadExercises() {
-            try {
-                const response = await fetch('/api/exercises');
-                currentExercises = await response.json();
-                displayExercises(currentExercises);
-            } catch (error) {
-                console.error('Error loading exercises:', error);
-            }
-        }
-
-        function displayExercises(exercises) {
-            const exerciseList = document.getElementById('exercise-list');
-            exerciseList.innerHTML = '';
-            
-            exercises.forEach(exercise => {
-                const exerciseItem = document.createElement('div');
-                exerciseItem.className = 'exercise-item';
-                exerciseItem.innerHTML = `
-                    <div>
-                        <strong>${exercise.name}</strong>
-                        <br>
-                        <small>${exercise.primary_muscles || 'N/A'}</small>
-                    </div>
-                    <button class="btn-secondary" onclick="selectExercise(${exercise.id})">Select</button>
-                `;
-                exerciseList.appendChild(exerciseItem);
-            });
-        }
-
-        function selectExercise(exerciseId) {
-            selectedExercise = currentExercises.find(ex => ex.id === exerciseId);
-            document.getElementById('exercise-details').style.display = 'grid';
-            
-            // Reset form values
-            document.getElementById('exercise-sets').value = 3;
-            document.getElementById('exercise-reps').value = 10;
-            document.getElementById('exercise-load').value = 0;
-            document.getElementById('exercise-notes').value = '';
-        }
-
-        function addExerciseToRoutine() {
-            if (!selectedExercise) return;
-            
-            const exerciseData = {
-                exercise: selectedExercise,
-                sets: parseInt(document.getElementById('exercise-sets').value),
-                reps: parseInt(document.getElementById('exercise-reps').value),
-                load_lbs: parseFloat(document.getElementById('exercise-load').value),
-                notes: document.getElementById('exercise-notes').value,
-                order_index: routineExercises.length
-            };
-            
-            routineExercises.push(exerciseData);
-            updateRoutineDisplay();
-            cancelExerciseSelection();
-        }
-
-        function cancelExerciseSelection() {
-            selectedExercise = null;
-            document.getElementById('exercise-details').style.display = 'none';
-        }
-
-        function updateRoutineDisplay() {
-            const container = document.getElementById('routine-exercises');
-            
-            if (routineExercises.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6);">No exercises added yet.</p>';
-                return;
-            }
-            
-            container.innerHTML = routineExercises.map((item, index) => `
-                <div class="routine-exercise">
-                    <div style="flex: 1;">
-                        <strong>${item.exercise.name}</strong>
-                        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.8);">
-                            ${item.sets} sets × ${item.reps} reps @ ${item.load_lbs} lbs
-                            ${item.notes ? `<br><em>${item.notes}</em>` : ''}
-                        </div>
-                    </div>
-                    <button class="btn-danger" onclick="removeExercise(${index})">Remove</button>
-                </div>
-            `).join('');
-        }
-
-        function removeExercise(index) {
-            routineExercises.splice(index, 1);
-            updateRoutineDisplay();
-        }
-
-        async function saveRoutine() {
-            const routineName = document.getElementById('routine-name').value.trim();
-            
-            if (!routineName) {
-                alert('Please enter a routine name.');
-                return;
-            }
-            
-            if (routineExercises.length === 0) {
-                alert('Please add at least one exercise to the routine.');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/routines', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        name: routineName,
-                        exercises: routineExercises
-                    })
-                });
-                
-                if (response.ok) {
-                    alert('Routine saved successfully!');
-                    // Reset form
-                    document.getElementById('routine-name').value = '';
-                    routineExercises = [];
-                    updateRoutineDisplay();
-                } else {
-                    alert('Error saving routine. Please try again.');
-                }
-            } catch (error) {
-                console.error('Error saving routine:', error);
-                alert('Error saving routine. Please try again.');
-            }
-        }
-
-        // Search functionality
-        document.getElementById('exercise-search').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredExercises = currentExercises.filter(exercise => 
-                exercise.name.toLowerCase().includes(searchTerm) ||
-                (exercise.primary_muscles && exercise.primary_muscles.toLowerCase().includes(searchTerm))
-            );
-            displayExercises(filteredExercises);
-        });
-    </script>
 </body>
 </html>

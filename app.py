@@ -429,23 +429,16 @@ class CoachGRoutes:
         def coach_g_chat():
             data = request.get_json()
             user_message = data.get('message', '')
-            
-            # Replace this with your actual LLM API call
-            # Example with OpenAI:
-            # response = openai.chat.completions.create(
-            #     model="gpt-3.5-turbo",
-            #     messages=[
-            #         {"role": "system", "content": "You are Coach G, a friendly running coach..."},
-            #         {"role": "user", "content": user_message}
-            #     ]
-            # )
-            # coach_reply = response.choices[0].message.content
+
+            if user_message == 'Whats my training status for today?':
+                coach_reply = coach_g_service.daily_training_summary()
+                return jsonify({'response': coach_reply})
             
             # For now, a simple response:
-            # coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
+            coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
             
             # real reply
-            coach_reply = coach_g_service.daily_training_summary()
+            coach_reply = coach_g_service.general_reply(user_message)
 
             return jsonify({'response': coach_reply})
 

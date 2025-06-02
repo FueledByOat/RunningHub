@@ -24,8 +24,8 @@ class CoachGService(BaseService):
     def daily_training_summary(self):
         return self.coach_g.generate_daily_training_summary()
 
-    def basic_reply(self, user_query: str):
-        pass
+    def general_reply(self, user_query: str):
+        return self.coach_g.generate_general_coach_g_reply(user_query)
 
     def latest_training_metrics(self, sql_query: str, param_input: str = '{}') -> Dict[str, Any]:
         """Execute a database query with parameters."""

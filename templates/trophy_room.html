@@ -23,8 +23,7 @@
         </div>
     </header>
     <div class="unit-selector">
-        <a href="{{ url_for('trophy_room', units='mi') }}"
-            class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+        <a href="{{ url_for('trophy_room', units='mi') }}" class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
         <a href="{{ url_for('trophy_room', units='km') }}"
             class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
     </div>

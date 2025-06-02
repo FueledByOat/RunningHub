@@ -1486,6 +1486,253 @@ body.runstrong {
   color: rgba(255, 255, 255, 0.6);
 }
 
+/* Planner-specific styles to avoid conflicts */
+.planner-page .planner-section {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2rem;
+  margin: 1rem auto;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  max-width: 800px;
+  text-align: center;
+}
+
+.planner-page .planner-section h2 {
+  color: var(--rs-white);
+  margin-bottom: 1.5rem;
+}
+
+.planner-page .exercise-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--rs-accent);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem auto;
+  max-width: 600px;
+  text-align: left;
+}
+
+.planner-page .exercise-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.planner-page .exercise-item:hover {
+  background-color: rgba(255, 0, 128, 0.1);
+}
+
+.planner-page .exercise-item:last-child {
+  border-bottom: none;
+}
+
+.planner-page .exercise-details {
+  display: none;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem auto;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  max-width: 600px;
+  text-align: left;
+}
+
+.planner-page .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.planner-page .form-group label {
+  color: var(--rs-white);
+  font-weight: bold;
+}
+
+.planner-page .form-group input,
+.planner-page .form-group textarea,
+.planner-page .form-group select {
+  padding: 0.5rem;
+  border: 1px solid var(--rs-accent);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+}
+
+.planner-page .form-group input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.planner-page .routine-builder {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2rem;
+  border-radius: 10px;
+  margin: 1rem auto;
+  max-width: 800px;
+  text-align: center;
+}
+
+.planner-page .routine-builder h2 {
+  color: var(--rs-white);
+  margin-bottom: 1.5rem;
+}
+
+.planner-page .routine-exercise {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  margin: 0.5rem auto;
+  background: rgba(255, 0, 128, 0.1);
+  border-radius: 8px;
+  max-width: 600px;
+  position: relative;
+}
+
+.planner-page .routine-exercise-content {
+  flex: 1;
+  text-align: left;
+}
+
+.planner-page .routine-exercise-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.planner-page .btn-primary {
+  background-color: var(--rs-accent);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+  margin: 0 auto;
+  display: inline-block;
+}
+
+.planner-page .btn-primary:hover {
+  background-color: var(--rs-highlight);
+}
+
+.planner-page .btn-secondary {
+  background-color: var(--rs-secondary);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin: 0.25rem;
+}
+
+.planner-page .btn-secondary:hover {
+  background-color: var(--rs-accent);
+}
+
+.planner-page .btn-danger {
+  background-color: #dc3545;
+  color: var(--rs-white);
+  border: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.planner-page .btn-danger:hover {
+  background-color: #c82333;
+}
+
+.planner-page .btn-edit {
+  background-color: #28a745;
+  color: var(--rs-white);
+  border: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.planner-page .btn-edit:hover {
+  background-color: #218838;
+}
+
+.planner-page .search-box {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.8rem;
+  margin: 0 auto 1rem auto;
+  border: 2px solid var(--rs-accent);
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+  font-size: 1rem;
+  display: block;
+}
+
+.planner-page .search-box::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.planner-page .form-group-inline {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.planner-page .routine-name-group {
+  max-width: 400px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.planner-page .routine-name-group .form-group {
+  text-align: left;
+}
+
+.planner-page .no-exercises-message {
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  text-align: center;
+  padding: 2rem;
+}
+
+.planner-page .main-title {
+  text-align: center;
+  color: var(--rs-white);
+  margin-bottom: 2rem;
+}
+
+.planner-page .edit-form {
+  display: none;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+
+.planner-page .edit-form.active {
+  display: block;
+}
+
+.planner-page .edit-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
 /* Begin Coach G Section */
 :root {
   --cg-primary: #ec6e68;
