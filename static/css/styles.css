@@ -2171,3 +2171,31 @@ body.coach_g {
     transform: translateY(0);
   }
 }
+
+/* Personality Selector */
+.coach_g_personality_selector {
+  margin-right: 1rem;
+}
+
+.coach_g_personality_dropdown {
+  padding: 0.8rem 1rem;
+  border: 2px solid var(--cg-border);
+  border-radius: 25px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--cg-white);
+  color: var(--cg-dark);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.coach_g_personality_dropdown:focus {
+  border-color: var(--cg-primary);
+  box-shadow: 0 0 0 3px rgba(236, 110, 104, 0.1);
+}
+
+.coach_g_personality_dropdown:hover {
+  border-color: var(--cg-primary);
+}

@@ -11,8 +11,9 @@ and request/response flow while delegating business logic to service layers.
 """
 
 import logging
+import uuid
 
-from flask import Flask, render_template, request, redirect, jsonify, abort
+from flask import Flask, render_template, request, redirect, jsonify, abort, sessions
 from werkzeug.exceptions import BadRequest, NotFound
 
 # Application modules
@@ -429,16 +430,30 @@ class CoachGRoutes:
         def coach_g_chat():
             data = request.get_json()
             user_message = data.get('message', '')
+            personality_selection = data.get('personality', 'motivational')
+            # Personality mapping for prompts
+            personality_prompts = {
+                'motivational': "You are an energetic, encouraging running coach who inspires confidence",
+                'analytical': "You are a data-driven coach who focuses on metrics and structured training",
+                'supportive': "You are a patient, understanding coach who prioritizes runner wellbeing", 
+                'challenging': "You are a tough but fair coach who pushes runners to exceed their limits",
+                'scientific': "You are an evidence-based coach who explains the science behind training"
+            }
+            personality = personality_prompts.get(personality_selection, personality_prompts['motivational'])
 
+            # You might already generate a session ID via cookies, headers, etc.
+            session_id = request.cookies.get('session_id') or str(uuid.uuid4())
+
+            # This is the short circuit section for quick replies with prebuilt response queries
             if user_message == 'Whats my training status for today?':
                 coach_reply = coach_g_service.daily_training_summary()
                 return jsonify({'response': coach_reply})
             
             # For now, a simple response:
-            coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
+            # coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
             
             # real reply
-            coach_reply = coach_g_service.general_reply(user_message)
+            coach_reply = coach_g_service.general_reply(session_id, user_message, personality)
 
             return jsonify({'response': coach_reply})
 

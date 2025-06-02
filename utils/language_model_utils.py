@@ -4,10 +4,10 @@
 import logging
 import re
 import torch
-from typing import Optional
+from typing import Optional, List, Dict
 from functools import lru_cache
 
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer
 from huggingface_hub import login
 
 from utils import exception_utils, db_utils
@@ -20,6 +20,7 @@ class LanguageModel:
     
     def __init__(self):
         self._pipe = None
+        self.tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-2b-it")
         self._initialize_model()
     
     def _initialize_model(self):
@@ -213,15 +214,35 @@ Write a SQL query to return the relevant columns to answer the question:"""
         
         return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
 
-    def generate_general_coach_g_reply(self, user_query: str) -> Optional[str]:
+    # def generate_general_coach_g_reply(self, user_query: str) -> Optional[str]:
         
-        prompt = f"""
-            You are a running coach assistant, Coach G. 
-            Reply to the following query respond with 2-4 sentences,
-            citing any running, physiological, or clinic insights that may be relevant. 
-            """ + user_query
+    #     prompt = f"""
+    #         You are a running coach assistant, Coach G. 
+    #         Reply to the following query respond with 2-4 sentences,
+    #         citing any running, physiological, or clinic insights that may be relevant. 
+    #         """ + user_query
         
-        return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
+    #     return self._pipe(prompt, max_new_tokens = 100)[0]["generated_text"]
+    
+    def generate_general_coach_g_reply(self, user_query: str, personality: str, history: Optional[List[Dict]] = None) -> str:
+        system_prompt = (
+            personality + " named Coach G. "
+            "You help athletes by answering their questions about training, recovery, and running performance. "
+            "Always cite any running science, physiology, or clinical data when appropriate. "
+            "Keep your responses to 2-4 sentences.\n\n"
+        )
+
+        conversation = ""
+        if history:
+            for turn in history:
+                role = "User" if turn["role"] == "user" else "Coach G"
+                conversation += f"{role}: {turn['message']}\n"
+
+        conversation += f"User: {user_query}\nCoach G:"
+
+        prompt = system_prompt + conversation
+
+        return self._pipe(prompt, max_new_tokens=100)[0]["generated_text"]
 
 # Global instance
 _sql_generator = None

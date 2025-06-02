@@ -8,7 +8,7 @@ database interactions, and business rules while keeping the Flask routes clean.
 import logging
 
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 
 from services.base_service import BaseService
 from utils import db_utils, format_utils, exception_utils, language_model_utils
@@ -19,13 +19,51 @@ class CoachGService(BaseService):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         self.coach_g = language_model_utils.LanguageModel()
+        self.tokenizer = self.coach_g.tokenizer
 
 
     def daily_training_summary(self):
         return self.coach_g.generate_daily_training_summary()
 
-    def general_reply(self, user_query: str):
-        return self.coach_g.generate_general_coach_g_reply(user_query)
+    def general_reply(self, session_id: str, user_query: str, personality: str):
+
+        
+        #  Save user message
+        self._save_message(session_id, "user", user_query)
+
+        # Load tokenizer for token counting
+        tokenizer = self.tokenizer
+
+        # Fetch token-limited message history
+        history = self._get_recent_messages(session_id, max_tokens=512, tokenizer=tokenizer)
+
+        # Generate response
+        response = self.coach_g.generate_general_coach_g_reply(user_query, personality, history=history)
+
+        # Save assistant's response
+        self._save_message(session_id, "coach", response)
+
+        return response
+    
+
+
+    def _save_message(self, session_id, user, user_query):
+        """Save message to conersations table"""
+        try:
+            with self._get_connection() as conn:
+                db_utils.save_message(conn, session_id, user, user_query)
+        except Exception as e:
+            self.logger.error(f"Error saving conversation message: {e}")
+
+    def _get_recent_messages(self, session_id, tokenizer, max_tokens=512):
+        """Save message to conersations table"""
+        try:
+            with self._get_connection() as conn:
+                history = db_utils.get_recent_messages(conn, session_id, max_tokens, tokenizer)
+                return history
+        except Exception as e:
+            self.logger.error(f"Error retreiving conversation message: {e}")
+    
 
     def latest_training_metrics(self, sql_query: str, param_input: str = '{}') -> Dict[str, Any]:
         """Execute a database query with parameters."""

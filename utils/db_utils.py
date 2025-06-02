@@ -1709,3 +1709,60 @@ def get_latest_daily_training_metrics(conn: sqlite3.Connection):
     result = c.execute(query).fetchall()
 
     return result
+
+def initialize_conversation_database(conn: sqlite3.Connection):
+    """
+    Retreives latest day's data from the daily_training_metrics table.
+
+    Args:
+        conn
+    """
+    c = conn.cursor()
+    c.execute('''
+    CREATE TABLE conversations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT,
+    role TEXT, -- "user" or "coach"
+    message TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    ''')
+
+def save_message(conn: sqlite3.Connection, session_id: str, role: str, message: str):
+    """Store a single message (user or coach) in the conversation history."""
+    conn.execute(
+        "INSERT INTO conversations (session_id, role, message) VALUES (?, ?, ?)",
+        (session_id, role, message)
+    )
+    conn.commit()
+
+def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
+    """
+    Retrieve the most recent conversation history within a token limit.
+    Messages are returned in chronological order.
+    """
+    c = conn.cursor()
+    c.execute("""
+        SELECT role, message FROM conversation_history
+        WHERE session_id = ?
+        ORDER BY timestamp DESC
+    """, (session_id,))
+    rows = c.fetchall()
+    conn.close()
+
+    history = []
+    total_tokens = 0
+
+    # Accumulate messages in reverse (most recent to oldest), but build history forward
+    for role, message in rows:
+        # Format message as it would appear in the prompt
+        formatted = f"User: {message}\n" if role == 'user' else f"Coach G: {message}\n"
+        token_count = len(tokenizer.encode(formatted))
+
+        if total_tokens + token_count > max_tokens:
+            break
+
+        history.insert(0, {"role": role, "message": message})
+        total_tokens += token_count
+
+    return history
