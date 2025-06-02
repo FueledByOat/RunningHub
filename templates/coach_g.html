@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunningHub | Coach G</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+</head>
+
+<body class="coach_g">
+    <div class="coach_g_background">
+        <img src="{{ url_for('static', filename='images/coach_g_all_3.png') }}" alt="This is Coach G"
+            class="coach_g_logo" />
+    </div>
+    <div class="coach_g_content">
+        <main class="coach_g_container">
+            <div class="coach_g_chat_container">
+                <div class="coach_g_chat_header">
+                    <h2><i class="fas fa-running"></i> Chat with Coach G!</h2>
+                    <p>Get personalized running advice and training guidance</p>
+                </div>
+                <div class="coach_g_chat_messages" id="coachGChatMessages">
+                    <div class="coach_g_welcome_message">
+                        <p>👋 Welcome! Ask Coach G about your running goals, training plans, or any running-related
+                            questions.</p>
+                    </div>
+                </div>
+                <div class="coach_g_chat_input">
+                    <div class="coach_g_input_group">
+                        <div class="coach_g_input_field">
+                            <textarea id="coachGMessageInput"
+                                placeholder="Ask Coach G about your training, goals, or any running questions..."
+                                rows="1"></textarea>
+                        </div>
+                        <button class="coach_g_send_button" id="coachGSendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+
+                    <div class="coach_g_quick_questions">
+                        <div class="coach_g_quick_questions_title">Quick questions:</div>
+                        <div class="coach_g_quick_questions_list">
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('How do I start a running routine?')">
+                                How do I start running?
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('What should I eat before a long run?')">
+                                Pre-run nutrition
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('How do I prevent running injuries?')">
+                                Injury prevention
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('What is a good 5K training plan?')">
+                                5K training plan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="coach_g_typing_indicator" id="coachGTypingIndicator">
+                        <span>Coach G is thinking</span>
+                        <div class="coach_g_typing_dots">
+                            <div class="coach_g_typing_dot"></div>
+                            <div class="coach_g_typing_dot"></div>
+                            <div class="coach_g_typing_dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+        </main>
+
+        <footer class="coach_g_footer">
+            <div class="coach_g_container">
+                <div class="coach_g_footer_content">
+                    <p>&copy; 2025 RunningHub. Powered by Coach G AI Training Assistant.</p>
+                    <div class="coach_g_footer_links">
+                        <a href="#" class="coach_g_footer_link">Privacy Policy</a>
+                        <a href="#" class="coach_g_footer_link">Terms of Service</a>
+                        <a href="#" class="coach_g_footer_link">Contact</a>
+                        <a href="#" class="coach_g_footer_link">About Coach G</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+
+    <script>
+        const messageInput = document.getElementById('coachGMessageInput');
+        const sendButton = document.getElementById('coachGSendButton');
+        const chatMessages = document.getElementById('coachGChatMessages');
+        const typingIndicator = document.getElementById('coachGTypingIndicator');
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        // Send message on Enter (but allow Shift+Enter for new lines)
+        messageInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, 'coach_g_user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            // Simulate Coach G response (replace with actual API call)
+            setTimeout(() => {
+                hideTypingIndicator();
+                addCoachResponse("Thanks for your question! I'm Coach G, and I'm here to help with your running journey. This is where my response would appear based on your training question.");
+            }, 2000);
+        }
+
+        function sendQuickQuestion(question) {
+            messageInput.value = question;
+            sendMessage();
+        }
+
+        function addMessage(content, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `coach_g_message ${sender}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'coach_g_message_avatar';
+
+            if (sender === 'coach_g_user') {
+                avatar.innerHTML = '<i class="fas fa-user"></i>';
+            } else {
+                // For Coach G - you can replace this with an actual image
+                avatar.innerHTML = '<img src="static/images/coach_g_profile_pic.png" alt="Coach G" class="coach_g_coach_image" onerror="this.parentElement.innerHTML=\'<i class=&quot;fas fa-user-tie&quot;></i>\'">';
+            }
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'coach_g_message_content';
+            messageContent.textContent = content;
+
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(messageContent);
+
+            // Remove welcome message if it exists
+            const welcomeMessage = chatMessages.querySelector('.coach_g_welcome_message');
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addCoachResponse(response) {
+            addMessage(response, 'coach_g_coach');
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.style.display = 'flex';
+            sendButton.disabled = true;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+            sendButton.disabled = false;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            messageInput.focus();
+        });
+    </script>
+</body>
+
+</html>

@@ -132,6 +132,12 @@ class HomeRoutes:
             except Exception as e:
                 logger.error(f"Error loading home page: {e}")
                 return render_template("home.html", activity=None)
+            
+        # temporary coach G
+        @app.route("/coach_g")
+        def coach_g():
+            """temporary coach g"""
+            return render_template("coach_g.html")
 
 
 class ActivityRoutes:
