@@ -1546,7 +1546,7 @@ body.coach_g {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-    flex: 1;
+  flex: 1;
 }
 
 .coach_g_footer {
@@ -1560,7 +1560,7 @@ body.coach_g {
 .coach_g_footer_content {
   text-align: center;
   color: var(--cg-white);
-   width: 100%;
+  width: 100%;
 }
 
 .coach_g_footer p {
@@ -1591,6 +1591,7 @@ body.coach_g {
 /* Main Chat Interface */
 .coach_g_chat_container {
   max-width: 800px;
+  width: 800px;
   margin: 2rem auto;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
