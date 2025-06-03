@@ -46,66 +46,85 @@ class CoachGService(BaseService):
 
     def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
         try:
-            # ... (input validation and sanitization as before) ...
-            self._save_message(session_id, "user", user_query)
-            history = self._get_recent_messages(session_id, max_tokens=self.lm_config.MAX_CONTEXT_TOKENS)
-
-            # ======== NEW AGENTIC LOGIC ========
-            # 1. Attempt to generate SQL
-            # Simple trigger: If the query is complex or asks for "data", "show me", "what is my average" etc.
-            # For a more robust solution, you might have an LLM call to classify intent.
-            # For now, let's assume we try SQL generation for most non-trivial queries.
-
+            # Input validation
+            if not session_id or not user_query.strip():
+                raise ValueError("Session ID and user query are required")
+            
+            sanitized_user_query = self._sanitize_user_input(user_query) # Use sanitized query for processing
+            
+            self._save_message(session_id, "user", sanitized_user_query) # Save sanitized user message
+            
+            history = self._get_recent_messages(
+                session_id, 
+                max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
+            )
+            
+            # Attempt to generate SQL and then a data-driven response
             raw_sql_suggestion = ""
             extracted_sql = None
             query_results = None
+            data_driven_response_generated = False # Flag to track if we went down this path
 
-            # You might add a check here: if user_query seems like a simple greeting, skip SQL.
-            # Or, use a more sophisticated intent detection.
             try:
-                # Ask the LLM to determine if SQL is needed OR directly try to generate SQL.
-                # Let's try direct generation for now.
-                raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(user_query)
+                # For now, we always attempt SQL generation unless it's a very simple query (future: intent classification)
+                self.logger.info(f"Attempting SQL generation for query: '{sanitized_user_query[:100]}...'")
+                # Pass history to SQL generation for better contextual understanding (e.g., "last week")
+                raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(sanitized_user_query)
                 if raw_sql_suggestion:
                     extracted_sql = self.coach_g.extract_sql_query(raw_sql_suggestion)
             except exception_utils.LanguageModelError as e:
-                self.logger.warning(f"SQL generation failed for query '{user_query}': {e}")
-            except Exception as e: # Catch any other unexpected error during SQL gen
-                self.logger.error(f"Unexpected error during SQL generation for query '{user_query}': {e}")
-
+                self.logger.warning(f"SQL generation failed for query '{sanitized_user_query[:100]}...': {e}")
+            except Exception as e:
+                self.logger.error(f"Unexpected error during SQL generation for query '{sanitized_user_query[:100]}...': {e}", exc_info=True)
 
             if extracted_sql:
-                self.logger.info(f"Generated SQL: {extracted_sql} for query: {user_query}")
-                query_results = self._execute_generated_query(extracted_sql)
+                self.logger.info(f"Extracted SQL: '{extracted_sql}' for query: '{sanitized_user_query[:100]}...'")
+                query_results = self._execute_generated_query(extracted_sql) # Ensure this method exists and is robust
+                
+                # --- Enhanced Logging for Query Results ---
+                if query_results:
+                    log_msg = (f"Query results for SQL '{extracted_sql[:100]}...': "
+                               f"Columns: {query_results.get('columns')}, "
+                               f"Num_Rows: {len(query_results.get('rows', [])) if query_results.get('rows') is not None else 'N/A'}, " # Handle if 'rows' key is missing or None
+                               f"Error: {query_results.get('error')}")
+                    if query_results.get('rows') and len(query_results.get('rows')) > 0 and len(query_results.get('rows')) <=3 : # Log first few rows if not too many
+                        log_msg += f", Rows_Data: {str(query_results.get('rows'))[:200]}..." # Log sample data carefully
+                    self.logger.debug(log_msg)
+                # --- End Enhanced Logging ---
 
+                # Check if query execution was successful and returned data to process
                 if query_results and query_results.get('error') is None:
-                    # 2b. Generate response from data
-                    response = self.coach_g.generate_response_from_data(
-                        user_query, extracted_sql, query_results, personality, history
+                    # Even if no rows are returned, we might want the LLM to say "no data found"
+                    # So, proceed if there's no error, regardless of whether rows exist.
+                    self.logger.info(f"Attempting to generate response from data for query: '{sanitized_user_query[:100]}...'")
+                    data_driven_response = self.coach_g.generate_response_from_data(
+                        sanitized_user_query, extracted_sql, query_results, personality, history
                     )
-                    if self._is_response_acceptable(response): # Reuse your quality check
-                        self._save_message(session_id, "coach", response)
-                        return response
+                    data_driven_response_generated = True # We attempted this path
+
+                    # --- Pass is_data_driven=True for quality check ---
+                    if self._is_response_acceptable(data_driven_response, is_data_driven=True):
+                        self.logger.info("Data-driven response passed quality check.")
+                        self._save_message(session_id, "coach", data_driven_response)
+                        return data_driven_response
                     else:
-                        self.logger.warning("Response from data failed quality check. Falling back.")
+                        self.logger.warning(f"Data-driven response FAILED quality check. Response: '{data_driven_response[:100]}...' Will fall back.")
                 elif query_results and query_results.get('error'):
-                    self.logger.warning(f"SQL execution error for query '{user_query}': {query_results.get('error')}")
-                    # Fall through to general reply, could add a note about data retrieval failure.
-
-            # ======== FALLBACK TO GENERAL CHAT ========
-            # If SQL generation failed, no SQL extracted, SQL execution failed, or data-based response was poor.
-            self.logger.info(f"Falling back to general reply for query: {user_query}")
-            response = self._generate_with_quality_check(user_query, personality, history)
-            self._save_message(session_id, "coach", response)
-            return response
-
+                    self.logger.warning(f"SQL execution error for query '{sanitized_user_query[:100]}...': {query_results.get('error')}. Will fall back.")
+            
+            # Fallback to general chat if SQL path wasn't taken, failed, or data-driven response was poor
+            self.logger.info(f"Falling back to general reply for query: '{sanitized_user_query[:100]}...' (Data-driven attempt: {data_driven_response_generated})")
+            # _generate_with_quality_check uses is_data_driven=False internally for its checks
+            general_response = self._generate_with_quality_check(sanitized_user_query, personality, history)
+            self._save_message(session_id, "coach", general_response)
+            return general_response
+            
         except Exception as e:
-            self.logger.error(f"Error in general_reply: {e}")
-            # Consider saving the error message or a generic coach message
-            fallback_msg = self._get_fallback_response(user_query)
-            self._save_message(session_id, "coach", fallback_msg) # Save something
+            self.logger.error(f"Critical error in general_reply for query '{user_query[:50]}...': {e}", exc_info=True) # Log full traceback
+            fallback_msg = self._get_fallback_response(user_query) # Use original user_query for fallback context
+            self._save_message(session_id, "coach", fallback_msg)
             return fallback_msg
-
+        
     # def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
     #     """Generate a controlled coaching response with validation."""
     #     try:
@@ -166,23 +185,36 @@ class CoachGService(BaseService):
         # Fallback after all attempts
         return self._get_fallback_response(user_query)
     
-    def _is_response_acceptable(self, response: str) -> bool:
+    def _is_response_acceptable(self, response: str, is_data_driven: bool = False) -> bool: # Added is_data_driven flag
         """Check if response meets quality standards."""
-        if not response or len(response.strip()) < 5:
+        if not response or len(response.strip()) < 10: # Min char length
+            self.logger.debug(f"Response failed length check (empty or <10 chars). Data_driven: {is_data_driven}")
             return False
         
-        # More lenient sentence count (1-8 sentences)
+        # --- Adjust sentence count limits based on the flag and LanguageModelConfig ---
+        min_s = self.lm_config.RESPONSE_MIN_SENTENCES_DATA_DRIVEN if is_data_driven else self.lm_config.RESPONSE_MIN_SENTENCES
+        max_s = self.lm_config.RESPONSE_MAX_SENTENCES_DATA_DRIVEN if is_data_driven else self.lm_config.RESPONSE_MAX_SENTENCES
+        # --- End Adjust sentence count ---
+
         sentence_count = len([s for s in re.split(r'[.!?]+', response) if s.strip()])
-        if sentence_count < 1 or sentence_count > 8:
+        if sentence_count < min_s or sentence_count > max_s:
+            self.logger.debug(f"Response failed sentence count: {sentence_count} (min:{min_s}, max:{max_s}, data_driven:{is_data_driven}). Response: '{response[:100]}...'")
             return False
         
-        # Relaxed repetition check (40% unique words minimum)
+        # Relaxed repetition check (e.g., 35% unique words minimum)
         words = response.lower().split()
-        if len(words) > 5 and len(set(words)) < len(words) * 0.4:
-            return False
+        if len(words) > 5: # Only check for non-trivial responses
+            unique_word_ratio = len(set(words)) / len(words) if len(words) > 0 else 0
+            if unique_word_ratio < 0.35: # Allow more repetition for potentially complex data explanations
+                self.logger.debug(f"Response failed repetition check (ratio: {unique_word_ratio:.2f}, data_driven:{is_data_driven}). Response: '{response[:100]}...'")
+                return False
         
         # Check for obvious generation artifacts
-        if any(artifact in response.lower() for artifact in ['<|end|>', '[end]', 'user:', 'coach g:']):
+        # Ensure these artifacts are compared in lowercase as well.
+        forbidden_artifacts = ['<|end|>', '[end]', 'user:', 'coach g:'] # Add more if you see them
+        response_lower = response.lower()
+        if any(artifact in response_lower for artifact in forbidden_artifacts):
+            self.logger.debug(f"Response failed artifact check (data_driven:{is_data_driven}). Response: '{response[:100]}...'")
             return False
         
         return True

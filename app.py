@@ -440,18 +440,6 @@ class CoachGRoutes:
                 
                 personality_selection = data.get('personality', 'motivational')
                 
-                # Personality mapping
-                personality_prompts = {
-                    'motivational': "an energetic, encouraging running coach who inspires confidence",
-                    'analytical': "a data-driven coach who focuses on metrics and structured training",
-                    'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
-                    'challenging': "a tough but fair coach who pushes runners to exceed their limits",
-                    'scientific': "an evidence-based coach who explains the science behind training",
-                    'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says FUCK but gets results"
-                }
-                
-                personality = personality_prompts.get(personality_selection, personality_prompts['motivational'])
-                
                 # Get or create session ID
                 session_id = request.cookies.get('session_id') or str(uuid.uuid4())
                 
@@ -460,7 +448,7 @@ class CoachGRoutes:
                     coach_reply = coach_g_service.daily_training_summary()
                 else:
                     # Generate contextual response
-                    coach_reply = coach_g_service.general_reply(session_id, user_message, personality)
+                    coach_reply = coach_g_service.general_reply(session_id, user_message, personality_selection)
                 
                 response = jsonify({'response': coach_reply})
                 

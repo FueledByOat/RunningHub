@@ -10,7 +10,7 @@ class Config:
     DB_PATH: Optional[str] = os.getenv('DATABASE', 'strava_data.db')
     DB_PATH_RUNSTRONG: Optional[str] = os.getenv('RUNSTRONG_DATABASE', 'runstrong.db')
     CACHE_TTL = int(os.getenv('CACHE_TTL', '300'))
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     VIDEO_FOLDER = os.getenv('VIDEO_FOLDER', 'videos')
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS', 'mp4')
@@ -68,8 +68,8 @@ class LanguageModelConfig:
     RESPONSE_MAX_SENTENCES = 6
 
     # Response formatting for data-driven responses
-    RESPONSE_MIN_SENTENCES_DATA_DRIVEN = 2
-    RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 10 # Allow more detailed responses with data
+    RESPONSE_MIN_SENTENCES_DATA_DRIVEN = 1
+    RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 15 # Allow more detailed responses with data
 
     MODEL_NAME = "google/gemma-2-2b-it"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
@@ -93,7 +93,7 @@ class LanguageModelConfig:
         'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
         'challenging': "a tough but fair coach who pushes runners to exceed their limits",
         'scientific': "an evidence-based coach who explains the science behind training",
-        'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says FUCK but gets results"
+        'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says hell but gets results"
     }
 
 # Set up logging configuration
