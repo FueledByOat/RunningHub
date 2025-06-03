@@ -82,7 +82,7 @@ class FlaskAppFactory:
         activity_service = ActivityService(config.DB_PATH)
         runstrong_service = RunStrongService(config.DB_PATH)
         runnervision_service = RunnerVisionService(config)
-        coach_g_service = CoachGService(config.DB_PATH)
+        coach_g_service = CoachGService(config)
         query_service = QueryService(config.DB_PATH)
         statistics_service = StatisticsService(config.DB_PATH)
         trophy_service = TrophyService(config.DB_PATH)
@@ -414,48 +414,65 @@ class RunStrongRoutes:
                 return jsonify({'error': str(e)}), 500
 
 class CoachGRoutes:
-    """Fix Later"""
+    """Routes for Coach G functionality."""
     
     @staticmethod
     def register(app: Flask, coach_g_service: CoachGService) -> None:
-        """Register query routes."""
-        
-        # temporary coach G
+        """Register Coach G routes."""
+
         @app.route("/coach-g")
         def coach_g():
-            """temporary coach g"""
+            """Render Coach G chat interface."""
             return render_template("coach_g.html")
-
+        
         @app.route('/api/coach-g/', methods=['POST'])
         def coach_g_chat():
-            data = request.get_json()
-            user_message = data.get('message', '')
-            personality_selection = data.get('personality', 'motivational')
-            # Personality mapping for prompts
-            personality_prompts = {
-                'motivational': "You are an energetic, encouraging running coach who inspires confidence",
-                'analytical': "You are a data-driven coach who focuses on metrics and structured training",
-                'supportive': "You are a patient, understanding coach who prioritizes runner wellbeing", 
-                'challenging': "You are a tough but fair coach who pushes runners to exceed their limits",
-                'scientific': "You are an evidence-based coach who explains the science behind training"
-            }
-            personality = personality_prompts.get(personality_selection, personality_prompts['motivational'])
-
-            # You might already generate a session ID via cookies, headers, etc.
-            session_id = request.cookies.get('session_id') or str(uuid.uuid4())
-
-            # This is the short circuit section for quick replies with prebuilt response queries
-            if user_message == 'Whats my training status for today?':
-                coach_reply = coach_g_service.daily_training_summary()
-                return jsonify({'response': coach_reply})
-            
-            # For now, a simple response:
-            # coach_reply = f"Thanks for asking about: '{user_message}'. As Coach G, I'd recommend starting with a gradual approach to your training goals."
-            
-            # real reply
-            coach_reply = coach_g_service.general_reply(session_id, user_message, personality)
-
-            return jsonify({'response': coach_reply})
+            """Handle Coach G chat interactions."""
+            try:
+                # Validate request
+                data = request.get_json()
+                if not data:
+                    return jsonify({'error': 'No data provided'}), 400
+                
+                user_message = data.get('message', '').strip()
+                if not user_message:
+                    return jsonify({'error': 'Message is required'}), 400
+                
+                personality_selection = data.get('personality', 'motivational')
+                
+                # Personality mapping
+                personality_prompts = {
+                    'motivational': "an energetic, encouraging running coach who inspires confidence",
+                    'analytical': "a data-driven coach who focuses on metrics and structured training",
+                    'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
+                    'challenging': "a tough but fair coach who pushes runners to exceed their limits",
+                    'scientific': "an evidence-based coach who explains the science behind training",
+                    'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says FUCK but gets results"
+                }
+                
+                personality = personality_prompts.get(personality_selection, personality_prompts['motivational'])
+                
+                # Get or create session ID
+                session_id = request.cookies.get('session_id') or str(uuid.uuid4())
+                
+                # Handle predefined queries
+                if user_message.lower() in ['whats my training status for today?', 'training status']:
+                    coach_reply = coach_g_service.daily_training_summary()
+                else:
+                    # Generate contextual response
+                    coach_reply = coach_g_service.general_reply(session_id, user_message, personality)
+                
+                response = jsonify({'response': coach_reply})
+                
+                # Set session cookie if new
+                if 'session_id' not in request.cookies:
+                    response.set_cookie('session_id', session_id, max_age=86400)  # 24 hours
+                
+                return response
+                
+            except Exception as e:
+                logger.error(f"Error in coach_g_chat: {e}")
+                return jsonify({'error': 'Internal server error'}), 500
 
 
 class QueryRoutes:

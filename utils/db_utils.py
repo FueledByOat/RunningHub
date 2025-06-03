@@ -1728,41 +1728,76 @@ def initialize_conversation_database(conn: sqlite3.Connection):
         );
     ''')
 
+def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
+    """Retrieve the most recent conversation history within a token limit."""
+    try:
+        rows = conn.execute("""
+            SELECT role, message, timestamp FROM conversations
+            WHERE session_id = ?
+            ORDER BY timestamp DESC
+            LIMIT 50
+        """, (session_id,)).fetchall()
+        
+        if not rows:
+            logger.debug(f"No conversation history found for session {session_id}")
+            return []
+        
+        history = []
+        total_tokens = 0
+        
+        for row in rows:
+            role, message, timestamp = row
+            
+            # Ensure message is a string
+            if not isinstance(message, str):
+                message = str(message) if message else ''
+            
+            message = message.strip()
+            if not message:
+                continue
+            
+            # Format message for token counting
+            formatted = f"User: {message}\n" if role == 'user' else f"Coach G: {message}\n"
+            
+            # Safe token counting
+            try:
+                token_count = len(tokenizer.encode(formatted))
+            except Exception as e:
+                logger.warning(f"Tokenizer failed, using fallback: {e}")
+                token_count = len(formatted.split()) * 1.3
+            
+            if total_tokens + token_count > max_tokens:
+                logger.debug(f"Token limit reached. Retrieved {len(history)} messages")
+                break
+            
+            history.insert(0, {
+                "role": role,
+                "message": message,  # Store clean string
+                "timestamp": timestamp
+            })
+            total_tokens += token_count
+        
+        logger.debug(f"Retrieved {len(history)} messages ({total_tokens} tokens) for session {session_id}")
+        return history
+        
+    except sqlite3.Error as e:
+        logger.error(f"Database error retrieving messages: {e}")
+        raise exception_utils.DatabaseError(f"Failed to retrieve messages: {e}") from e
+    
+    
 def save_message(conn: sqlite3.Connection, session_id: str, role: str, message: str):
     """Store a single message (user or coach) in the conversation history."""
-    conn.execute(
-        "INSERT INTO conversations (session_id, role, message) VALUES (?, ?, ?)",
-        (session_id, role, message)
-    )
-    conn.commit()
-
-def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
-    """
-    Retrieve the most recent conversation history within a token limit.
-    Messages are returned in chronological order.
-    """
-    c = conn.cursor()
-    c.execute("""
-        SELECT role, message FROM conversation_history
-        WHERE session_id = ?
-        ORDER BY timestamp DESC
-    """, (session_id,))
-    rows = c.fetchall()
-    conn.close()
-
-    history = []
-    total_tokens = 0
-
-    # Accumulate messages in reverse (most recent to oldest), but build history forward
-    for role, message in rows:
-        # Format message as it would appear in the prompt
-        formatted = f"User: {message}\n" if role == 'user' else f"Coach G: {message}\n"
-        token_count = len(tokenizer.encode(formatted))
-
-        if total_tokens + token_count > max_tokens:
-            break
-
-        history.insert(0, {"role": role, "message": message})
-        total_tokens += token_count
-
-    return history
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO conversations (session_id, role, message, timestamp)
+            VALUES (?, ?, ?, ?)
+        """, (session_id, role, message, datetime.datetime.utcnow().isoformat()))
+        
+        conn.commit()
+        logger.debug(f"Saved {role} message for session {session_id}")
+        
+    except sqlite3.Error as e:
+        logger.error(f"Database error saving message: {e}")
+        conn.rollback()
+        raise exception_utils.DatabaseError(f"Failed to save message: {e}") from e

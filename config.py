@@ -50,6 +50,48 @@ class Config:
             
         return True
 
+class LanguageModelConfig:
+    """Language model configuration settings."""
+    
+    # Generation parameters
+    MAX_NEW_TOKENS = 100
+    TEMPERATURE = 0.7
+    TOP_P = 0.9
+    REPETITION_PENALTY = 1.1
+    
+    # Context management
+    MAX_CONTEXT_MESSAGES = 5
+    MAX_CONTEXT_TOKENS = 512
+    
+    # Response formatting
+    RESPONSE_MIN_SENTENCES = 1
+    RESPONSE_MAX_SENTENCES = 6
+
+    MODEL_NAME = "google/gemma-2-2b-it"
+    USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
+
+
+    
+    # Stop sequences to prevent overgeneration
+    STOP_TOKENS = [
+        "\nUser:",
+        "\nCoach G:",
+        "\n\nUser:",
+        "\n\nCoach G:",
+        "---",
+        "***"
+    ]
+    
+    # Personality templates
+    PERSONALITY_TEMPLATES = {
+        'motivational': "an energetic, encouraging running coach who inspires confidence",
+        'analytical': "a data-driven coach who focuses on metrics and structured training",
+        'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
+        'challenging': "a tough but fair coach who pushes runners to exceed their limits",
+        'scientific': "an evidence-based coach who explains the science behind training",
+        'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says FUCK but gets results"
+    }
+
 # Set up logging configuration
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
