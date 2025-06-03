@@ -67,6 +67,10 @@ class LanguageModelConfig:
     RESPONSE_MIN_SENTENCES = 1
     RESPONSE_MAX_SENTENCES = 6
 
+    # Response formatting for data-driven responses
+    RESPONSE_MIN_SENTENCES_DATA_DRIVEN = 2
+    RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 10 # Allow more detailed responses with data
+
     MODEL_NAME = "google/gemma-2-2b-it"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
 

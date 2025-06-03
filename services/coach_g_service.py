@@ -45,35 +45,97 @@ class CoachGService(BaseService):
             return "Unable to generate training summary at this time."
 
     def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
-        """Generate a controlled coaching response with validation."""
         try:
-            # Input validation
-            if not session_id or not user_query.strip():
-                raise ValueError("Session ID and user query are required")
-            
-            # Sanitize input
-            user_query = self._sanitize_user_input(user_query)
-            
-            # Save user message
+            # ... (input validation and sanitization as before) ...
             self._save_message(session_id, "user", user_query)
-            
-            # Get conversation history
-            history = self._get_recent_messages(
-                session_id, 
-                max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
-            )
-            
-            # Generate response with retries for quality
+            history = self._get_recent_messages(session_id, max_tokens=self.lm_config.MAX_CONTEXT_TOKENS)
+
+            # ======== NEW AGENTIC LOGIC ========
+            # 1. Attempt to generate SQL
+            # Simple trigger: If the query is complex or asks for "data", "show me", "what is my average" etc.
+            # For a more robust solution, you might have an LLM call to classify intent.
+            # For now, let's assume we try SQL generation for most non-trivial queries.
+
+            raw_sql_suggestion = ""
+            extracted_sql = None
+            query_results = None
+
+            # You might add a check here: if user_query seems like a simple greeting, skip SQL.
+            # Or, use a more sophisticated intent detection.
+            try:
+                # Ask the LLM to determine if SQL is needed OR directly try to generate SQL.
+                # Let's try direct generation for now.
+                raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(user_query)
+                if raw_sql_suggestion:
+                    extracted_sql = self.coach_g.extract_sql_query(raw_sql_suggestion)
+            except exception_utils.LanguageModelError as e:
+                self.logger.warning(f"SQL generation failed for query '{user_query}': {e}")
+            except Exception as e: # Catch any other unexpected error during SQL gen
+                self.logger.error(f"Unexpected error during SQL generation for query '{user_query}': {e}")
+
+
+            if extracted_sql:
+                self.logger.info(f"Generated SQL: {extracted_sql} for query: {user_query}")
+                query_results = self._execute_generated_query(extracted_sql)
+
+                if query_results and query_results.get('error') is None:
+                    # 2b. Generate response from data
+                    response = self.coach_g.generate_response_from_data(
+                        user_query, extracted_sql, query_results, personality, history
+                    )
+                    if self._is_response_acceptable(response): # Reuse your quality check
+                        self._save_message(session_id, "coach", response)
+                        return response
+                    else:
+                        self.logger.warning("Response from data failed quality check. Falling back.")
+                elif query_results and query_results.get('error'):
+                    self.logger.warning(f"SQL execution error for query '{user_query}': {query_results.get('error')}")
+                    # Fall through to general reply, could add a note about data retrieval failure.
+
+            # ======== FALLBACK TO GENERAL CHAT ========
+            # If SQL generation failed, no SQL extracted, SQL execution failed, or data-based response was poor.
+            self.logger.info(f"Falling back to general reply for query: {user_query}")
             response = self._generate_with_quality_check(user_query, personality, history)
-            
-            # Save assistant's response
             self._save_message(session_id, "coach", response)
-            
             return response
-            
+
         except Exception as e:
             self.logger.error(f"Error in general_reply: {e}")
-            return self._get_fallback_response(user_query)
+            # Consider saving the error message or a generic coach message
+            fallback_msg = self._get_fallback_response(user_query)
+            self._save_message(session_id, "coach", fallback_msg) # Save something
+            return fallback_msg
+
+    # def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
+    #     """Generate a controlled coaching response with validation."""
+    #     try:
+    #         # Input validation
+    #         if not session_id or not user_query.strip():
+    #             raise ValueError("Session ID and user query are required")
+            
+    #         # Sanitize input
+    #         user_query = self._sanitize_user_input(user_query)
+            
+    #         # Save user message
+    #         self._save_message(session_id, "user", user_query)
+            
+    #         # Get conversation history
+    #         history = self._get_recent_messages(
+    #             session_id, 
+    #             max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
+    #         )
+            
+    #         # Generate response with retries for quality
+    #         response = self._generate_with_quality_check(user_query, personality, history)
+            
+    #         # Save assistant's response
+    #         self._save_message(session_id, "coach", response)
+            
+    #         return response
+            
+    #     except Exception as e:
+    #         self.logger.error(f"Error in general_reply: {e}")
+    #         return self._get_fallback_response(user_query)
     
     def _sanitize_user_input(self, user_query: str) -> str:
         """Sanitize user input to prevent prompt injection."""
@@ -198,3 +260,20 @@ class CoachGService(BaseService):
         except Exception as e:
             self.logger.error(f"Query execution error: {e}")
             raise exception_utils.DatabaseError(f"Query failed: {e}")
+
+    def _execute_generated_query(self, sql_query: str) -> Dict[str, Any]:
+        """Executes a validated SELECT query generated by the LLM."""
+        if not sql_query.strip().lower().startswith("select"):
+            self.logger.warning(f"Attempt to execute non-SELECT query: {sql_query}")
+            raise exception_utils.DatabaseError("Only SELECT queries are allowed.")
+
+        # Potentially add more validation/parsing here if needed (e.g., allowed tables)
+        # For now, the SELECT check is a primary safeguard.
+
+        try:
+            with self._get_connection() as conn:
+                rows, columns = db_utils.execute_generated_query(conn, sql_query)
+                return {'columns': columns, 'rows': rows, 'error': None}
+        except Exception as e: # Catch other unexpected errors
+            self.logger.error(f"Unexpected error executing generated SQL query '{sql_query}': {e}")
+            return {'columns': [], 'rows': [], 'error': f"Unexpected error: {str(e)}"}

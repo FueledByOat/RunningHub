@@ -4,7 +4,7 @@
 import logging
 import re
 import torch
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
 from transformers import pipeline, AutoTokenizer
@@ -87,6 +87,15 @@ gear table (contains shoe and bike data):
 - brand_name TEXT
 - model_name TEXT
 - description TEXT
+
+daily_training_metrics table:
+- date DATE
+- user_id INTEGER
+- total_tss FLOAT
+- ctl FLOAT
+- atl FLOAT
+- tsb FLOAT
+- notes TEXT
 
 Write a SQL query to return the relevant columns to answer the question:"""
     
@@ -480,3 +489,47 @@ def extract_sql_query(assistant_response: str) -> Optional[str]:
     """
     generator = get_sql_generator()
     return generator.extract_sql_query(assistant_response)
+
+def generate_response_from_data(self, user_query: str, sql_query: str, query_results: Dict[str, Any], personality: str, history: List[Dict] = None) -> str:
+    # query_results likely a dict like {'columns': [...], 'rows': [[...], [...]]}
+    # Build a prompt that tells the LLM:
+    # - Its role (Coach G with a specific personality)
+    # - The user's original question
+    # - The SQL query that was run to get data
+    # - The actual data
+    # - Instructions: "Based on this data, answer the user's question. If the data is empty or doesn't seem relevant, state that you couldn't find specific data but offer general advice or ask for clarification."
+    # - Include conversation history for context.
+
+    context_str = self._build_conversation_context(history or [])
+    personality_prompt_str = self.config.PERSONALITY_TEMPLATES.get(
+        personality, self.config.PERSONALITY_TEMPLATES['motivational']
+    )
+
+    data_summary = f"Columns: {query_results.get('columns')}\nRows: {str(query_results.get('rows')[:5])}" # Show a snippet of rows
+    if not query_results.get('rows'):
+        data_summary = "No specific data was returned from the database."
+
+    prompt = f"""You are Coach G {personality_prompt_str}.
+    Previous conversation:
+    {context_str}
+
+    User asked: "{user_query}"
+
+    To answer this, I ran the following SQL query:
+    `{sql_query}`
+
+    The query returned the following data:
+    {data_summary}
+
+    Based on this data, provide a helpful and insightful answer to the user's question.
+    If the data is empty or insufficient, acknowledge that and provide general guidance or ask for clarification related to the question.
+    Respond in {self.config.RESPONSE_MIN_SENTENCES}-{self.config.RESPONSE_MAX_SENTENCES} complete sentences.
+    Coach G:"""
+
+    # Use self._pipe to generate the response similar to generate_general_coach_g_reply
+    # Ensure proper cleaning and formatting as in _clean_and_format_response
+    # ... (generation logic) ...
+    raw_output = self._pipe(prompt, #... add generation_params ...
+                           )[0]["generated_text"].strip()
+    response = self._clean_and_format_response(raw_output)
+    return response
