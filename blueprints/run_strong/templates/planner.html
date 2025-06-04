@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+<head>
+    <meta charset="UTF-8" />
+    <title>RUNSTRONG | Workout Planner</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <script src="{{ url_for('run_strong.static', filename='js/runstrong_planner.js') }}" defer></script>
+</head>
+<body class="runstrong planner-page">
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
+        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
+        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
+        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
+        <a href="{{ url_for('run_strong.dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
+        </a>
+    </div>
+    <div class="runstrong-container">
+        <h1 class="main-title">Workout Planner</h1>
+        
+        <!-- Routine Creation Section -->
+        <div class="planner-section">
+            <h2>Create New Routine</h2>
+            <div class="routine-name-group">
+                <div class="form-group">
+                    <label for="routine-name">Routine Name:</label>
+                    <input type="text" id="routine-name" placeholder="Enter routine name..." required>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exercise Selection Section -->
+        <div class="planner-section">
+            <h2>Select Exercises</h2>
+            <input type="text" class="search-box" id="exercise-search" placeholder="Search exercises...">
+            
+            <div class="exercise-list" id="exercise-list">
+                <!-- Exercises will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Exercise Details Form -->
+        <div class="exercise-details" id="exercise-details">
+            <div class="form-group">
+                <label for="exercise-sets">Sets:</label>
+                <input type="number" id="exercise-sets" min="1" value="3">
+            </div>
+            <div class="form-group">
+                <label for="exercise-reps">Reps:</label>
+                <input type="number" id="exercise-reps" min="1" value="10">
+            </div>
+            <div class="form-group">
+                <label for="exercise-load">Load (lbs):</label>
+                <input type="number" id="exercise-load" min="0" step="0.5" value="0">
+            </div>
+            <div class="form-group">
+                <label for="exercise-notes">Notes:</label>
+                <textarea id="exercise-notes" rows="3" placeholder="Optional notes..."></textarea>
+            </div>
+            <div class="form-group-inline">
+                <button type="button" class="btn-secondary" onclick="addExerciseToRoutine()">Add to Routine</button>
+                <button type="button" class="btn-secondary" onclick="cancelExerciseSelection()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- Routine Builder Section -->
+        <div class="routine-builder">
+            <h2>Current Routine</h2>
+            <div id="routine-exercises">
+                <p class="no-exercises-message">No exercises added yet.</p>
+            </div>
+            <button type="button" class="btn-primary" onclick="saveRoutine()">Save Routine</button>
+        </div>
+    </div>
+
+</body>
+</html>

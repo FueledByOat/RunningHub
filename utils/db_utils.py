@@ -1690,7 +1690,6 @@ def update_daily_training_metrics(conn: sqlite3.Connection, df, user_id=1):
         ))
 
     conn.commit()
-    conn.close()
 
 def get_latest_daily_training_metrics(conn: sqlite3.Connection):
     """
