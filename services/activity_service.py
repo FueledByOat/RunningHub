@@ -70,7 +70,7 @@ class ActivityService(BaseService):
         
         # Date/time formatting
         activity['start_date'], activity['start_time'] = format_utils.format_datetime(
-            activity['start_date']
+            activity['start_date_local']
         )
         
         return activity

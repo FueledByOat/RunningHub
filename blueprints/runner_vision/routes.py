@@ -38,7 +38,7 @@ def register_routes(runnervision_service):
         """Display RunnerVision analysis results."""
         try:
             analysis_data = runnervision_service.get_latest_analysis()
-            return render_template('runner_vision/runnervision.html', **analysis_data)
+            return render_template('runnervision.html', **analysis_data)
         except Exception as e:
             logger.error(f"Error loading RunnerVision page: {e}")
             return render_template('runnervision.html')
