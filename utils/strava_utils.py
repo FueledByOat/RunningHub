@@ -362,6 +362,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
         raise
 
 
+
 def insert_stream_data(activity_id: int, stream_dict: Dict[str, Any], db_path: str) -> bool:
     """
     Insert or replace stream data for a specific activity.

@@ -97,13 +97,13 @@ class LanguageModel:
 
 **Database Tables:**
 
-**activities table:** (Contains data for individual run or ride sessions)
+**activities table:** (Contains data for individual run sessions)
 -   id INTEGER PRIMARY KEY
 -   distance REAL -- Total distance of the activity in meters.
 -   moving_time INTEGER -- Moving time in seconds (e.g., for calculating pace).
 -   elapsed_time INTEGER -- Total elapsed time in seconds.
 -   total_elevation_gain REAL -- Elevation gain in meters.
--   type TEXT -- Activity type, typically 'Run' or 'Ride'. Query as `type = 'Run'`.
+-   type TEXT -- Activity type,Query as `type = 'Run'`.
 -   workout_type INTEGER -- Specific workout type (e.g., 0 for default run, 1 for race, 2 for long run, 3 for workout).
 -   start_date_local TEXT -- Local start date and time of the activity (e.g., '2024-05-28T10:00:00Z'). For date-only operations, use `DATE(start_date_local)`.
 -   kudos_count INTEGER -- Number of kudos received.

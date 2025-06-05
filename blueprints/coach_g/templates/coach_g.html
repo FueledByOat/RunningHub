@@ -23,8 +23,10 @@
         <main class="coach_g_container">
             <div class="coach_g_chat_container">
                 <div class="coach_g_chat_header">
-                    <h2><i class="fas fa-running"></i> Chat with Coach G!</h2>
-                    <p>Get personalized running advice and training guidance</p>
+<a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('coach_g.static', filename='images/coach_g_text.png') }}"
+                alt="Coach G Text" class="runnervision-logo" />
+        </a>
                 </div>
                 <div class="coach_g_chat_messages" id="coachGChatMessages">
                     <div class="coach_g_welcome_message">

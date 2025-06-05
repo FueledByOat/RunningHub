@@ -28,13 +28,16 @@ class CoachGService(BaseService):
     
     def _initialize_language_model(self):
         """Initialize the language model with error handling."""
-        try:
-            self.coach_g = language_model_utils.LanguageModel()
-            self.tokenizer = self.coach_g.tokenizer
-            self.logger.info("CoachGService initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize language model in service: {e}")
-            raise
+        if self.lm_config == True:
+            try:
+                self.coach_g = language_model_utils.LanguageModel()
+                self.tokenizer = self.coach_g.tokenizer
+                self.logger.info("CoachGService initialized successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize language model in service: {e}")
+                raise
+        else:
+            self.logger.info(f"Language Model activation set to False")
 
     def daily_training_summary(self) -> str:
         """Get daily training summary."""
