@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Add Exercise | RUNSTRONG</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <script src="{{ url_for('run_strong.static', filename='js/runstrong_add_exercise.js') }}" defer></script>
+</head>
+
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
+        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
+        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
+        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
+        <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
+        </a>
+    </div>
+
+    <div class="runstrong-container">
+        <h2>Add New Exercise</h2>
+        <form id="exercise-form" action="{{ url_for('run_strong.add_exercise') }}" method="POST"
+            onsubmit="submitExerciseForm(event)">
+            <div class="form-section">
+                <label>Name:</label>
+                <input type="text" name="name" required>
+            </div>
+
+            <div class="form-section">
+                <label>Description:</label>
+                <textarea name="description"></textarea>
+            </div>
+
+            <div class="form-section">
+                <label>Instructions:</label>
+                <textarea name="instructions"></textarea>
+            </div>
+
+            <div class="form-section">
+                <label>Exercise Type:</label>
+                <input type="text" name="exercise_type">
+            </div>
+
+            <div class="form-section">
+                <label>Movement Pattern:</label>
+                <input type="text" name="movement_pattern">
+            </div>
+
+            <div class="form-section" id="primary-muscles">
+                <label>Primary Muscles:</label>
+                <input type="text" name="primary_muscles[]">
+                <button type="button" onclick="addTagInput('primary-muscles', 'primary_muscles[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="secondary-muscles">
+                <label>Secondary Muscles:</label>
+                <input type="text" name="secondary_muscles[]">
+                <button type="button" onclick="addTagInput('secondary-muscles', 'secondary_muscles[]')">+ Add</button>
+            </div>
+
+            <div class="form-section">
+                <label>Muscle Groups:</label>
+                <input type="text" name="muscle_groups">
+            </div>
+
+            <div class="form-section">
+                <label>Unilateral:</label>
+                <select name="unilateral">
+                    <option value="">Select</option>
+                    <option value="True">Yes</option>
+                    <option value="False">No</option>
+                </select>
+            </div>
+
+            <div class="form-section">
+                <label>Difficulty Rating (1–5):</label>
+                <input type="number" name="difficulty_rating" min="1" max="5">
+            </div>
+
+            <div class="form-section">
+                <label>Prerequisites:</label>
+                <input type="text" name="prerequisites">
+            </div>
+
+            <div class="form-section" id="progressions">
+                <label>Progressions:</label>
+                <input type="text" name="progressions[]">
+                <button type="button" onclick="addTagInput('progressions', 'progressions[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="regressions">
+                <label>Regressions:</label>
+                <input type="text" name="regressions[]">
+                <button type="button" onclick="addTagInput('regressions', 'regressions[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="equipment-required">
+                <label>Equipment Required:</label>
+                <input type="text" name="equipment_required[]">
+                <button type="button" onclick="addTagInput('equipment-required', 'equipment_required[]')">+ Add</button>
+            </div>
+
+            <div class="form-section">
+                <label>Equipment Optional:</label>
+                <input type="text" name="equipment_optional">
+            </div>
+
+            <div class="form-section">
+                <label>Setup Time:</label>
+                <input type="text" name="setup_time">
+            </div>
+
+            <div class="form-section">
+                <label>Space Required:</label>
+                <input type="text" name="space_required">
+            </div>
+
+            <div class="form-section">
+                <label>Rep Range (Min - Max):</label>
+                <input type="number" name="rep_range_min" placeholder="Min">
+                <input type="number" name="rep_range_max" placeholder="Max">
+            </div>
+
+            <div class="form-section">
+                <label>Tempo:</label>
+                <input type="text" name="tempo">
+            </div>
+
+            <div class="form-section">
+                <label>Range of Motion:</label>
+                <input type="text" name="range_of_motion">
+            </div>
+
+            <div class="form-section">
+                <label>Compound vs Isolation:</label>
+                <input type="text" name="compound_vs_isolation">
+            </div>
+
+            <div class="form-section">
+                <label>Injury Risk Level:</label>
+                <input type="text" name="injury_risk_level">
+            </div>
+
+            <div class="form-section">
+                <label>Contraindications:</label>
+                <input type="text" name="contraindications">
+            </div>
+
+            <div class="form-section" id="common-mistakes">
+                <label>Common Mistakes:</label>
+                <input type="text" name="common_mistakes[]">
+                <button type="button" onclick="addTagInput('common-mistakes', 'common_mistakes[]')">+ Add</button>
+            </div>
+
+            <div class="form-section">
+                <label>Safety Notes:</label>
+                <textarea name="safety_notes"></textarea>
+            </div>
+
+            <div class="form-section">
+                <label>Image URL:</label>
+                <input type="text" name="image_url">
+            </div>
+
+            <div class="form-section">
+                <label>Video URL:</label>
+                <input type="text" name="video_url">
+            </div>
+
+            <div class="form-section">
+                <label>GIF URL:</label>
+                <input type="text" name="gif_url">
+            </div>
+
+            <div class="form-section">
+                <label>Diagram URL:</label>
+                <input type="text" name="diagram_url">
+            </div>
+
+            <div class="form-section">
+                <label>Category:</label>
+                <input type="text" name="category">
+            </div>
+
+            <div class="form-section" id="training-style">
+                <label>Training Style:</label>
+                <input type="text" name="training_style[]">
+                <button type="button" onclick="addTagInput('training-style', 'training_style[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="experience-level">
+                <label>Experience Level:</label>
+                <input type="text" name="experience_level[]">
+                <button type="button" onclick="addTagInput('experience-level', 'experience_level[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="goals">
+                <label>Goals:</label>
+                <input type="text" name="goals[]">
+                <button type="button" onclick="addTagInput('goals', 'goals[]')">+ Add</button>
+            </div>
+
+            <div class="form-section">
+                <label>Duration (minutes):</label>
+                <input type="number" name="duration_minutes" min="1">
+            </div>
+
+            <div class="form-section">
+                <label>Popularity Score:</label>
+                <input type="number" name="popularity_score" step="0.1" min="0">
+            </div>
+
+            <div class="form-section" id="alternatives">
+                <label>Alternatives:</label>
+                <input type="text" name="alternatives[]">
+                <button type="button" onclick="addTagInput('alternatives', 'alternatives[]')">+ Add</button>
+            </div>
+
+            <div class="form-section" id="supersets">
+                <label>Supersets Well With:</label>
+                <input type="text" name="supersets_well_with[]">
+                <button type="button" onclick="addTagInput('supersets', 'supersets_well_with[]')">+ Add</button>
+            </div>
+
+            <div class="form-section">
+                <button type="submit">Add Exercise</button>
+            </div>
+            <div id="form-status" style="margin-top: 10px;"></div>
+        </form>
+    </div>
+</body>
+
+</html>

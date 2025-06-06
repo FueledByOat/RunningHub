@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics | RunningHub</title>
+    <link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <header class="site-header">
+        <div class="container">
+            <a href="{{ url_for('running_hub.home') }}">
+                <h1 class="logo">RUNNING<span>HUB</span></h1>
+            </a>
+            <p class="tagline">Performance analytics & insights</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2 class="page-title">Running Statistics</h2>
+        <!-- Unit Selector -->
+        <div class="unit-selector">
+            <a href="{{ url_for('running_hub.statistics', units='mi', period=period) }}"
+                class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+            <a href="{{ url_for('running_hub.statistics', units='km', period=period) }}"
+                class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
+        </div>
+        <p class="activity-meta">
+            <i class="fas fa-calendar-alt"></i> {{ date_range }} |
+            <i class="fas fa-running"></i> {{ total_activities }} Activities |
+            <i class="fas fa-chart-line"></i> {{ total_distance }} {{ units }} Total
+        </p>
+
+        <!-- Time Period Selector -->
+        <div class="time-selector">
+            <a href="{{ url_for('running_hub.statistics', period='week', units=units) }}"
+                class="time-btn {{ 'active' if period == 'week' }}">Week</a>
+            <a href="{{ url_for('running_hub.statistics', period='month', units=units) }}"
+                class="time-btn {{ 'active' if period == 'month' }}">Month</a>
+            <a href="{{ url_for('running_hub.statistics', period='year', units=units) }}"
+                class="time-btn {{ 'active' if period == 'year' }}">Year</a>
+            <a href="{{ url_for('running_hub.statistics', period='all', units=units) }}"
+                class="time-btn {{ 'active' if period == 'all' }}">All Time</a>
+
+        </div>
+
+        <!-- Summary Stats -->
+        <div class="summary-stats">
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-running"></i></div>
+                <div class="stats-value">{{ stats.total_activities }}</div>
+                <div class="stats-label">Activities</div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-route"></i></div>
+                <div class="stats-value">{{ stats.total_distance }} {{ units }}</div>
+                <div class="stats-label">Total Distance</div>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-clock"></i></div>
+                <div class="stats-value">{{ stats.total_time }}</div>
+                <div class="stats-label">Total Time</div>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-mountain"></i></div>
+                <div class="stats-value">{{ stats.total_elevation }} m</div>
+                <div class="stats-label">Total Elevation</div>
+            </div>
+
+            <div class="stats-card">
+                <div class="stats-icon"><i class="fas fa-fire"></i></div>
+                <div class="stats-value">{{ stats.total_calories }} kcal</div>
+                <div class="stats-label">Total Calories</div>
+            </div>
+
+
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-container">
+            <div class="chart-wrapper">
+                <h3><i class="fas fa-chart-line"></i> Weekly Distance</h3>
+                <canvas class="chart" id="distanceChart"></canvas>
+            </div>
+
+            <div class="chart-wrapper">
+                <h3><i class="fas fa-tachometer-alt"></i> Pace Trends</h3>
+                <canvas class="chart" id="paceChart"></canvas>
+            </div>
+        </div>
+
+
+        <div class="table-wrapper">
+            <h3><i class="fas fa-shoe-prints"></i> Shoe Usage</h3>
+            <table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Shoe</th>
+                        <th>Distance</th>
+                        <th>Activities</th>
+                        <th>Last Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shoe in shoes %}
+                    <tr>
+                        <td>{{ shoe.name }}</td>
+                        <td>{{ shoe.distance }} {{ units }}</td>
+                        <td>{{ shoe.activities }}</td>
+                        <td>{{ shoe.last_used }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        </div>
+
+        <!-- Heatmap -->
+        <div class="heatmap-container-stats">
+            <iframe src="{{ url_for('density_redirect') }}?start_date={{ start_date }}" width="100%" height="100%"
+                style="border:none;"></iframe>
+            </iframe>
+        </div>
+
+        <!-- Recent Activities -->
+        <div class="recent-activities">
+            <h3><i class="fas fa-history"></i> Recent Activities</h3>
+            <div class="activities-list">
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                    <div class="activity-date">{{ activity.date }}</div>
+                    <div class="activity-name">
+                        <a href="{{ url_for('running_hub.activity', id=activity.id) }}">{{ activity.name }}</a>
+                    </div>
+                    <div class="activity-metrics">
+                        <span><i class="fas fa-route"></i> {{ activity.distance }} {{ units }}</span>
+                        <span><i class="fas fa-clock"></i> {{ activity.time }}</span>
+                        <span><i class="fas fa-tachometer-alt"></i> {{ activity.pace }} min/{{ units }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="btn-container">
+            <a href="{{ url_for('running_hub.home') }}" class="btn">
+                <i class="fas fa-arrow-left"></i> Back to Home
+            </a>
+            <a href="#" class="btn btn-accent">
+                <i class="fas fa-download"></i> Export Stats
+            </a>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>RunningHub &copy; 2025 | Your personal running analytics platform</p>
+        </div>
+    </footer>
+
+    <!-- Chart.js for the statistics visualizations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <script>
+        // Sample chart initialization
+        document.addEventListener('DOMContentLoaded', function () {
+            // Get data from backend
+
+            const weeklyDistances = JSON.parse('{{ weekly_distances|tojson }}' || '[0, 0, 0, 0, 0, 0, 0]');
+            const paceDates = JSON.parse('{{ pace_dates|tojson }}' || '["Jan", "Feb", "Mar", "Apr", "May"]');
+            const paceValues = JSON.parse('{{ pace_values|tojson }}' || '[5.2, 5.1, 5.3, 5.0, 4.9]');
+
+
+            const distanceCtx = document.getElementById('distanceChart');
+            if (distanceCtx) {
+                const distanceChart = new Chart(distanceCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        datasets: [{
+                            label: 'Distance (km)',
+                            data: weeklyDistances,
+                            backgroundColor: '#0c1559',
+                            borderColor: '#0c1559',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distance (km)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Day of Week'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Pace Chart
+            const paceCtx = document.getElementById('paceChart');
+            if (paceCtx) {
+                const paceChart = new Chart(paceCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: paceDates,
+                        datasets: [{
+                            label: 'Pace (min/km)',
+                            data: paceValues,
+                            fill: false,
+                            borderColor: '#ffcc00',
+                            backgroundColor: 'rgba(255, 204, 0, 0.2)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointBackgroundColor: '#0c1559',
+                            pointBorderColor: '#0c1559',
+                            pointRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: 'Pace (min/km)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

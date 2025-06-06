@@ -16,8 +16,9 @@ from werkzeug.utils import secure_filename
 import os
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
 from utils.RunnerVision import runnervision_utils as rv_utils
+from utils.db import db_utils
 
 class RunnerVisionService:
     """Service for RunnerVision biomechanics analysis."""

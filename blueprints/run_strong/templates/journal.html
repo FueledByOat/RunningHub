@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>RUNSTRONG | Workout Journal</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <script src="{{ url_for('run_strong.static', filename='js/runstrong_journal.js') }}" defer></script>
+</head>
+
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
+        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
+        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
+        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
+        <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
+        </a>
+    </div>
+    <div class="runstrong-container">
+        <h1 style="text-align: center; color: var(--rs-white); margin-bottom: 2rem;">Workout Journal</h1>
+
+        <!-- Routine Selection Section -->
+        <div class="journal-section" id="routine-selection">
+            <h2>Select a Routine</h2>
+            <div class="routine-list" id="routine-list">
+                <!-- Routines will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Workout Form Section -->
+        <div class="workout-form" id="workout-form">
+            <div class="workout-header">
+                <h2 id="routine-title">Workout Session</h2>
+                <div class="date-selector">
+                    <label for="workout-date">Date:</label>
+                    <input type="date" id="workout-date" required>
+                    <button type="button" class="btn-secondary" onclick="goBack()">Back to Routines</button>
+                </div>
+            </div>
+
+            <div id="exercises-container">
+                <!-- Exercise entries will be loaded here -->
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button type="button" class="btn-primary" onclick="saveWorkout()">Save Workout</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

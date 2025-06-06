@@ -12,8 +12,10 @@ import json
 from typing import Dict, Any, Optional, List
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils, language_model_utils
+from utils import format_utils, exception_utils, language_model_utils
 from config import LanguageModelConfig, Config
+from utils.db import db_utils
+from utils.db import language_db_utils
 
 class CoachGService(BaseService):
     """Service for handling Coach G interactions."""
@@ -28,13 +30,16 @@ class CoachGService(BaseService):
     
     def _initialize_language_model(self):
         """Initialize the language model with error handling."""
-        try:
-            self.coach_g = language_model_utils.LanguageModel()
-            self.tokenizer = self.coach_g.tokenizer
-            self.logger.info("CoachGService initialized successfully")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize language model in service: {e}")
-            raise
+        if self.lm_config == True:
+            try:
+                self.coach_g = language_model_utils.LanguageModel()
+                self.tokenizer = self.coach_g.tokenizer
+                self.logger.info("CoachGService initialized successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize language model in service: {e}")
+                raise
+        else:
+            self.logger.info(f"Language Model activation set to False")
 
     def daily_training_summary(self) -> str:
         """Get daily training summary."""
@@ -45,35 +50,116 @@ class CoachGService(BaseService):
             return "Unable to generate training summary at this time."
 
     def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
-        """Generate a controlled coaching response with validation."""
         try:
             # Input validation
             if not session_id or not user_query.strip():
                 raise ValueError("Session ID and user query are required")
             
-            # Sanitize input
-            user_query = self._sanitize_user_input(user_query)
+            sanitized_user_query = self._sanitize_user_input(user_query) # Use sanitized query for processing
             
-            # Save user message
-            self._save_message(session_id, "user", user_query)
+            self._save_message(session_id, "user", sanitized_user_query) # Save sanitized user message
             
-            # Get conversation history
             history = self._get_recent_messages(
                 session_id, 
                 max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
             )
             
-            # Generate response with retries for quality
-            response = self._generate_with_quality_check(user_query, personality, history)
+            # Attempt to generate SQL and then a data-driven response
+            raw_sql_suggestion = ""
+            extracted_sql = None
+            query_results = None
+            data_driven_response_generated = False # Flag to track if we went down this path
+
+            try:
+                # For now, we always attempt SQL generation unless it's a very simple query (future: intent classification)
+                self.logger.info(f"Attempting SQL generation for query: '{sanitized_user_query[:100]}...'")
+                # Pass history to SQL generation for better contextual understanding (e.g., "last week")
+                raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(sanitized_user_query)
+                if raw_sql_suggestion:
+                    extracted_sql = self.coach_g.extract_sql_query(raw_sql_suggestion)
+            except exception_utils.LanguageModelError as e:
+                self.logger.warning(f"SQL generation failed for query '{sanitized_user_query[:100]}...': {e}")
+            except Exception as e:
+                self.logger.error(f"Unexpected error during SQL generation for query '{sanitized_user_query[:100]}...': {e}", exc_info=True)
+
+            if extracted_sql:
+                self.logger.info(f"Extracted SQL: '{extracted_sql}' for query: '{sanitized_user_query[:100]}...'")
+                query_results = self._execute_generated_query(extracted_sql) # Ensure this method exists and is robust
+                
+                # --- Enhanced Logging for Query Results ---
+                if query_results:
+                    log_msg = (f"Query results for SQL '{extracted_sql[:100]}...': "
+                               f"Columns: {query_results.get('columns')}, "
+                               f"Num_Rows: {len(query_results.get('rows', [])) if query_results.get('rows') is not None else 'N/A'}, " # Handle if 'rows' key is missing or None
+                               f"Error: {query_results.get('error')}")
+                    if query_results.get('rows') and len(query_results.get('rows')) > 0 and len(query_results.get('rows')) <=3 : # Log first few rows if not too many
+                        log_msg += f", Rows_Data: {str(query_results.get('rows'))[:200]}..." # Log sample data carefully
+                    self.logger.debug(log_msg)
+                # --- End Enhanced Logging ---
+
+                # Check if query execution was successful and returned data to process
+                if query_results and query_results.get('error') is None:
+                    # Even if no rows are returned, we might want the LLM to say "no data found"
+                    # So, proceed if there's no error, regardless of whether rows exist.
+                    self.logger.info(f"Attempting to generate response from data for query: '{sanitized_user_query[:100]}...'")
+                    data_driven_response = self.coach_g.generate_response_from_data(
+                        sanitized_user_query, extracted_sql, query_results, personality, history
+                    )
+                    data_driven_response_generated = True # We attempted this path
+
+                    # --- Pass is_data_driven=True for quality check ---
+                    if self._is_response_acceptable(data_driven_response, is_data_driven=True):
+                        self.logger.info("Data-driven response passed quality check.")
+                        self._save_message(session_id, "coach", data_driven_response)
+                        return data_driven_response
+                    else:
+                        self.logger.warning(f"Data-driven response FAILED quality check. Response: '{data_driven_response[:100]}...' Will fall back.")
+                elif query_results and query_results.get('error'):
+                    self.logger.warning(f"SQL execution error for query '{sanitized_user_query[:100]}...': {query_results.get('error')}. Will fall back.")
             
-            # Save assistant's response
-            self._save_message(session_id, "coach", response)
-            
-            return response
+            # Fallback to general chat if SQL path wasn't taken, failed, or data-driven response was poor
+            self.logger.info(f"Falling back to general reply for query: '{sanitized_user_query[:100]}...' (Data-driven attempt: {data_driven_response_generated})")
+            # _generate_with_quality_check uses is_data_driven=False internally for its checks
+            general_response = self._generate_with_quality_check(sanitized_user_query, personality, history)
+            self._save_message(session_id, "coach", general_response)
+            return general_response
             
         except Exception as e:
-            self.logger.error(f"Error in general_reply: {e}")
-            return self._get_fallback_response(user_query)
+            self.logger.error(f"Critical error in general_reply for query '{user_query[:50]}...': {e}", exc_info=True) # Log full traceback
+            fallback_msg = self._get_fallback_response(user_query) # Use original user_query for fallback context
+            self._save_message(session_id, "coach", fallback_msg)
+            return fallback_msg
+        
+    # def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
+    #     """Generate a controlled coaching response with validation."""
+    #     try:
+    #         # Input validation
+    #         if not session_id or not user_query.strip():
+    #             raise ValueError("Session ID and user query are required")
+            
+    #         # Sanitize input
+    #         user_query = self._sanitize_user_input(user_query)
+            
+    #         # Save user message
+    #         self._save_message(session_id, "user", user_query)
+            
+    #         # Get conversation history
+    #         history = self._get_recent_messages(
+    #             session_id, 
+    #             max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
+    #         )
+            
+    #         # Generate response with retries for quality
+    #         response = self._generate_with_quality_check(user_query, personality, history)
+            
+    #         # Save assistant's response
+    #         self._save_message(session_id, "coach", response)
+            
+    #         return response
+            
+    #     except Exception as e:
+    #         self.logger.error(f"Error in general_reply: {e}")
+    #         return self._get_fallback_response(user_query)
     
     def _sanitize_user_input(self, user_query: str) -> str:
         """Sanitize user input to prevent prompt injection."""
@@ -104,23 +190,36 @@ class CoachGService(BaseService):
         # Fallback after all attempts
         return self._get_fallback_response(user_query)
     
-    def _is_response_acceptable(self, response: str) -> bool:
+    def _is_response_acceptable(self, response: str, is_data_driven: bool = False) -> bool: # Added is_data_driven flag
         """Check if response meets quality standards."""
-        if not response or len(response.strip()) < 5:
+        if not response or len(response.strip()) < 10: # Min char length
+            self.logger.debug(f"Response failed length check (empty or <10 chars). Data_driven: {is_data_driven}")
             return False
         
-        # More lenient sentence count (1-8 sentences)
+        # --- Adjust sentence count limits based on the flag and LanguageModelConfig ---
+        min_s = self.lm_config.RESPONSE_MIN_SENTENCES_DATA_DRIVEN if is_data_driven else self.lm_config.RESPONSE_MIN_SENTENCES
+        max_s = self.lm_config.RESPONSE_MAX_SENTENCES_DATA_DRIVEN if is_data_driven else self.lm_config.RESPONSE_MAX_SENTENCES
+        # --- End Adjust sentence count ---
+
         sentence_count = len([s for s in re.split(r'[.!?]+', response) if s.strip()])
-        if sentence_count < 1 or sentence_count > 8:
+        if sentence_count < min_s or sentence_count > max_s:
+            self.logger.debug(f"Response failed sentence count: {sentence_count} (min:{min_s}, max:{max_s}, data_driven:{is_data_driven}). Response: '{response[:100]}...'")
             return False
         
-        # Relaxed repetition check (40% unique words minimum)
+        # Relaxed repetition check (e.g., 35% unique words minimum)
         words = response.lower().split()
-        if len(words) > 5 and len(set(words)) < len(words) * 0.4:
-            return False
+        if len(words) > 5: # Only check for non-trivial responses
+            unique_word_ratio = len(set(words)) / len(words) if len(words) > 0 else 0
+            if unique_word_ratio < 0.35: # Allow more repetition for potentially complex data explanations
+                self.logger.debug(f"Response failed repetition check (ratio: {unique_word_ratio:.2f}, data_driven:{is_data_driven}). Response: '{response[:100]}...'")
+                return False
         
         # Check for obvious generation artifacts
-        if any(artifact in response.lower() for artifact in ['<|end|>', '[end]', 'user:', 'coach g:']):
+        # Ensure these artifacts are compared in lowercase as well.
+        forbidden_artifacts = ['<|end|>', '[end]', 'user:', 'coach g:'] # Add more if you see them
+        response_lower = response.lower()
+        if any(artifact in response_lower for artifact in forbidden_artifacts):
+            self.logger.debug(f"Response failed artifact check (data_driven:{is_data_driven}). Response: '{response[:100]}...'")
             return False
         
         return True
@@ -146,7 +245,7 @@ class CoachGService(BaseService):
         """Save message to conversations table."""
         try:
             with self._get_connection() as conn:
-                db_utils.save_message(conn, session_id, role, message)
+                language_db_utils.save_message(conn, session_id, role, message)
                 self.logger.debug(f"Saved {role} message for session {session_id}")
         except Exception as e:
             self.logger.error(f"Error saving conversation message: {e}")
@@ -156,7 +255,7 @@ class CoachGService(BaseService):
         """Get recent conversation messages within token limit."""
         try:
             with self._get_connection() as conn:
-                history = db_utils.get_recent_messages(
+                history = language_db_utils.get_recent_messages(
                     conn, session_id, max_tokens, self.tokenizer
                 )
                 self.logger.debug(f"Retrieved {len(history)} messages for session {session_id}")
@@ -198,3 +297,20 @@ class CoachGService(BaseService):
         except Exception as e:
             self.logger.error(f"Query execution error: {e}")
             raise exception_utils.DatabaseError(f"Query failed: {e}")
+
+    def _execute_generated_query(self, sql_query: str) -> Dict[str, Any]:
+        """Executes a validated SELECT query generated by the LLM."""
+        if not sql_query.strip().lower().startswith("select"):
+            self.logger.warning(f"Attempt to execute non-SELECT query: {sql_query}")
+            raise exception_utils.DatabaseError("Only SELECT queries are allowed.")
+
+        # Potentially add more validation/parsing here if needed (e.g., allowed tables)
+        # For now, the SELECT check is a primary safeguard.
+
+        try:
+            with self._get_connection() as conn:
+                rows, columns = language_db_utils.execute_generated_query(conn, sql_query)
+                return {'columns': columns, 'rows': rows, 'error': None}
+        except Exception as e: # Catch other unexpected errors
+            self.logger.error(f"Unexpected error executing generated SQL query '{sql_query}': {e}")
+            return {'columns': [], 'rows': [], 'error': f"Unexpected error: {str(e)}"}

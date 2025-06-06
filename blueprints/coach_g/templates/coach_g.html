@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunningHub | Coach G</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('coach_g.static', filename='css/styles.css') }}">
+    <script src="{{ url_for('coach_g.static', filename='js/coach_g.js') }}" defer></script>
+</head>
+
+<body class="coach_g">
+    <div class="coach_g_background">
+        <img src="{{ url_for('coach_g.static', filename='images/coach_g_all_3.png') }}" alt="This is Coach G"
+            class="coach_g_logo" />
+    </div>
+    <div class="coach_g_content">
+        <main class="coach_g_container">
+            <div class="coach_g_chat_container">
+                <div class="coach_g_chat_header">
+<a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('coach_g.static', filename='images/coach_g_text.png') }}"
+                alt="Coach G Text" class="coach-g-logo" />
+        </a>
+                </div>
+                <div class="coach_g_chat_messages" id="coachGChatMessages">
+                    <div class="coach_g_welcome_message">
+                        <p>👋 Welcome! Ask Coach G about your running goals, training plans, or any running-related
+                            questions.</p>
+                    </div>
+                </div>
+                <div class="coach_g_chat_input">
+                    <div class="coach_g_input_group">
+                        <div class="coach_g_personality_selector">
+                            <select id="coachGPersonality" class="coach_g_personality_dropdown">
+                                <option value="motivational">Motivational</option>
+                                <option value="analytical">Analytical</option>
+                                <option value="supportive">Supportive</option>
+                                <option value="challenging">Challenging</option>
+                                <option value="scientific">Scientific</option>
+                                <option value="toxic">Toxic</option>
+                            </select>
+                        </div>
+                        <div class="coach_g_input_field">
+                            <textarea id="coachGMessageInput"
+                                placeholder="Ask Coach G about your training, goals, or any running questions..."
+                                rows="1"></textarea>
+                        </div>
+                        <button class="coach_g_send_button" id="coachGSendButton">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+
+                    <div class="coach_g_quick_questions">
+                        <div class="coach_g_quick_questions_title">Quick questions:</div>
+                        <div class="coach_g_quick_questions_list">
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('Whats my training status for today?')">
+                                Current Status
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('How fresh or fatigued am I?')">
+                                Fatigue Level
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('How do I prevent running injuries?')">
+                                Fatigue Level
+                            </button>
+                            <button class="coach_g_quick_question"
+                                onclick="sendQuickQuestion('What is a good 5K training plan?')">
+                                Training Plan
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="coach_g_typing_indicator" id="coachGTypingIndicator">
+                        <span>Coach G is thinking</span>
+                        <div class="coach_g_typing_dots">
+                            <div class="coach_g_typing_dot"></div>
+                            <div class="coach_g_typing_dot"></div>
+                            <div class="coach_g_typing_dot"></div>
+                        </div>
+                    </div>
+                </div>
+
+        </main>
+
+        <footer class="coach_g_footer">
+            <div class="coach_g_container">
+                <div class="coach_g_footer_content">
+                    <p>&copy; 2025 RunningHub. Powered by Coach G AI Training Assistant.</p>
+                    <div class="coach_g_footer_links">
+                        <a href="#" class="coach_g_footer_link">Privacy Policy</a>
+                        <a href="#" class="coach_g_footer_link">Terms of Service</a>
+                        <a href="#" class="coach_g_footer_link">Contact</a>
+                        <a href="#" class="coach_g_footer_link">About Coach G</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+</body>
+
+</html>
