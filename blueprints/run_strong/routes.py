@@ -6,7 +6,7 @@ Includes: Exercise library, routine planning, workout journaling, and dashboard.
 
 import logging
 import os
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, render_template_string
 from werkzeug.exceptions import BadRequest
 from services.runstrong_service import RunStrongService
 
@@ -40,7 +40,7 @@ def register_routes(runstrong_service):
         """Display RunStrong home page."""
         return render_template('runstrong_home.html')
     
-    @run_strong_bp.route('/exercise_library')
+    @run_strong_bp.route('/exercise-library')
     def exercise_library():
         """Display exercise library."""
         return render_template('runstrong_exercise_library.html')
@@ -55,11 +55,12 @@ def register_routes(runstrong_service):
         """Display workout journal."""
         return render_template('journal.html')
     
-    @run_strong_bp.route('/dashboard')
-    def dashboard():
-        """Display training dashboard."""
-        return render_template('dashboard.html')
-    
+    @run_strong_bp.route('/progress-dashboard')
+    def progress_dashboard():
+        """Display progress and fatigure dashboard."""
+        data = runstrong_service.get_fatigue_dashboard_data()
+        return render_template('progress_dashboard.html', fatigue_data=data)
+        
     # Exercise Management Routes
     @run_strong_bp.route('/exercises')
     def exercises():
@@ -226,3 +227,80 @@ def register_routes(runstrong_service):
             return jsonify(history)
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+    @run_strong_bp.route('/api/routines/<int:routine_id>', methods=['PUT'])
+    def update_routine(routine_id):
+        """Update an existing workout routine."""
+        try:
+            data = request.get_json()
+            routine_name = data.get('name')
+            exercises = data.get('exercises', [])
+            
+            if not routine_name:
+                return jsonify({'error': 'Routine name is required'}), 400
+            
+            # Update the routine name
+            runstrong_service.update_routine_name(routine_id, routine_name)
+            
+            # Remove existing exercises for this routine
+            runstrong_service.clear_routine_exercises(routine_id)
+            
+            # Add updated exercises to the routine
+            for exercise_data in exercises:
+                runstrong_service.add_exercise_to_routine(
+                    routine_id=routine_id,
+                    exercise_id=exercise_data['exercise']['id'],
+                    sets=exercise_data['sets'],
+                    reps=exercise_data['reps'],
+                    load_lbs=exercise_data['load_lbs'],
+                    order_index=exercise_data['order_index'],
+                    notes=exercise_data.get('notes', '')
+                )
+            
+            return jsonify({'message': 'Routine updated successfully'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @run_strong_bp.route('/api/exercise-max-loads', methods=['GET'])
+    def get_exercise_max_loads():
+        """Get maximum load for each exercise from workout history."""
+        try:
+            max_loads = runstrong_service.get_exercise_max_loads()
+            return jsonify(max_loads)
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @run_strong_bp.route('/api/routines/<int:routine_id>', methods=['DELETE'])
+    def delete_routine(routine_id):
+        """Delete a workout routine."""
+        try:
+            runstrong_service.delete_routine(routine_id)
+            return jsonify({'message': 'Routine deleted successfully'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    
+    # Dashboard Routes
+    @run_strong_bp.route('/api/fatigue-data')
+    def get_fatigue_data():
+        """API endpoint to get current fatigue data"""
+        try:
+            data = runstrong_service.get_fatigue_dashboard_data()
+            return jsonify(data)
+        except Exception as e:
+            logger.error(f"API error: {e}")
+            return jsonify({'error': 'Failed to fetch data'}), 500
+    
+    @run_strong_bp.route('/api/update-fatigue')
+    def update_fatigue():
+        """API endpoint to trigger fatigue update"""
+        try:
+            data = runstrong_service.run_daily_update()
+            return jsonify({'status': 'success', 'data': data})
+        except Exception as e:
+            logger.error(f"Update error: {e}")
+            return jsonify({'error': 'Failed to update data'}), 500
+    
+    # @run_strong_bp.route('/')
+    # def dashboard():
+    #     """Serve the HTML dashboard"""
+    #     # You would replace this with your actual HTML file
+    #     return render_template_string(open('progress_dashboard.html').read())

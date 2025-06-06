@@ -14,6 +14,7 @@ from services.query_service import QueryService
 from services.statistics_service import StatisticsService
 from services.trophy_service import TrophyService
 from utils import exception_utils
+from utils.db import db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
         sql_query = ''
 
         try:
-            from utils import lm_utils, db_utils
+            from utils import lm_utils
             from config import Config
             
             query_prompt_generator = lm_utils.generate_sql_from_natural_language(user_question)

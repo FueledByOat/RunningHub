@@ -2,16 +2,29 @@ let currentExercises = [];
 let selectedExercise = null;
 let routineExercises = [];
 let editingIndex = -1;
+let isEditingRoutine = false;
+let currentRoutineId = null;
+let exerciseMaxLoads = {}; // Cache for max loads
 
 // Load exercises on page load
 document.addEventListener('DOMContentLoaded', function () {
   loadExercises();
+  loadExistingRoutines();
+  loadExerciseMaxLoads();
 });
 
 async function loadExercises() {
   try {
     const response = await fetch('/strong/api/exercises');
-    currentExercises = await response.json();
+    const exercises = await response.json();
+    
+    // Transform the data to match expected format
+    currentExercises = exercises.map(ex => ({
+      id: ex.id || ex[0], // Handle both object and array formats
+      name: ex.name || ex[1],
+      primary_muscles: ex.primary_muscles || ex[2] || 'N/A'
+    }));
+    
     displayExercises(currentExercises);
   } catch (error) {
     console.error('Error loading exercises:', error);
@@ -22,6 +35,120 @@ async function loadExercises() {
       { id: 3, name: 'Pull-ups', primary_muscles: 'Latissimus Dorsi, Biceps' }
     ];
     displayExercises(currentExercises);
+  }
+}
+
+async function loadExistingRoutines() {
+  try {
+    const response = await fetch('/strong/api/routines');
+    const routines = await response.json();
+    
+    // Transform the data to match expected format
+    const transformedRoutines = routines.map(routine => ({
+      id: routine.id || routine[0],
+      name: routine.name || routine[1]
+    }));
+    
+    displayRoutineSelector(transformedRoutines);
+  } catch (error) {
+    console.error('Error loading routines:', error);
+  }
+}
+
+async function loadExerciseMaxLoads() {
+  try {
+    const response = await fetch('/strong/api/exercise-max-loads');
+    exerciseMaxLoads = await response.json();
+  } catch (error) {
+    console.error('Error loading max loads:', error);
+    exerciseMaxLoads = {};
+  }
+}
+
+function displayRoutineSelector(routines) {
+  const existingSelector = document.getElementById('routine-selector-container');
+  
+  if (routines.length > 0) {
+    existingSelector.innerHTML = `
+      <div class="form-group">
+        <label for="existing-routine">Or Edit Existing Routine:</label>
+        <select id="existing-routine" onchange="loadRoutineForEditing(this.value)">
+          <option value="">Select a routine to edit...</option>
+          ${routines.map(routine => 
+            `<option value="${routine.id}">${routine.name}</option>`
+          ).join('')}
+        </select>
+      </div>
+    `;
+    existingSelector.style.display = 'block';
+  } else {
+    existingSelector.style.display = 'none';
+  }
+}
+
+async function loadRoutineForEditing(routineId) {
+  if (!routineId) {
+    resetForm();
+    return;
+  }
+
+  try {
+    const response = await fetch(`/strong/api/routines/${routineId}/exercises`);
+    const data = await response.json();
+    
+    if (data.routine && data.exercises) {
+      isEditingRoutine = true;
+      currentRoutineId = routineId;
+      
+      // Populate routine name
+      document.getElementById('routine-name').value = data.routine.name || data.routine[1];
+      
+      // Load routine exercises - handle different data formats
+      routineExercises = data.exercises.map(ex => ({
+        exercise: {
+          id: ex.exercise_id || ex.id,
+          name: ex.exercise_name || ex.name,
+          primary_muscles: ex.primary_muscles || 'N/A'
+        },
+        sets: ex.sets || 3,
+        reps: ex.reps || 10,
+        load_lbs: ex.load_lbs || 0,
+        notes: ex.notes || '',
+        order_index: ex.order_index || 0
+      }));
+      
+      // Sort by order_index
+      routineExercises.sort((a, b) => a.order_index - b.order_index);
+      
+      updateRoutineDisplay();
+      updateSaveButtonText();
+    }
+  } catch (error) {
+    console.error('Error loading routine for editing:', error);
+    alert('Error loading routine. Please try again.');
+  }
+}
+
+function resetForm() {
+  isEditingRoutine = false;
+  currentRoutineId = null;
+  routineExercises = [];
+  document.getElementById('routine-name').value = '';
+  
+  const existingRoutineSelect = document.getElementById('existing-routine');
+  if (existingRoutineSelect) {
+    existingRoutineSelect.value = '';
+  }
+  
+  updateRoutineDisplay();
+  updateSaveButtonText();
+  cancelExerciseSelection();
+}
+
+function updateSaveButtonText() {
+  const saveButton = document.querySelector('.btn-primary');
+  if (saveButton) {
+    saveButton.textContent = isEditingRoutine ? 'Update Routine' : 'Save Routine';
   }
 }
 
@@ -38,13 +165,13 @@ function displayExercises(exercises) {
     const exerciseItem = document.createElement('div');
     exerciseItem.className = 'exercise-item';
     exerciseItem.innerHTML = `
-                    <div>
-                        <strong>${exercise.name}</strong>
-                        <br>
-                        <small>${exercise.primary_muscles || 'N/A'}</small>
-                    </div>
-                    <button class="btn-secondary" onclick="selectExercise(${exercise.id})">Select</button>
-                `;
+      <div>
+        <strong>${exercise.name}</strong>
+        <br>
+        <small>${exercise.primary_muscles || 'N/A'}</small>
+      </div>
+      <button class="btn-secondary" onclick="selectExercise(${exercise.id})">Select</button>
+    `;
     exerciseList.appendChild(exerciseItem);
   });
 }
@@ -57,7 +184,19 @@ function selectExercise(exerciseId) {
   // Reset form values
   document.getElementById('exercise-sets').value = 3;
   document.getElementById('exercise-reps').value = 10;
-  document.getElementById('exercise-load').value = 0;
+  
+  // Pre-populate load with max load if available
+  const maxLoad = exerciseMaxLoads[exerciseId] || 0;
+  document.getElementById('exercise-load').value = maxLoad;
+  
+  // Update placeholder text to show this is auto-populated
+  const loadInput = document.getElementById('exercise-load');
+  if (maxLoad > 0) {
+    loadInput.title = `Auto-populated with your previous maximum load: ${maxLoad} lbs`;
+  } else {
+    loadInput.title = "No previous maximum load found";
+  }
+  
   document.getElementById('exercise-notes').value = '';
 
   // Scroll to exercise details
@@ -125,25 +264,31 @@ function updateRoutineDisplay() {
   }
 
   container.innerHTML = routineExercises.map((item, index) => `
-                <div class="routine-exercise">
-                    <div class="routine-exercise-content">
-                        <strong>${item.exercise.name}</strong>
-                        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.8); margin-top: 0.25rem;">
-                            ${item.sets} sets × ${item.reps} reps @ ${item.load_lbs} lbs
-                            ${item.notes ? `<br><em>${item.notes}</em>` : ''}
-                        </div>
-                    </div>
-                    <div class="routine-exercise-actions">
-                        <button class="btn-edit" onclick="editExercise(${index})" title="Edit exercise">Edit</button>
-                        <button class="btn-danger" onclick="removeExercise(${index})" title="Remove exercise">Remove</button>
-                    </div>
-                </div>
-            `).join('');
+    <div class="routine-exercise">
+      <div class="routine-exercise-content">
+        <strong>${item.exercise.name}</strong>
+        <div style="font-size: 0.9rem; color: rgba(255, 255, 255, 0.8); margin-top: 0.25rem;">
+          ${item.sets} sets × ${item.reps} reps @ ${item.load_lbs} lbs
+          ${item.notes ? `<br><em>${item.notes}</em>` : ''}
+        </div>
+      </div>
+      <div class="routine-exercise-actions">
+        <button class="btn-edit" onclick="editExercise(${index})" title="Edit exercise">Edit</button>
+        <button class="btn-danger" onclick="removeExercise(${index})" title="Remove exercise">Remove</button>
+      </div>
+    </div>
+  `).join('');
 }
 
 function removeExercise(index) {
   if (confirm('Are you sure you want to remove this exercise from the routine?')) {
     routineExercises.splice(index, 1);
+    
+    // Update order indices
+    routineExercises.forEach((item, idx) => {
+      item.order_index = idx;
+    });
+    
     updateRoutineDisplay();
 
     // If we were editing this exercise, cancel the editing
@@ -170,9 +315,20 @@ async function saveRoutine() {
     return;
   }
 
+  // Update order indices before saving
+  routineExercises.forEach((item, index) => {
+    item.order_index = index;
+  });
+
   try {
-    const response = await fetch('/strong/api/routines', {
-      method: 'POST',
+    const url = isEditingRoutine 
+      ? `/strong/api/routines/${currentRoutineId}` 
+      : '/strong/api/routines';
+    
+    const method = isEditingRoutine ? 'PUT' : 'POST';
+
+    const response = await fetch(url, {
+      method: method,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -183,12 +339,12 @@ async function saveRoutine() {
     });
 
     if (response.ok) {
-      alert('Routine saved successfully!');
-      // Reset form
-      document.getElementById('routine-name').value = '';
-      routineExercises = [];
-      updateRoutineDisplay();
-      cancelExerciseSelection();
+      const action = isEditingRoutine ? 'updated' : 'saved';
+      alert(`Routine ${action} successfully!`);
+      
+      // Reset form and reload routines
+      resetForm();
+      loadExistingRoutines();
     } else {
       const errorData = await response.json();
       alert(`Error saving routine: ${errorData.message || 'Please try again.'}`);
@@ -226,5 +382,13 @@ document.addEventListener('keydown', function (e) {
   if (e.ctrlKey && e.key === 's') {
     e.preventDefault();
     saveRoutine();
+  }
+
+  // Ctrl+R to reset form
+  if (e.ctrlKey && e.key === 'r') {
+    e.preventDefault();
+    if (confirm('Reset form and clear current routine?')) {
+      resetForm();
+    }
   }
 });

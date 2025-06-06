@@ -1,385 +1,22 @@
-# db_utils.py
-"""Database utilities for activity data queries and connection management."""
+# dash_db_utils.py
+"""Database utilities for dash analytics, maps, charts, and dashboards."""
 
 import json
 import logging
 import sqlite3
-from contextlib import contextmanager
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple, Union
 import datetime
-from threading import Lock
-from queue import Queue, Empty
+import polyline
 
 import pandas as pd
 import numpy as np
 
 from config import Config
 from utils import exception_utils
+import utils.db.db_utils as db_utils
 
 logger = logging.getLogger(__name__)
 
-class ConnectionPool:
-    """Thread-safe SQLite connection pool."""
-    
-    def __init__(self, db_path: str, max_connections: int = 10):
-        self.db_path = db_path
-        self.pool = Queue(maxsize=max_connections)
-        self.lock = Lock()
-        
-    def _create_connection(self):
-        """Create a new database connection."""
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        conn.row_factory = dict_factory
-        return conn
-    
-    @contextmanager
-    def get_connection(self):
-        """Get connection from pool or create new one."""
-        try:
-            conn = self.pool.get_nowait()
-        except Empty:
-            conn = self._create_connection()
-            
-        try:
-            yield conn
-        except sqlite3.Error as e:
-            logger.error(f"Database operation failed: {e}")
-            conn.rollback()
-            raise exception_utils.DatabaseError(f"Database error: {e}") from e
-        finally:
-            try:
-                self.pool.put_nowait(conn)
-            except:
-                conn.close()
-
-
-# Global connection pool
-_connection_pool = None
-
-def get_connection_pool(db_path: str) -> ConnectionPool:
-    """Get or create global connection pool."""
-    global _connection_pool
-    if _connection_pool is None:
-        if not db_path:
-            raise exception_utils.DatabaseError("Database path not configured")
-        _connection_pool = ConnectionPool(db_path)
-    return _connection_pool
-
-
-@contextmanager
-def get_db_connection(db_path: str):
-    """Context manager for pooled database connections."""
-    pool = get_connection_pool(db_path)
-    with pool.get_connection() as conn:
-        yield conn
-
-
-def dict_factory(cursor: sqlite3.Cursor, row: sqlite3.Row) -> Dict[str, Any]:
-    """Convert database row objects to a dictionary.
-    
-    Args:
-        cursor: Database cursor
-        row: Database row
-        
-    Returns:
-        Dictionary representation of the row
-    """
-    return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
-
-def dict_from_row(row) -> Dict:
-    """Convert sqlite3.Row to dictionary"""
-    return dict(row) if row else {}
-
-def dicts_from_rows(rows) -> List[Dict]:
-    """Convert list of sqlite3.Row to list of dictionaries"""
-    return [dict(row) for row in rows] if rows else []
-
-# -------------------------------------
-# Activity Page SQL Logic
-# -------------------------------------
-
-
-def get_activity_details_by_id(conn, activity_id: int, activity_types: List[str] = None) -> Optional[Dict[str, Any]]:
-    """Retrieve all activity details for given activity ID.
-    
-    Args:
-        conn: Pooled context managed from db_utils, defined in base_service and 
-        typically referenced in service by _get_connection
-        activity_id: 
-        activity_types: List of activity types to filter by (default: ["Run", "Ride"])
-    Returns:
-        Latest activity ID or None if not found
-        
-    Raises:
-        DatabaseError: If database query fails
-    """
-    if activity_types is None:
-        activity_types = ["Run"]
-    
-    # Using dynamic placeholders here as the number of parameters is variable
-    placeholders = ",".join("?" * len(activity_types))
-    conn.row_factory = sqlite3.Row
-    query = f"""
-        SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name
-        FROM activities as a
-        LEFT JOIN gear as g ON a.gear_id = g.gear_id
-        WHERE a.id = ?
-        AND a.gear_id IS NOT NULL AND a.gear_id != ''
-        AND a.type IN ({placeholders})
-        ORDER BY a.start_date DESC LIMIT 1
-    """
-    try:
-        cur = conn.cursor()
-        cur.execute(query, [activity_id] + activity_types,)
-        result = cur.fetchone()
-        
-        if result:
-            return dict(result)
-        
-        else:
-            logger.warning(f"No activities found for activity ID: {activity_id}")
-            return None    
-                
-    except exception_utils.DatabaseError:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error getting activity details: {e}")
-        raise exception_utils.DatabaseError(f"Failed to get activity details: {e}") from e
-
-def get_latest_activity_id(conn, activity_types: List[str] = None) -> Optional[int]:
-    """Retrieve latest activity ID by type.
-    
-    Args:
-        conn: Pooled context managed from db_utils, defined in base_service and 
-        typically referenced in service by _get_connection
-        activity_types: List of activity types to filter by (default: ["Run", "Ride"])
-        
-    Returns:
-        Latest activity ID or None if not found
-        
-    Raises:
-        DatabaseError: If database query fails
-    """
-    if activity_types is None:
-        activity_types = ["Run", "Ride"]
-    
-    # Using dynamic placeholders here as the number of parameters is variable
-    placeholders = ",".join("?" * len(activity_types))
-    query = f"""
-        SELECT id FROM activities
-        WHERE type IN ({placeholders})
-        ORDER BY start_date DESC 
-        LIMIT 1
-    """
-    
-    try:
-        cur = conn.cursor()
-        cur.execute(query, activity_types)
-        row = cur.fetchone()
-        
-        if row:
-            return row['id']
-        else:
-            logger.warning(f"No activities found for types: {activity_types}")
-            return None
-                
-    except exception_utils.DatabaseError:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error getting latest activity: {e}")
-        raise exception_utils.DatabaseError(f"Failed to get latest activity: {e}") from e
-
-# -------------------------------------
-# Statistics Page SQL Logic
-# -------------------------------------
-
-def get_total_activities_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get count of run activities since start_date."""
-    result = conn.execute(
-        "SELECT COUNT(*) as count FROM activities WHERE start_date >= ? AND type = 'Run'",
-        (start_date,)
-    ).fetchone()
-    return result['count'] or 0
-
-def get_total_elevation_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of elevation for run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(total_elevation_gain) as elevation_sum FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)).fetchone()
-    return result['elevation_sum'] or 0
-
-def get_total_distance_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of distance of run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(distance) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
-
-def get_total_time(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of run time for activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(moving_time) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
-
-def get_total_calories(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of kilojoules burned for run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(kilojoules) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
-
-def get_weekly_distances(conn: sqlite3.Connection, seven_days_ago: str) -> int:
-    """Get distance data for the last 7 days."""
-    result = conn.execute(
-            """SELECT start_date_local, distance 
-               FROM activities 
-               WHERE start_date_local >= ? AND type = 'Run'
-               ORDER BY start_date_local""",
-            (seven_days_ago.strftime('%Y-%m-%d'),)
-        ).fetchall()
-    return result
-
-def get_pace_trends(conn: sqlite3.Connection) -> int:
-    """Get pace trends for the last 10 activities."""
-    result = conn.execute(
-            """SELECT start_date_local, distance, moving_time 
-               FROM activities 
-               WHERE type = 'Run' AND distance > 0 AND moving_time > 0
-               ORDER BY start_date_local DESC 
-               LIMIT 10"""
-        ).fetchall()
-    return result
-
-def get_shoe_usage(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get shoe usage data."""
-    result = conn.execute(
-            """SELECT COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_id, 
-                      COUNT(*) as activities,
-                      SUM(a.distance) as total_distance,
-                      MAX(start_date_local) as last_used
-               FROM activities as a
-               LEFT JOIN gear as g ON a.gear_id = g.gear_id
-               WHERE a.gear_id IS NOT NULL AND a.gear_id != ''
-               GROUP BY a.gear_id
-               HAVING MAX(start_date_local) >= ?
-               ORDER BY last_used DESC""",
-            (start_date,)
-        ).fetchall()
-    return result
-
-def get_recent_activities(conn: sqlite3.Connection) -> int:
-    """Get the most recent 5 activities data."""
-    result = conn.execute(
-            """SELECT id, name, distance, moving_time, start_date_local
-               FROM activities
-               WHERE type = 'Run'
-               ORDER BY start_date_local DESC
-               LIMIT 5"""
-        ).fetchall()
-    return result
-
-# -------------------------------------
-# Statistics Page SQL Logic END
-# -------------------------------------
-
-# -------------------------------------
-# Trophy Page SQL Logic 
-# -------------------------------------
-
-def get_distance_record(conn: sqlite3.Connection, distance_name: str, 
-                    min_distance: int, max_distance: int, units: str) -> Optional[Dict[str, Any]]:
-    """Get personal record for a specific distance range."""
-    result = conn.execute(
-        """SELECT id, name, distance, moving_time, start_date_local
-            FROM activities
-            WHERE type = 'Run' AND distance BETWEEN ? AND ?
-            ORDER BY moving_time ASC
-            LIMIT 1""",
-        (min_distance, max_distance)
-    ).fetchone()
-    return result or None
-
-def get_longest_run(conn: sqlite3.Connection, units: str) -> Optional[Dict[str, Any]]:
-    """Get longest run record."""
-    result = conn.execute(
-            """SELECT id, name, distance, moving_time, start_date_local
-            FROM activities
-            WHERE type = 'Run'
-            ORDER BY distance DESC
-            LIMIT 1"""
-        ).fetchone()
-    return result or None
-
-
-# -------------------------------------
-# Trophy Page SQL Logic END
-# -------------------------------------
-
-def get_activity_polyline(activity_id: int, db_path: str = Config.DB_PATH) -> Optional[str]:
-    """Retrieve polyline for specified activity.
-    
-    Args:
-        activity_id: Activity identifier
-        db_path: Database file path
-        
-    Returns:
-        Polyline string or None if not found
-        
-    Raises:
-        DatabaseError: If database query fails
-    """
-    query = "SELECT map_summary_polyline FROM activities WHERE id = ?"
-    
-    try:
-        with get_db_connection(db_path) as conn:
-            cur = conn.cursor()
-            cur.execute(query, (activity_id,))
-            row = cur.fetchone()
-            
-            if row:
-                return row['map_summary_polyline']
-            else:
-                logger.warning(f"No polyline found for activity {activity_id}")
-                return None
-                
-    except exception_utils.DatabaseError:
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error getting polyline for activity {activity_id}: {e}")
-        raise exception_utils.DatabaseError(f"Failed to get polyline: {e}") from e
-
-def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = Config.DB_PATH) -> List[Dict[str, Any]]:
-    """Retrieve activities by type.
-    
-    Args:
-        activity_type: Type of activity to retrieve
-        limit: Maximum number of activities to return
-        db_path: Database file path
-        
-    Returns:
-        List of activity dictionaries
-    """
-    query = """
-        SELECT * FROM activities 
-        WHERE type = ? 
-        ORDER BY start_date DESC 
-        LIMIT ?
-    """
-    
-    try:
-        with get_db_connection(db_path) as conn:
-            cur = conn.cursor()
-            cur.execute(query, (activity_type, limit))
-            return cur.fetchall()
-            
-    except Exception as e:
-        logger.error(f"Failed to get activities of type {activity_type}: {e}")
-        raise exception_utils.DatabaseError(f"Failed to get activities: {e}") from e
-    
 def get_acwr_data(db_path=Config.DB_PATH):
     """
     Calculate Acute:Chronic Workload Ratio (ACWR)
@@ -1323,499 +960,167 @@ def get_lifetime_achievements(weekly_df: pd.DataFrame) -> dict:
         'total_weeks_trained': len(weekly_df)
     }
 
-def add_exercise(conn, data):
-        c = conn.cursor()
-        c.execute('''
-        INSERT INTO exercises (
-            name, description, instructions, exercise_type, movement_pattern,
-            primary_muscles, secondary_muscles, muscle_groups, unilateral,
-            difficulty_rating, prerequisites, progressions, regressions,
-            equipment_required, equipment_optional, setup_time, space_required,
-            rep_range_min, rep_range_max, tempo, range_of_motion, compound_vs_isolation,
-            injury_risk_level, contraindications, common_mistakes, safety_notes,
-            image_url, video_url, gif_url, diagram_url,
-            category, training_style, experience_level, goals,
-            duration_minutes, popularity_score, alternatives, supersets_well_with
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', [
-            data.get('name'), data.get('description'), data.get('instructions'), data.get('exercise_type'), data.get('movement_pattern'),
-            json.dumps(data.get('primary_muscles')), json.dumps(data.get('secondary_muscles')), data.get('muscle_groups'), data.get('unilateral'),
-            data.get('difficulty_rating'), data.get('prerequisites'), json.dumps(data.get('progressions')), json.dumps(data.get('regressions')),
-            json.dumps(data.get('equipment_required')), data.get('equipment_optional'), data.get('setup_time'), data.get('space_required'),
-            data.get('rep_range_min'), data.get('rep_range_max'), data.get('tempo'), data.get('range_of_motion'), data.get('compound_vs_isolation'),
-            data.get('injury_risk_level'), data.get('contraindications'), json.dumps(data.get('common_mistakes')), data.get('safety_notes'),
-            data.get('image_url'), data.get('video_url'), data.get('gif_url'), data.get('diagram_url'),
-            data.get('category'), json.dumps(data.get('training_style')), json.dumps(data.get('experience_level')), json.dumps(data.get('goals')),
-            data.get('duration_minutes'), data.get('popularity_score'), json.dumps(data.get('alternatives')), json.dumps(data.get('supersets_well_with'))
-        ])
-        conn.commit()
 
-# C team late add
 
-# Exercise functions
-def get_all_exercises(conn: sqlite3.Connection) -> List[Dict]:
-    """Get all exercises from the database"""
-    cursor = conn.execute("SELECT * FROM exercises ORDER BY name")
-    result = cursor.fetchall()
-    return dicts_from_rows(result)
-
-def get_exercise_by_id(conn: sqlite3.Connection, exercise_id: int) -> Optional[Dict]:
-    """Get a specific exercise by ID"""
-    cursor = conn.execute("SELECT * FROM exercises WHERE id = ?", (exercise_id,))
-    result = cursor.fetchone()
-    return dict_from_row(result)
-
-# Routine functions
-def get_all_routines(conn: sqlite3.Connection) -> List[Dict]:
-    """Get all workout routines with exercise count"""
-    cursor = conn.execute("""
-            SELECT 
-                wr.*,
-                COUNT(re.id) as exercise_count
-            FROM workout_routines wr
-            LEFT JOIN routine_exercises re ON wr.id = re.routine_id
-            GROUP BY wr.id
-            ORDER BY wr.date_created DESC
-        """)
-    result = cursor.fetchall()
-    return dicts_from_rows(result)
-
-def get_routine_by_id(conn: sqlite3.Connection, routine_id: int) -> Optional[Dict]:
-    """Get a specific routine by ID"""
-    cursor = conn.execute("SELECT * FROM workout_routines WHERE id = ?", (routine_id,))
-    result = cursor.fetchone()
-    return dict_from_row(result)
-
-def create_routine(conn: sqlite3.Connection, name: str) -> int:
-    """Create a new workout routine and return its ID"""
-    cursor = conn.execute(
-        "INSERT INTO workout_routines (name, date_created) VALUES (?, ?)",
-        (name, datetime.datetime.now().date())
-    )
-    conn.commit()
-    return cursor.lastrowid
-
-def add_exercise_to_routine(conn: sqlite3.Connection, routine_id: int, exercise_id: int, sets: int, 
-                          reps: int, load_lbs: float, order_index: int, notes: str = '') -> int:
-    """Add an exercise to a routine"""
-    cursor = conn.execute("""
-        INSERT INTO routine_exercises 
-        (routine_id, exercise_id, sets, reps, load_lbs, order_index, notes)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (routine_id, exercise_id, sets, reps, load_lbs, order_index, notes))
-    conn.commit()
-    return cursor.lastrowid
-
-def get_routine_exercises(conn: sqlite3.Connection, routine_id: int) -> List[Dict]:
-    """Get all exercises for a specific routine"""
-    cursor = conn.execute("""
-            SELECT 
-                re.*,
-                e.name,
-                e.description,
-                e.primary_muscles,
-                e.secondary_muscles,
-                e.equipment_required,
-                e.instructions
-            FROM routine_exercises re
-            JOIN exercises e ON re.exercise_id = e.id
-            WHERE re.routine_id = ?
-            ORDER BY re.order_index
-        """, (routine_id,))
-    exercises = cursor.fetchall()
-    return dicts_from_rows(exercises)
-
-def delete_routine(conn: sqlite3.Connection, routine_id: int) -> bool:
-    """Delete a routine and all associated exercises"""
-    # Delete routine exercises first due to foreign key constraint
-    conn.execute("DELETE FROM routine_exercises WHERE routine_id = ?", (routine_id,))
-    # Delete the routine
-    cursor = conn.execute("DELETE FROM workout_routines WHERE id = ?", (routine_id,))
-    conn.commit()
-    return cursor.rowcount > 0
-
-# Workout performance functions
-def save_workout_performance(conn: sqlite3.Connection, routine_id: int, exercise_id: int, workout_date: str,
-                           planned_sets: int, actual_sets: int, planned_reps: int,
-                           actual_reps: int, planned_load_lbs: float, actual_load_lbs: float,
-                           notes: str = '', completion_status: str = 'completed') -> int:
-    """Save workout performance data"""
-    cursor = conn.execute("""
-            INSERT INTO workout_performance 
-            (routine_id, exercise_id, workout_date, planned_sets, actual_sets,
-             planned_reps, actual_reps, planned_load_lbs, actual_load_lbs,
-             notes, completion_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (routine_id, exercise_id, workout_date, planned_sets, actual_sets,
-              planned_reps, actual_reps, planned_load_lbs, actual_load_lbs,
-              notes, completion_status))
-    conn.commit()
-    return cursor.lastrowid
-
-def get_workout_history(conn: sqlite3.Connection, routine_id: int) -> List[Dict]:
-    """Get workout history for a specific routine"""
-    cursor = conn.execute("""
-            SELECT 
-                wp.*,
-                e.name as exercise_name,
-                e.primary_muscles
-            FROM workout_performance wp
-            JOIN exercises e ON wp.exercise_id = e.id
-            WHERE wp.routine_id = ?
-            ORDER BY wp.workout_date DESC, wp.created_at DESC
-        """, (routine_id,))
-    history = cursor.fetchall()
-    return dicts_from_rows(history)
-
-def get_workout_performance_by_date(conn: sqlite3.Connection, routine_id: int, workout_date: str) -> List[Dict]:
-    """Get workout performance for a specific routine and date"""
-    cursor = conn.execute("""
-            SELECT 
-                wp.*,
-                e.name as exercise_name,
-                e.primary_muscles
-            FROM workout_performance wp
-            JOIN exercises e ON wp.exercise_id = e.id
-            WHERE wp.routine_id = ? AND wp.workout_date = ?
-            ORDER BY wp.created_at
-        """, (routine_id, workout_date))
-    performance = cursor.fetchall()
-    return dicts_from_rows(performance)
-
-def get_exercise_progress(conn: sqlite3.Connection, exercise_id: int, limit: int = 10) -> List[Dict]:
-    """Get progress history for a specific exercise"""
-    cursor = conn.execute("""
-            SELECT 
-                wp.*,
-                wr.name as routine_name
-            FROM workout_performance wp
-            JOIN workout_routines wr ON wp.routine_id = wr.id
-            WHERE wp.exercise_id = ?
-            ORDER BY wp.workout_date DESC, wp.created_at DESC
-            LIMIT ?
-        """, (exercise_id, limit))
-    progress = cursor.fetchall()
-    return dicts_from_rows(progress)
-
-def get_recent_workouts(conn: sqlite3.Connection, limit: int = 10) -> List[Dict]:
-    """Get recent workout sessions"""
-    cursor = conn.execute("""
-            SELECT 
-                wp.workout_date,
-                wp.routine_id,
-                wr.name as routine_name,
-                COUNT(wp.id) as exercises_completed,
-                AVG(CASE WHEN wp.completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as completion_rate
-            FROM workout_performance wp
-            JOIN workout_routines wr ON wp.routine_id = wr.id
-            GROUP BY wp.workout_date, wp.routine_id
-            ORDER BY wp.workout_date DESC
-            LIMIT ?
-        """, (limit,))
-    workouts = cursor.fetchall()
-    return dicts_from_rows(workouts)
-
-def get_workout_stats(conn: sqlite3.Connection, routine_id: int = None) -> Dict:
-    """Get workout statistics"""
-    cursor = conn.cursor()
+def get_activity_polyline(activity_id: int, db_path: str = Config.DB_PATH) -> Optional[str]:
+    """Retrieve polyline for specified activity.
     
-    if routine_id:
-        # Stats for specific routine
-        cursor.execute("""
-            SELECT 
-                COUNT(DISTINCT workout_date) as total_sessions,
-                COUNT(*) as total_exercises,
-                AVG(CASE WHEN completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as avg_completion_rate,
-                MAX(workout_date) as last_workout
-            FROM workout_performance
-            WHERE routine_id = ?
-        """, (routine_id,))
-    else:
-        # Overall stats
-        cursor.execute("""
-            SELECT 
-                COUNT(DISTINCT workout_date || '-' || routine_id) as total_sessions,
-                COUNT(*) as total_exercises,
-                AVG(CASE WHEN completion_status = 'completed' THEN 1.0 ELSE 0.0 END) * 100 as avg_completion_rate,
-                MAX(workout_date) as last_workout
-            FROM workout_performance
-        """)
-    
-    stats = cursor.fetchone()
-    return dict_from_row(stats)
-
-# Utility functions for database setup
-def initialize_runstrong_database(conn: sqlite3.Connection) -> bool:
-    """Initialize the database with all required tables"""
-    cursor = conn.cursor()
-    
-    # Create exercises table
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE,
-            description TEXT,
-            instructions TEXT,
-            exercise_type TEXT,
-            movement_pattern TEXT,
-            primary_muscles TEXT,
-            secondary_muscles TEXT,
-            muscle_groups TEXT,
-            unilateral BOOLEAN,
-            difficulty_rating TEXT,
-            prerequisites TEXT,
-            progressions TEXT,
-            regressions TEXT,
-            equipment_required TEXT,
-            equipment_optional TEXT,
-            setup_time INTEGER,
-            space_required TEXT,
-            rep_range_min INTEGER,
-            rep_range_max INTEGER,
-            tempo TEXT,
-            range_of_motion TEXT,
-            compound_vs_isolation TEXT,
-            injury_risk_level TEXT,
-            contraindications TEXT,
-            common_mistakes TEXT,
-            safety_notes TEXT,
-            image_url TEXT,
-            video_url TEXT,
-            gif_url TEXT,
-            diagram_url TEXT,
-            category TEXT,
-            training_style TEXT,
-            experience_level TEXT,
-            goals TEXT,
-            duration_minutes INTEGER,
-            popularity_score INTEGER,
-            alternatives TEXT,
-            supersets_well_with TEXT
-        )
-    ''')
-    
-    # Create workout_routines table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS workout_routines (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            date_created DATE
-        )
-    ''')
-    
-    # Create routine_exercises table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS routine_exercises (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            routine_id INTEGER,
-            exercise_id INTEGER,
-            sets INTEGER,
-            reps INTEGER,
-            load_lbs FLOAT,
-            order_index INTEGER,
-            notes TEXT,
-            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
-            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
-        )
-    ''')
-    
-    # Create workout_performance table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS workout_performance (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            routine_id INTEGER,
-            exercise_id INTEGER,
-            workout_date DATE,
-            planned_sets INTEGER,
-            actual_sets INTEGER,
-            planned_reps INTEGER,
-            actual_reps INTEGER,
-            planned_load_lbs FLOAT,
-            actual_load_lbs FLOAT,
-            notes TEXT,
-            completion_status TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(routine_id) REFERENCES workout_routines(id),
-            FOREIGN KEY(exercise_id) REFERENCES exercises(id)
-        )
-    ''')
-    
-    conn.commit()
-    return True
-
-## Begin LLM section
-
-def update_daily_training_metrics(conn: sqlite3.Connection, df, user_id=1):
-    """
-    Inserts or updates daily training metrics into SQLite.
-
     Args:
-        df (DataFrame): Must have columns ['date', 'tss', 'CTL', 'ATL', 'TSB']
-        user_id (int): The athlete identifier
-        db_path (str): Path to SQLite database
+        activity_id: Activity identifier
+        db_path: Database file path
+        
+    Returns:
+        Polyline string or None if not found
+        
+    Raises:
+        DatabaseError: If database query fails
     """
-
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS daily_training_metrics (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date DATE UNIQUE,
-            user_id INTEGER,
-            total_tss FLOAT,
-            ctl FLOAT,
-            atl FLOAT,
-            tsb FLOAT,
-            notes TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """)
-
-    for _, row in df.iterrows():
-        conn.execute("""
-            INSERT INTO daily_training_metrics (
-                date, user_id, total_tss, ctl, atl, tsb
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(date) DO UPDATE SET
-                total_tss = excluded.total_tss,
-                ctl = excluded.ctl,
-                atl = excluded.atl,
-                tsb = excluded.tsb;
-        """, (
-            row['date'].date(),  # Ensure date only, no time
-            user_id,
-            row['tss'],
-            row['CTL'],
-            row['ATL'],
-            row['TSB']
-        ))
-
-    conn.commit()
-
-def get_latest_daily_training_metrics(conn: sqlite3.Connection):
-    """
-    Retreives latest day's data from the daily_training_metrics table.
-
+    query = "SELECT map_summary_polyline FROM activities WHERE id = ?"
+    
+    try:
+        with db_utils.get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, (activity_id,))
+            row = cur.fetchone()
+            
+            if row:
+                return row['map_summary_polyline']
+            else:
+                logger.warning(f"No polyline found for activity {activity_id}")
+                return None
+                
+    except exception_utils.DatabaseError:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error getting polyline for activity {activity_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get polyline: {e}") from e
+    
+def decode_polyline(polyline_str: str) -> List[Tuple[float, float]]:
+    """Decode a polyline string to list of (lat, lon) coordinates.
+    
     Args:
-        conn
+        polyline_str: Encoded polyline string
+        
+    Returns:
+        List of (latitude, longitude) tuples
+        
+    Raises:
+        DataProcessingError: If polyline cannot be decoded
     """
-    c = conn.cursor()
+    if not polyline_str:
+        return []
+        
+    try:
+        return polyline.decode(polyline_str)
+    except Exception as e:
+        logger.error(f"Failed to decode polyline: {e}")
+        raise exception_utils.DataProcessingError(f"Polyline decode failed: {e}") from e
+
+def get_streams_data(activity_id: int, db_path: str = Config.DB_PATH) -> Tuple[List[float], ...]:
+    """Retrieve activity stream data from database.
+    
+    Args:
+        activity_id: Activity identifier
+        db_path: Database file path
+        
+    Returns:
+        Tuple of (distance, heartrate, altitude, power, time) lists
+        
+    Raises:
+        DataProcessingError: If data cannot be retrieved or parsed
+    """
     query = """
-        SELECT date, total_tss, ctl, atl, tsb
-        FROM daily_training_metrics
-        ORDER BY date DESC
-        LIMIT 1;
+        SELECT distance_data, heartrate_data, altitude_data, watts_data, time_data 
+        FROM streams 
+        WHERE activity_id = ?
     """
-    result = c.execute(query).fetchall()
-
-    return result
-
-def initialize_conversation_database(conn: sqlite3.Connection):
-    """
-    Retreives latest day's data from the daily_training_metrics table.
-
-    Args:
-        conn
-    """
-    c = conn.cursor()
-    c.execute('''
-    CREATE TABLE conversations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT,
-    role TEXT, -- "user" or "coach"
-    message TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    ''')
-
-def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
-    """Retrieve the most recent conversation history within a token limit."""
+    
     try:
-        rows = conn.execute("""
-            SELECT role, message, timestamp FROM conversations
-            WHERE session_id = ?
-            ORDER BY timestamp DESC
-            LIMIT 50
-        """, (session_id,)).fetchall()
-        
-        if not rows:
-            logger.debug(f"No conversation history found for session {session_id}")
-            return []
-        
-        history = []
-        total_tokens = 0
-        
-        for row in rows:
-            role, message, timestamp = row
+        with db_utils.get_db_connection(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(query, (activity_id,))
+            row = cur.fetchone()
             
-            # Ensure message is a string
-            if not isinstance(message, str):
-                message = str(message) if message else ''
+        if not row:
+            logger.warning(f"No stream data found for activity {activity_id}")
+            return [], [], [], [], []
             
-            message = message.strip()
-            if not message:
-                continue
-            
-            # Format message for token counting
-            formatted = f"User: {message}\n" if role == 'user' else f"Coach G: {message}\n"
-            
-            # Safe token counting
+        # Parse JSON data with error handling
+        parsed_data = []
+        for i, data in enumerate(row):
             try:
-                token_count = len(tokenizer.encode(formatted))
-            except Exception as e:
-                logger.warning(f"Tokenizer failed, using fallback: {e}")
-                token_count = len(formatted.split()) * 1.3
-            
-            if total_tokens + token_count > max_tokens:
-                logger.debug(f"Token limit reached. Retrieved {len(history)} messages")
-                break
-            
-            history.insert(0, {
-                "role": role,
-                "message": message,  # Store clean string
-                "timestamp": timestamp
-            })
-            total_tokens += token_count
-        
-        logger.debug(f"Retrieved {len(history)} messages ({total_tokens} tokens) for session {session_id}")
-        return history
+                parsed = json.loads(data) if data else []
+                # Replace None values with 0 using numpy for efficiency
+                if parsed:
+                    cleaned = np.where(np.array(parsed) == None, 0, parsed).tolist()
+                else:
+                    cleaned = []
+                parsed_data.append(cleaned)
+            except (json.JSONDecodeError, TypeError) as e:
+                logger.error(f"Failed to parse stream data column {i}: {e}")
+                parsed_data.append([])
+                
+        return tuple(parsed_data)
         
     except sqlite3.Error as e:
-        logger.error(f"Database error retrieving messages: {e}")
-        raise exception_utils.DatabaseError(f"Failed to retrieve messages: {e}") from e
+        logger.error(f"Database error retrieving streams for activity {activity_id}: {e}")
+        raise exception_utils.DataProcessingError(f"Database query failed: {e}") from e
+
+
+def interpolate_to_common_x(
+    x_ref: List[float], 
+    y_raw: List[float], 
+    x_raw: List[float]
+) -> List[Optional[float]]:
+    """Interpolate y_raw values to match x_ref domain.
     
+    Args:
+        x_ref: Reference x values to interpolate to
+        y_raw: Y values to interpolate
+        x_raw: X values corresponding to y_raw
+        
+    Returns:
+        Interpolated y values aligned with x_ref, None for out-of-bounds
+        
+    Raises:
+        ValueError: If input arrays are insufficient for interpolation
+    """
+    if len(x_raw) < 2 or len(y_raw) < 2:
+        raise ValueError("Need at least 2 points for interpolation")
+        
+    if len(x_ref) < 1:
+        return []
+        
+    if len(x_raw) != len(y_raw):
+        raise ValueError("x_raw and y_raw must have same length")
     
-def save_message(conn: sqlite3.Connection, session_id: str, role: str, message: str):
-    """Store a single message (user or coach) in the conversation history."""
     try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO conversations (session_id, role, message, timestamp)
-            VALUES (?, ?, ?, ?)
-        """, (session_id, role, message, datetime.datetime.utcnow().isoformat()))
+        # Convert to numpy arrays for efficiency
+        x_ref_arr = np.array(x_ref)
+        x_raw_arr = np.array(x_raw)
+        y_raw_arr = np.array(y_raw)
         
-        conn.commit()
-        logger.debug(f"Saved {role} message for session {session_id}")
+        # Interpolate with NaN for out-of-bounds
+        y_interp = np.interp(x_ref_arr, x_raw_arr, y_raw_arr, left=np.nan, right=np.nan)
         
-    except sqlite3.Error as e:
-        logger.error(f"Database error saving message: {e}")
-        conn.rollback()
-        raise exception_utils.DatabaseError(f"Failed to save message: {e}") from e
+        # Convert NaN to None for consistency
+        return [None if np.isnan(y) else float(y) for y in y_interp]
+        
+    except Exception as e:
+        logger.error(f"Interpolation failed: {e}")
+        raise exception_utils.DataProcessingError(f"Interpolation error: {e}") from e
 
-def execute_generated_query(conn: sqlite3.Connection, sql_query: str):
-    """Executes a validated SELECT query generated by the LLM."""
-    # Potentially add more validation/parsing here if needed (e.g., allowed tables)
-    # For now, the SELECT check is a primary safeguard.
 
-    try:
-            cursor = conn.cursor()
-            cursor.execute(sql_query) # Parameterization is tricky with fully dynamic SQL. Be cautious.
-                                    # If LLM needs params, it must generate placeholders, and you must extract them.
-                                    # Simpler: LLM generates SQL with literal values based on user query.
-
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            rows = cursor.fetchall() # Will be list of dicts due to dict_factory
-
-            return rows, columns
-    except sqlite3.Error as e:
-        logger.error(f"Error executing generated SQL query '{sql_query}': {e}")
-        raise exception_utils.DatabaseError(f"Failed to execute query: {e}") from e
+def validate_stream_data(data: List[Union[float, int, None]]) -> List[float]:
+    """Validate and clean stream data.
+    
+    Args:
+        data: Raw stream data list
+        
+    Returns:
+        Cleaned data with None values replaced by 0
+    """
+    if not data:
+        return []
+        
+    return [0.0 if x is None else float(x) for x in data]

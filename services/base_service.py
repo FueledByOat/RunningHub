@@ -18,9 +18,10 @@ from flask import send_from_directory, abort
 from werkzeug.utils import secure_filename
 import os
 
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
 from utils.RunnerVision import runnervision_utils as rv_utils
 from config import Config
+from utils.db import db_utils
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,8 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import sqlite3
 import pandas as pd
-import utils.db_utils as db_utils
+import utils.db.db_utils as db_utils
+import utils.db.dash_db_utils as dash_db_utils
 import plotly.io as pio
 
 
@@ -408,7 +409,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = db_utils.get_enhanced_training_shape_data(db_path)
+        df = dash_db_utils.get_enhanced_training_shape_data(db_path)
 
         if df.empty:
             # Return empty figure if no data
@@ -560,7 +561,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = db_utils.get_cumulative_training_shape_data(db_path)
+        df = dash_db_utils.get_cumulative_training_shape_data(db_path)
 
         if df.empty:
             # Return empty figure if no data
@@ -646,10 +647,10 @@ def create_dash_dashboard_app(server, db_path):
     def load_dashboard_data(db_path=db_path):
         """Load all required data for the dashboard"""
         # Load data
-        df_acwr = db_utils.get_acwr_data(db_path)
-        df_hr_drift = db_utils.get_hr_drift_data(db_path)
-        df_cadence = db_utils.get_cadence_stability_data(db_path)
-        df_ctl_atl_tsb_tss = db_utils.get_ctl_atl_tsb_tss_data(db_path)
+        df_acwr = dash_db_utils.get_acwr_data(db_path)
+        df_hr_drift = dash_db_utils.get_hr_drift_data(db_path)
+        df_cadence = dash_db_utils.get_cadence_stability_data(db_path)
+        df_ctl_atl_tsb_tss = dash_db_utils.get_ctl_atl_tsb_tss_data(db_path)
 
         
         # Process ACWR data
@@ -720,7 +721,7 @@ def create_dash_dashboard_app(server, db_path):
         
     def load_dashboard_efficiency_data(db_path=db_path):
         """Load all required data for the efficiency metrics"""
-        efficiency = db_utils.get_efficiency_index(db_path)
+        efficiency = dash_db_utils.get_efficiency_index(db_path)
 
         # Process  data
         latest_efficiency_index = efficiency['flat_efficiency_factor'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None

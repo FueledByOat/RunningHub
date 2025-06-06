@@ -10,8 +10,9 @@ from functools import lru_cache
 from transformers import pipeline, AutoTokenizer
 from huggingface_hub import login
 
-from utils import exception_utils, db_utils
+from utils import exception_utils
 from config import Config, LanguageModelConfig
+from utils.db import db_utils
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fatigue Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <script src="{{ url_for('run_strong.static', filename='js/runstrong_dashboard.js') }}" defer></script>
+
+    <style>
+      
+    </style>
+</head>
+
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
+        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
+        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
+        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
+        <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}"
+                alt="RunStrong Logo" class="runstrong-logo" />
+        </a>
+    </div>
+    <div class="runstrong-header">
+        <h1>Fatigue Tracking Dashboard</h1>
+        <button class="refresh-btn" onclick="refreshDashboard()">Refresh Data</button>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Overall Fatigue Score -->
+        <div class="overall-fatigue">
+            <h2>Overall Training Stress</h2>
+            <div class="fatigue-circle">
+                <span id="overall-score">72</span>
+            </div>
+            <p>Current fatigue level based on recent training volume and recovery</p>
+        </div>
+
+        <div class="fatigue-grid">
+            <!-- Muscle Group Fatigue -->
+            <div class="fatigue-card">
+                <h3>Muscle Group Fatigue</h3>
+                <div id="muscle-fatigue-container">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Training Stress Trend -->
+            <div class="fatigue-card">
+                <h3>7-Day Training Stress</h3>
+                <div class="training-stress-chart">
+                    <div class="stress-bars" id="stress-bars">
+                        <!-- Dynamic bars will be inserted here -->
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 1rem; color: rgba(255, 255, 255, 0.7);">
+                    Last 7 days training intensity
+                </p>
+            </div>
+
+            <!-- Days Since Last Training -->
+            <div class="fatigue-card">
+                <h3>Recovery Time</h3>
+                <div class="days-since-training" id="recovery-time-container">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

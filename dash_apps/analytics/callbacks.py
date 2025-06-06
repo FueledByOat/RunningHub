@@ -10,7 +10,7 @@ from urllib.parse import parse_qs
 import plotly.graph_objs as go
 
 import utils.dash_utils as dash_utils
-import utils.db_utils as db_utils
+import utils.db.db_utils as db_utils
 
 def register_analytics_callbacks(dash_app, config):
     """Register all callbacks for the analytics dashboard."""

@@ -8,7 +8,8 @@ import numpy as np
 from urllib.parse import parse_qs
 import utils.dash_utils as dash_utils
 import plotly.graph_objs as go
-import utils.db_utils as db_utils
+import utils.db.db_utils as db_utils
+import utils.db.dash_db_utils as dash_db_utils
 
 external_stylesheets = ["/static/css/styles.css"]
 
@@ -37,16 +38,16 @@ def create_dash_app(flask_app):
             return html.Div("No activity ID provided."), html.Div()
 
         # Fetch data
-        polyline_str = db_utils.get_activity_polyline(activity_id)
-        decoded = dash_utils.decode_polyline(polyline_str)
+        polyline_str = dash_db_utils.get_activity_polyline(activity_id)
+        decoded = dash_db_utils.decode_polyline(polyline_str)
         lat_lng = [{'lat': lat, 'lon': lon} for lat, lon in decoded]
 
-        distance, heartrate, altitude, power, time = dash_utils.get_streams_data(activity_id)
+        distance, heartrate, altitude, power, time = dash_db_utils.get_streams_data(activity_id)
         distance = [i / 1609 for i in distance] # now in units of second to parts of a mile
         x_ref = np.linspace(0, max(distance) if distance else 1, num=500)
-        hr_interp = dash_utils.interpolate_to_common_x(x_ref, heartrate, distance)
-        alt_interp = dash_utils.interpolate_to_common_x(x_ref, altitude, distance)
-        power_interp = dash_utils.interpolate_to_common_x(x_ref, power, distance)
+        hr_interp = dash_db_utils.interpolate_to_common_x(x_ref, heartrate, distance)
+        alt_interp = dash_db_utils.interpolate_to_common_x(x_ref, altitude, distance)
+        power_interp = dash_db_utils.interpolate_to_common_x(x_ref, power, distance)
 
         # pace section 
         # Ensure inputs are numpy arrays
@@ -108,7 +109,7 @@ def create_dash_app(flask_app):
             return smoothed.tolist()
 
         # Use your interpolation function
-        pace_interp = dash_utils.interpolate_to_common_x(x_ref, pace_min_per_mile, x_mid)
+        pace_interp = dash_db_utils.interpolate_to_common_x(x_ref, pace_min_per_mile, x_mid)
 
         pace_smoothed = adaptive_moving_average(np.array(pace_interp), window_size=10)
 

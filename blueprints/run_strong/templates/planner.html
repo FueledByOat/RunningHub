@@ -15,7 +15,6 @@
         <a href="{{ url_for('run_strong.journal') }}">Journal</a>
         <a href="{{ url_for('run_strong.dashboard') }}">Dashboard</a>
     </div>
-
     <div class="runnervision-header">
         <a href="{{ url_for('running_hub.home') }}">
             <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
@@ -24,8 +23,8 @@
     </div>
     <div class="runstrong-container">
         <h1 class="main-title">Workout Planner</h1>
-        
-        <!-- Routine Creation Section -->
+       
+        <!-- Routine Creation/Edit Section -->
         <div class="planner-section">
             <h2>Create New Routine</h2>
             <div class="routine-name-group">
@@ -34,13 +33,22 @@
                     <input type="text" id="routine-name" placeholder="Enter routine name..." required>
                 </div>
             </div>
+            
+            <!-- Routine selector container -->
+            <div id="routine-selector-container" style="display: none; margin-top: 1rem;">
+                <!-- Routine selector will be dynamically populated here -->
+            </div>
+            
+            <div class="form-group-inline" style="margin-top: 1rem;">
+                <button type="button" class="btn-secondary" onclick="resetForm()" title="Clear form and start fresh">Reset Form</button>
+            </div>
         </div>
 
         <!-- Exercise Selection Section -->
         <div class="planner-section">
             <h2>Select Exercises</h2>
             <input type="text" class="search-box" id="exercise-search" placeholder="Search exercises...">
-            
+           
             <div class="exercise-list" id="exercise-list">
                 <!-- Exercises will be loaded here -->
             </div>
@@ -58,7 +66,8 @@
             </div>
             <div class="form-group">
                 <label for="exercise-load">Load (lbs):</label>
-                <input type="number" id="exercise-load" min="0" step="0.5" value="0">
+                <input type="number" id="exercise-load" min="0" step="0.5" value="0" 
+                       title="Auto-populated with your previous maximum load">
             </div>
             <div class="form-group">
                 <label for="exercise-notes">Notes:</label>
@@ -76,7 +85,9 @@
             <div id="routine-exercises">
                 <p class="no-exercises-message">No exercises added yet.</p>
             </div>
-            <button type="button" class="btn-primary" onclick="saveRoutine()">Save Routine</button>
+            <div class="form-group-inline">
+                <button type="button" class="btn-primary" onclick="saveRoutine()">Save Routine</button>
+            </div>
         </div>
     </div>
 

@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 from dotenv import load_dotenv
 
-from utils import db_utils
+from utils.db import db_utils
 from config import Config
 
 # Configure module-level logger

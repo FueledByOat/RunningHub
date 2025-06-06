@@ -12,8 +12,10 @@ import json
 from typing import Dict, Any, Optional, List
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils, language_model_utils
+from utils import format_utils, exception_utils, language_model_utils
 from config import LanguageModelConfig, Config
+from utils.db import db_utils
+from utils.db import language_db_utils
 
 class CoachGService(BaseService):
     """Service for handling Coach G interactions."""
@@ -243,7 +245,7 @@ class CoachGService(BaseService):
         """Save message to conversations table."""
         try:
             with self._get_connection() as conn:
-                db_utils.save_message(conn, session_id, role, message)
+                language_db_utils.save_message(conn, session_id, role, message)
                 self.logger.debug(f"Saved {role} message for session {session_id}")
         except Exception as e:
             self.logger.error(f"Error saving conversation message: {e}")
@@ -253,7 +255,7 @@ class CoachGService(BaseService):
         """Get recent conversation messages within token limit."""
         try:
             with self._get_connection() as conn:
-                history = db_utils.get_recent_messages(
+                history = language_db_utils.get_recent_messages(
                     conn, session_id, max_tokens, self.tokenizer
                 )
                 self.logger.debug(f"Retrieved {len(history)} messages for session {session_id}")
@@ -307,7 +309,7 @@ class CoachGService(BaseService):
 
         try:
             with self._get_connection() as conn:
-                rows, columns = db_utils.execute_generated_query(conn, sql_query)
+                rows, columns = language_db_utils.execute_generated_query(conn, sql_query)
                 return {'columns': columns, 'rows': rows, 'error': None}
         except Exception as e: # Catch other unexpected errors
             self.logger.error(f"Unexpected error executing generated SQL query '{sql_query}': {e}")
