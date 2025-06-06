@@ -457,6 +457,53 @@ def calculate_recovery_score(days_since_last: int, volume_7day: float, volume_14
     recovery_score = max(0, min(100, time_factor + 30 - volume_penalty))
     return recovery_score
 
+def get_muscle_group_mapping() -> Dict[str, str]:
+    """Map individual muscles to broader muscle groups"""
+    return {
+        # Upper Body
+        'Chest': 'Upper body',
+        'Triceps': 'Upper body',
+        'Anterior deltoids': 'Upper body',
+        'Posterior deltoids': 'Upper body',
+        'Lateral deltoids': 'Upper body',
+        'Deltoids': 'Upper body',
+        'Shoulders': 'Upper body',
+        'Biceps': 'Upper body',
+        'Lats': 'Upper body',
+        'Latissimus dorsi': 'Upper body',
+        'Rhomboids': 'Upper body',
+        'Traps': 'Upper body',
+        'Trapezius': 'Upper body',
+        'Upper back': 'Upper body',
+        'Middle back': 'Upper body',
+        'Lower back': 'Upper body',
+        'Erector spinae': 'Upper body',
+        'Forearms': 'Upper body',
+        'Wrists': 'Upper body',
+        
+        # Lower Body
+        'Quadriceps': 'Lower body',
+        'Quads': 'Lower body',
+        'Hamstrings': 'Lower body',
+        'Glutes': 'Lower body',
+        'Gluteus maximus': 'Lower body',
+        'Gluteus medius': 'Lower body',
+        'Calves': 'Lower body',
+        'Gastrocnemius': 'Lower body',
+        'Soleus': 'Lower body',
+        'Hip flexors': 'Lower body',
+        'Hip abductors': 'Lower body',
+        'Hip adductors': 'Lower body',
+        'Tibialis anterior': 'Lower body',
+        
+        # Core (can be considered separate or part of upper)
+        'Core': 'Core',
+        'Abs': 'Core',
+        'Abdominals': 'Core',
+        'Obliques': 'Core',
+        'Transverse abdominis': 'Core'
+    }
+
 def normalize_muscle_name(muscle: str) -> str:
     """Normalize muscle names for consistent matching"""
     muscle_map = {
@@ -614,18 +661,163 @@ def insert_sample_data(conn: sqlite3.Connection):
     conn.commit()
     logger.info("Sample data inserted")
 
-def get_fatigue_dashboard_data(conn: sqlite3.Connection) -> Dict:
-    """Get dashboard data with better error handling"""
-    logger.info("Fetching fatigue dashboard data...")
+
+def get_daily_training_data(conn: sqlite3.Connection, muscle_group_filter: str = None, days: int = 7) -> List[Dict]:
+    """Get daily training intensity with optional muscle group filtering"""
     cursor = conn.cursor()
-    cursor.row_factory = sqlite3.Row  # Add this line
+    cursor.row_factory = sqlite3.Row
+    
+    today = datetime.datetime.now().date()
+    days_ago = today - timedelta(days=days)
+    
+    base_query = """
+        SELECT 
+            wp.workout_date,
+            SUM(COALESCE(wp.actual_sets, 0) * COALESCE(wp.actual_reps, 0) * COALESCE(wp.actual_load_lbs, 0)) as daily_volume
+        FROM workout_performance wp
+    """
+    
+    # Add muscle group filtering if specified
+    if muscle_group_filter and muscle_group_filter.lower() != 'all':
+        muscle_mapping = get_muscle_group_mapping()
+        filtered_muscles = [muscle for muscle, group in muscle_mapping.items() 
+                          if group.lower() == muscle_group_filter.lower()]
+        
+        if filtered_muscles:
+            placeholders = ','.join(['?' for _ in filtered_muscles])
+            base_query += f"""
+                JOIN exercises e ON wp.exercise_id = e.id
+                WHERE wp.workout_date >= ? AND (
+                    e.primary_muscles IN ({placeholders}) OR 
+                    e.secondary_muscles IN ({placeholders})
+                )
+            """
+            params = [days_ago] + filtered_muscles + filtered_muscles
+        else:
+            base_query += " WHERE wp.workout_date >= ?"
+            params = [days_ago]
+    else:
+        base_query += " WHERE wp.workout_date >= ?"
+        params = [days_ago]
+    
+    base_query += " GROUP BY wp.workout_date ORDER BY wp.workout_date"
+    
+    cursor.execute(base_query, params)
+    training_data = {row['workout_date']: row['daily_volume'] for row in cursor.fetchall()}
+    
+    # Create daily entries for all days
+    daily_training = []
+    for i in range(days):
+        date = today - timedelta(days=days-1-i)
+        day_name = date.strftime('%a')
+        volume = training_data.get(date.strftime('%Y-%m-%d'), 0)
+        
+        # Convert volume to intensity percentage (0-100)
+        max_volume = 5000  # Adjust this threshold
+        intensity = min(100, (volume / max_volume) * 100) if volume > 0 else 0
+        
+        daily_training.append({
+            'day': day_name,
+            'intensity': round(intensity),
+            'hasTraining': volume > 0,
+            'volume': volume
+        })
+    
+    return daily_training
+
+def get_fatigue_trend_data(conn: sqlite3.Connection, muscle_group_filter: str = None, days: int = 7) -> List[Dict]:
+    """Get fatigue trend with optional muscle group filtering"""
+    daily_training = get_daily_training_data(conn, muscle_group_filter, days)
+    
+    fatigue_trend = []
+    cumulative_fatigue = 30  # Starting baseline
+    
+    for day_data in daily_training:
+        if day_data['hasTraining']:
+            fatigue_increase = day_data['intensity'] * 0.3
+            cumulative_fatigue = min(100, cumulative_fatigue + fatigue_increase)
+        else:
+            cumulative_fatigue = max(0, cumulative_fatigue - 10)
+        
+        fatigue_trend.append({
+            'day': day_data['day'],
+            'fatigue': round(cumulative_fatigue)
+        })
+    
+    return fatigue_trend
+
+def get_fallback_dashboard_data(muscle_group_filter: str = None) -> Dict:
+    """Fallback data with filtering consideration"""
+    all_muscle_data = [
+        {'muscle_group': 'Quadriceps', 'last_trained': '2025-06-03', 'volume_7day': 2400, 'volume_14day': 4200, 'recovery_score': 35, 'fatigue_level': 65, 'broad_group': 'Lower body'},
+        {'muscle_group': 'Glutes', 'last_trained': '2025-06-02', 'volume_7day': 1800, 'volume_14day': 3600, 'recovery_score': 15, 'fatigue_level': 85, 'broad_group': 'Lower body'},
+        {'muscle_group': 'Chest', 'last_trained': '2025-06-01', 'volume_7day': 2000, 'volume_14day': 3800, 'recovery_score': 45, 'fatigue_level': 55, 'broad_group': 'Upper body'},
+        {'muscle_group': 'Triceps', 'last_trained': '2025-06-04', 'volume_7day': 1200, 'volume_14day': 2400, 'recovery_score': 60, 'fatigue_level': 40, 'broad_group': 'Upper body'},
+        {'muscle_group': 'Core', 'last_trained': '2025-06-03', 'volume_7day': 900, 'volume_14day': 1800, 'recovery_score': 30, 'fatigue_level': 70, 'broad_group': 'Core'}
+    ]
+    
+    # Filter muscle data if specified
+    if muscle_group_filter and muscle_group_filter.lower() != 'all':
+        filtered_data = [m for m in all_muscle_data if m['broad_group'].lower() == muscle_group_filter.lower()]
+        muscle_fatigue = filtered_data if filtered_data else all_muscle_data
+    else:
+        muscle_fatigue = all_muscle_data
+    
+    return {
+        'overall_fatigue': 72,
+        'muscle_fatigue': muscle_fatigue,
+        'weekly_stress': [60, 80, 45, 90, 30, 75, 85],
+        'daily_training': [
+            {'day': 'Mon', 'intensity': 85, 'hasTraining': True, 'volume': 4250},
+            {'day': 'Tue', 'intensity': 0, 'hasTraining': False, 'volume': 0},
+            {'day': 'Wed', 'intensity': 70, 'hasTraining': True, 'volume': 3500},
+            {'day': 'Thu', 'intensity': 90, 'hasTraining': True, 'volume': 4500},
+            {'day': 'Fri', 'intensity': 0, 'hasTraining': False, 'volume': 0},
+            {'day': 'Sat', 'intensity': 60, 'hasTraining': True, 'volume': 3000},
+            {'day': 'Sun', 'intensity': 45, 'hasTraining': True, 'volume': 2250}
+        ],
+        'fatigue_trend': [
+            {'day': 'Mon', 'fatigue': 45},
+            {'day': 'Tue', 'fatigue': 50},
+            {'day': 'Wed', 'fatigue': 65},
+            {'day': 'Thu', 'fatigue': 80},
+            {'day': 'Fri', 'fatigue': 75},
+            {'day': 'Sat', 'fatigue': 70},
+            {'day': 'Sun', 'fatigue': 72}
+        ],
+        'active_filter': muscle_group_filter,
+        'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
+    }
+
+def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: str = None) -> Dict:
+    """Enhanced dashboard data with optional muscle group filtering"""
+    logger.info(f"Fetching fatigue dashboard data with filter: {muscle_group_filter}")
+    cursor = conn.cursor()
+    cursor.row_factory = sqlite3.Row
 
     try:
-        cursor.execute("""
+        muscle_mapping = get_muscle_group_mapping()
+        
+        # Base query for muscle fatigue
+        base_query = """
             SELECT muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score
             FROM muscle_group_fatigue
-            ORDER BY recovery_score ASC
-        """)
+        """
+        
+        # Apply filtering if specified
+        if muscle_group_filter and muscle_group_filter.lower() in ['upper body', 'lower body', 'core']:
+            # Get muscles that belong to the selected group
+            filtered_muscles = [muscle for muscle, group in muscle_mapping.items() 
+                              if group.lower() == muscle_group_filter.lower()]
+            
+            if filtered_muscles:
+                placeholders = ','.join(['?' for _ in filtered_muscles])
+                query = base_query + f" WHERE muscle_group IN ({placeholders})"
+                cursor.execute(query + " ORDER BY recovery_score ASC", filtered_muscles)
+            else:
+                cursor.execute(base_query + " ORDER BY recovery_score ASC")
+        else:
+            cursor.execute(base_query + " ORDER BY recovery_score ASC")
         
         muscle_fatigue = []
         for row in cursor.fetchall():
@@ -635,9 +827,11 @@ def get_fatigue_dashboard_data(conn: sqlite3.Connection) -> Dict:
                 'volume_7day': row['volume_7day'],
                 'volume_14day': row['volume_14day'],
                 'recovery_score': row['recovery_score'],
-                'fatigue_level': max(0, min(100, 100 - row['recovery_score']))  # Use column name
+                'fatigue_level': max(0, min(100, 100 - row['recovery_score'])),
+                'broad_group': muscle_mapping.get(row['muscle_group'], 'Other')
             })
 
+        # Weekly stress (keep existing)
         cursor.execute("""
             SELECT training_stress_score
             FROM weekly_training_summary
@@ -646,29 +840,32 @@ def get_fatigue_dashboard_data(conn: sqlite3.Connection) -> Dict:
         """)
         weekly_stress = [row['training_stress_score'] for row in cursor.fetchall()]
         
-        # Fill with default values if no data
         if not weekly_stress:
-            weekly_stress = [60, 80, 45, 90, 30, 75, 85]  # Sample data
+            weekly_stress = [60, 80, 45, 90, 30, 75, 85]
 
-        overall_fatigue = sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue) if muscle_fatigue else 50
+        # Calculate overall fatigue (filtered if applicable)
+        if muscle_fatigue:
+            overall_fatigue = sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue)
+        else:
+            overall_fatigue = 50
+
+        # Get chart data (can also be filtered)
+        daily_training = get_daily_training_data(conn, muscle_group_filter)
+        fatigue_trend = get_fatigue_trend_data(conn, muscle_group_filter)
 
         return {
             'overall_fatigue': round(overall_fatigue),
             'muscle_fatigue': muscle_fatigue,
-            'weekly_stress': weekly_stress
+            'weekly_stress': weekly_stress,
+            'daily_training': daily_training,
+            'fatigue_trend': fatigue_trend,
+            'active_filter': muscle_group_filter,
+            'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
         }
     
     except Exception as e:
         logger.error(f"Error fetching dashboard data: {e}")
-        # Return sample data as fallback
-        return {
-            'overall_fatigue': 72,
-            'muscle_fatigue': [
-                {'muscle_group': 'Quadriceps', 'last_trained': '2025-06-03', 'volume_7day': 2400, 'volume_14day': 4200, 'recovery_score': 35, 'fatigue_level': 65},
-                {'muscle_group': 'Glutes', 'last_trained': '2025-06-02', 'volume_7day': 1800, 'volume_14day': 3600, 'recovery_score': 15, 'fatigue_level': 85}
-            ],
-            'weekly_stress': [60, 80, 45, 90, 30, 75, 85]
-        }
+        return get_fallback_dashboard_data(muscle_group_filter)
     
 def run_daily_update(conn: sqlite3.Connection):
     """Main function to run daily fatigue updates"""

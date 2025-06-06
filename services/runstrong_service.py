@@ -312,13 +312,14 @@ class RunStrongService(BaseService):
         except Exception as e:
             self.logger.error(f"Error in run_daily_update: {e}")
 
-    def get_fatigue_dashboard_data(self) -> Dict:
+    def get_fatigue_dashboard_data(self, muscle_group_filter: str = None) -> Dict:
+        """Get fatigue dashboard data with optional muscle group filtering"""
         try:
             with self._get_connection() as conn:
-                return runstrong_db_utils.get_fatigue_dashboard_data(conn)
+                return runstrong_db_utils.get_fatigue_dashboard_data(conn, muscle_group_filter)
         except Exception as e:
             self.logger.error(f"Error in get_fatigue_dashboard_data: {e}")
-            return {}
+            return runstrong_db_utils.get_fallback_dashboard_data(muscle_group_filter)
 
     def update_weekly_summary(self, week_start: datetime.datetime):
         try:

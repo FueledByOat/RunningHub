@@ -278,16 +278,35 @@ def register_routes(runstrong_service):
         except Exception as e:
             return jsonify({'error': str(e)}), 500
     
-    # Dashboard Routes
     @run_strong_bp.route('/api/fatigue-data')
     def get_fatigue_data():
-        """API endpoint to get current fatigue data"""
+        """API endpoint to get current fatigue data with optional filtering"""
         try:
-            data = runstrong_service.get_fatigue_dashboard_data()
+            # Get muscle group filter from query parameters
+            muscle_group_filter = request.args.get('muscle_group', None)
+            
+            # Validate filter
+            valid_filters = ['all', 'upper body', 'lower body', 'core']
+            if muscle_group_filter and muscle_group_filter.lower() not in valid_filters:
+                muscle_group_filter = None
+            
+            data = runstrong_service.get_fatigue_dashboard_data(muscle_group_filter)
             return jsonify(data)
         except Exception as e:
             logger.error(f"API error: {e}")
             return jsonify({'error': 'Failed to fetch data'}), 500
+
+    @run_strong_bp.route('/api/muscle-groups')
+    def get_available_muscle_groups():
+        """API endpoint to get available muscle group filters"""
+        try:
+            return jsonify({
+                'filters': ['All', 'Upper body', 'Lower body', 'Core'],
+                'default': 'All'
+            })
+        except Exception as e:
+            logger.error(f"API error: {e}")
+            return jsonify({'error': 'Failed to fetch muscle groups'}), 500
     
     @run_strong_bp.route('/api/update-fatigue')
     def update_fatigue():
@@ -298,9 +317,3 @@ def register_routes(runstrong_service):
         except Exception as e:
             logger.error(f"Update error: {e}")
             return jsonify({'error': 'Failed to update data'}), 500
-    
-    # @run_strong_bp.route('/')
-    # def dashboard():
-    #     """Serve the HTML dashboard"""
-    #     # You would replace this with your actual HTML file
-    #     return render_template_string(open('progress_dashboard.html').read())
