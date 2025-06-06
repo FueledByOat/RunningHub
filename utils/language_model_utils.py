@@ -13,6 +13,7 @@ from huggingface_hub import login
 from utils import exception_utils
 from config import Config, LanguageModelConfig
 from utils.db import db_utils
+from utils.db import language_db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -254,6 +255,7 @@ The user's question is:""" # The user_input (actual question) will be appended a
                         query += ';'
                     
                     logger.info("Successfully extracted SQL query")
+                    logger.debug(f"Successfully extracted SQL query: {query}")
                     return query
             
             logger.warning(f"No SQL query found in response: {assistant_response[:100]}...")
@@ -266,26 +268,23 @@ The user's question is:""" # The user_input (actual question) will be appended a
     def generate_daily_training_summary(self) -> str:
         """Generate a daily training summary based on latest metrics."""
         try:
-            # Get training data
             with db_utils.get_db_connection(Config.DB_PATH) as conn:
-                training_metrics = db_utils.get_latest_daily_training_metrics(conn=conn)
+                training_metrics_result = language_db_utils.get_latest_daily_training_metrics(conn=conn)
             
-            if not training_metrics:
-                logger.warning("No training metrics found for daily summary")
+            if not training_metrics_result:
                 return "No training data available for today."
-            
-            # Build prompt with training data
-            metrics = training_metrics[0]
+                
+            metrics = training_metrics_result[0] # Assuming dict_factory gives you a list of dicts
             prompt = self._build_summary_prompt(metrics)
             
-            # Generate response
-            response = self._pipe(prompt, max_new_tokens=100)[0]["generated_text"]
-            logger.info("Daily training summary generated successfully")
-            return response.strip()
-            
+            # Call the central generator. We can consider this "data_driven" to allow for a slightly longer response.
+            return self._generate_response(prompt, is_data_driven=True)
+                
         except Exception as e:
             logger.error(f"Failed to generate training summary: {e}")
+            # Let the service layer handle the exception
             raise exception_utils.LanguageModelError(f"Training summary generation failed: {e}") from e
+
     
     def _build_summary_prompt(self, metrics: Dict) -> str:
         """Build the prompt for training summary generation."""
@@ -310,61 +309,21 @@ The user's question is:""" # The user_input (actual question) will be appended a
 
 
     def generate_general_coach_g_reply(self, user_query: str, personality: str, history: List[Dict] = None) -> str:
-        """Generate a controlled coaching response."""
-        try:
-            # Build conversation context
-            context = self._build_conversation_context(history or [])
-            
-            # Get personality prompt
-            personality_prompt = self.config.PERSONALITY_TEMPLATES.get(
-                personality, self.config.PERSONALITY_TEMPLATES['motivational']
-            )
-            
-            # Create structured prompt
-            prompt = self._build_chat_prompt(personality_prompt, context, user_query)
-            
-            # Validate prompt is a string
-            if not isinstance(prompt, str):
-                logger.error(f"Prompt is not a string: {type(prompt)}")
-                raise ValueError(f"Prompt must be string, got {type(prompt)}")
-            
-            # Log the prompt for debugging
-            logger.debug(f"Generated prompt: {prompt[:200]}...")
-            
-            # Generate with better parameters
-            generation_params = {
-                'max_new_tokens': self.config.MAX_NEW_TOKENS,
-                'temperature': self.config.TEMPERATURE,
-                'top_p': self.config.TOP_P,
-                'repetition_penalty': self.config.REPETITION_PENALTY,
-                'do_sample': True,
-                'pad_token_id': self.tokenizer.eos_token_id,
-            }
-            
-            # Safe pipeline call
-            try:
-                pipeline_output = self._pipe(prompt, **generation_params)
-                if not pipeline_output or len(pipeline_output) == 0:
-                    raise ValueError("Pipeline returned empty output")
-                
-                raw_output = pipeline_output[0]["generated_text"].strip()
-                
-            except Exception as pipe_error:
-                logger.error(f"Pipeline error: {pipe_error}")
-                logger.error(f"Prompt type: {type(prompt)}")
-                logger.error(f"Prompt content: {repr(prompt[:500])}")
-                raise
-            
-            # Clean and format response
-            response = self._clean_and_format_response(raw_output)
-            
-            logger.info(f"Generated response for query: {user_query[:50]}...")
-            return response
-            
-        except Exception as e:
-            logger.error(f"Failed to generate coach reply: {e}")
-            raise exception_utils.LanguageModelError(f"Coach reply generation failed: {e}") from e
-    
+        """Generate a controlled coaching response. Now a prompt-builder."""
+        
+        context = self._build_conversation_context(history or [])
+        personality_prompt = self.config.PERSONALITY_TEMPLATES.get(
+            personality, self.config.PERSONALITY_TEMPLATES['motivational']
+        )
+        
+        # The _build_chat_prompt function already creates the prompt string
+        prompt = self._build_chat_prompt(personality_prompt, context, user_query)
+        
+        logger.debug(f"Generated prompt for general reply: {prompt[:200]}...")
+        
+        # Call the central generator
+        return self._generate_response(prompt, is_data_driven=False)
+        
     def _build_chat_prompt(self, personality_prompt: str, context: str, user_query: str) -> str:
         """Build a structured chat prompt."""
         
@@ -406,31 +365,42 @@ The user's question is:""" # The user_input (actual question) will be appended a
     
     def _extract_coach_reply(self, generated_text: str) -> str:
         """Extract Coach G's response, handling various output formats."""
-        # Remove prompt echo if present
-        if "Coach G:" in generated_text:
-            parts = generated_text.split("Coach G:", 1)
-            if len(parts) > 1:
-                generated_text = parts[1]
         
-        # Stop at next speaker or conversation markers
+        # First, try to find the "Coach G:" marker, which is our ideal case.
+        # We search from the beginning of the string.
+        marker = "Coach G:"
+        marker_pos = generated_text.find(marker)
+        
+        if marker_pos != -1:
+            # If we found the marker, take everything after it.
+            response = generated_text[marker_pos + len(marker):]
+        else:
+            # If no "Coach G:" is found, the model likely ignored the instruction.
+            # We fall back to assuming the *last* significant block of text is the answer.
+            # This is a good heuristic for removing chain-of-thought reasoning that comes before the final answer.
+            # We split by double newlines, filter out empty parts, and take the last one.
+            parts = [p.strip() for p in generated_text.split('\n\n') if p.strip()]
+            response = parts[-1] if parts else generated_text
+
+        # --- NEW: Aggressively remove any SQL code blocks from the final response ---
+        # This cleans up leaks even if they happen after the "Coach G:" marker.
+        sql_block_pattern = r"```sql\s+(.*?)\s*```"
+        response = re.sub(sql_block_pattern, '', response, flags=re.DOTALL)
+        
+        # Stop at next speaker or conversation markers (existing logic is good)
         stop_patterns = [
             r"\n(?:User|Coach G):",
             r"\n\n(?:User|Coach G):",
-            r"\n---",
-            r"\n\*\*\*",
-            # Common model artifacts
-            r"\n\[END\]",
-            r"\n<\|end\|>",
-            r"\n\[/INST\]"
+            # ... (rest of your stop patterns) ...
         ]
         
         for pattern in stop_patterns:
-            match = re.search(pattern, generated_text, re.IGNORECASE)
+            match = re.search(pattern, response, re.IGNORECASE)
             if match:
-                generated_text = generated_text[:match.start()]
+                response = response[:match.start()]
                 break
-        
-        return generated_text.strip()
+                
+        return response.strip()
     
     def _clean_response_text(self, text: str) -> str:
         """Clean up common text generation artifacts."""
@@ -528,21 +498,15 @@ The user's question is:""" # The user_input (actual question) will be appended a
     
     def generate_response_from_data(self, user_query: str, sql_query: str, query_results: Dict[str, Any], personality: str, history: List[Dict] = None) -> str:
         """
-        Generates a natural language response based on the user's query,
-        the SQL query run, and the data returned by that query.
+        Generates a natural language response based on query results.
+        Now acts as a prompt-builder that calls the central generator.
         """
-        try:
-            if not self._pipe:
-                raise exception_utils.LanguageModelError("Model not initialized for data response generation")
+        context_str = self._build_conversation_context(history or [])
+        personality_prompt_str = self.config.PERSONALITY_TEMPLATES.get(personality, "motivational")
+        data_summary = self._format_query_results_for_llm(query_results)
 
-            context_str = self._build_conversation_context(history or [])
-            personality_prompt_str = LanguageModelConfig.PERSONALITY_TEMPLATES.get(personality, "motivational")
 
-            # --- Use the new helper for data_summary ---
-            data_summary = self._format_query_results_for_llm(query_results)
-            # --- End Use the new helper ---
-
-            prompt = f"""You are Coach G, {personality_prompt_str}.
+        prompt = f"""You are Coach G, {personality_prompt_str}.
                 Your role is to interpret data and provide coaching advice.
                 The user is interacting with you via a chat interface.
 
@@ -576,40 +540,16 @@ The user's question is:""" # The user_input (actual question) will be appended a
                 6.  Maintain a helpful, encouraging, and conversational tone consistent with your chosen personality.
                 7.  Avoid simply repeating the SQL query or the raw data table in your response unless you are quoting a specific value as part of your explanation.
                 8.  Keep the response focused and avoid overly long paragraphs. Aim for clarity and actionable insights where possible.
+        Based on all the information above, generate a response directly to the user.
+            DO NOT mention the SQL query or the data table.
+            Start your response immediately with your coaching advice, beginning with "Coach G:".
+    
+    Coach G:"""
 
-                Respond directly to the user.
-                Coach G:"""
-
-            logger.debug(f"Prompt for generate_response_from_data (first 300 chars): {prompt[:300]}...")
-            logger.debug(f"Data summary passed to generate_response_from_data: {data_summary}")
-
-
-            generation_params = {
-                'max_new_tokens': self.config.MAX_NEW_TOKENS + 50, # Allow slightly more tokens for data interpretation
-                'temperature': self.config.TEMPERATURE,
-                'top_p': self.config.TOP_P,
-                'repetition_penalty': self.config.REPETITION_PENALTY,
-                'do_sample': True,
-                'pad_token_id': self.tokenizer.eos_token_id if self.tokenizer else self._pipe.tokenizer.eos_token_id,
-            }
-            
-            pipeline_output = self._pipe(prompt, **generation_params)
-            if not pipeline_output or not pipeline_output[0].get("generated_text"):
-                raise exception_utils.LanguageModelError("Model returned empty response for data-driven query")
-            
-            raw_output = pipeline_output[0]["generated_text"].strip()
-            
-            # --- Pass is_data_driven=True to cleaning ---
-            response = self._clean_and_format_response(raw_output, is_data_driven=True)
-            # --- End Pass is_data_driven=True ---
-
-            logger.info(f"Generated data-driven response for query: {user_query[:50]}...")
-            return response
-
-        except Exception as e:
-            logger.error(f"Failed to generate response from data: {e}", exc_info=True)
-            # Fallback response in case of error during data-to-text generation
-            return f"I had a bit of trouble interpreting the data for your query about '{user_query[:30]}...'. Could you try rephrasing or asking something else?"
+        logger.debug(f"Prompt for generate_response_from_data (first 300 chars): {prompt[:300]}...")
+        
+        # Call the central generator
+        return self._generate_response(prompt, is_data_driven=True)
 
     def _format_query_results_for_llm(self, query_results: Dict[str, Any], max_rows_to_show: int = 5) -> str:
         """
@@ -636,7 +576,7 @@ The user's question is:""" # The user_input (actual question) will be appended a
         if not all(isinstance(row, dict) for row in rows):
             # This might happen if dict_factory wasn't used or somehow bypassed.
             # For simplicity, we'll assume rows are dicts. Add logging if this assumption is violated.
-            self.logger.warning("Query results rows are not all dictionaries. Formatting might be incorrect.")
+            logger.warning("Query results rows are not all dictionaries. Formatting might be incorrect.")
             # Attempt a more generic formatting for non-dict rows if necessary, or return an error.
             # For now, proceed assuming they are dicts or will gracefully degrade.
 
@@ -661,6 +601,43 @@ The user's question is:""" # The user_input (actual question) will be appended a
             formatted_string += "| " + " | ".join(row_values) + " |\n"
         
         return formatted_string.strip()
+    def _generate_response(self, prompt: str, is_data_driven: bool = False) -> str:
+        """
+        A single, private, unified generation method.
+        This is the central point for calling the LLM pipeline and cleaning the output.
+        """
+        if not self._pipe:
+            raise exception_utils.LanguageModelError("Model not initialized")
+
+        try:
+            max_tokens = self.config.MAX_NEW_TOKENS
+            if is_data_driven:
+                # Allow slightly more tokens for interpreting data
+                max_tokens += 50 
+
+            generation_params = {
+                'max_new_tokens': max_tokens,
+                'temperature': self.config.TEMPERATURE,
+                'top_p': self.config.TOP_P,
+                'repetition_penalty': self.config.REPETITION_PENALTY,
+                'do_sample': True,
+                'pad_token_id': self.tokenizer.eos_token_id,
+            }
+            
+            pipeline_output = self._pipe(prompt, **generation_params)
+            
+            if not pipeline_output or not pipeline_output[0].get("generated_text"):
+                raise exception_utils.LanguageModelError("Model returned empty response.")
+            
+            raw_output = pipeline_output[0]["generated_text"].strip()
+            
+            # Your existing cleaning function is called here
+            return self._clean_and_format_response(raw_output, is_data_driven=is_data_driven)
+
+        except Exception as e:
+            logger.error(f"Response generation failed for prompt '{prompt[:100]}...': {e}", exc_info=True)
+            # Re-raise as a custom exception so the service layer can handle it
+            raise exception_utils.LanguageModelError(f"Response generation failed: {e}") from e
 
 # Global instance
 _sql_generator = None

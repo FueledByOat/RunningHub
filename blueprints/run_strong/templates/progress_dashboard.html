@@ -43,7 +43,8 @@
             <div class="fatigue-circle">
                 <span id="overall-score">72</span>
             </div>
-            <p id="fatigue-description">Current fatigue level based on recent training volume and recovery</p>
+            <p id="fatigue-description" class="fatigue-recommendation">You're moderately fatigued — consider lighter
+                intensity or recovery-focused activity.</p>
         </div>
         <!-- Filter Controls -->
         <div class="filter-controls">
@@ -113,6 +114,21 @@
                 <div class="days-since-training" id="recovery-time-container">
                     <!-- Dynamic content will be inserted here -->
                 </div>
+            </div>
+            <!-- Recovery Priority -->
+            <div class="fatigue-card">
+                <h3>Recovery Priority</h3>
+                <ul id="recovery-priority-list" class="recovery-list">
+                    <!-- JS will populate this -->
+                </ul>
+            </div>
+            <!-- Muscle Neglect Watch -->
+            <div class="fatigue-card">
+                <h3>Neglected Muscles</h3>
+                <ul class="neglect-list" id="neglect-muscles">
+                    <li>Triceps – Last trained 7 days ago</li>
+                    <li>Glutes – Low activity this week</li>
+                </ul>
             </div>
         </div>
     </div>

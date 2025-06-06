@@ -52,7 +52,7 @@ class Config:
 
 class LanguageModelConfig:
     """Language model configuration settings."""
-    LANGUAGE_MODEL_ACTIVE = False
+    LANGUAGE_MODEL_ACTIVE = True
 
     # Generation parameters
     MAX_NEW_TOKENS = 100

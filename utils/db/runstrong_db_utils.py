@@ -2,6 +2,7 @@
 """Database utilities RunStrong."""
 
 import json
+import math
 import logging
 import sqlite3
 from typing import Optional, Dict, Any, List, Tuple
@@ -450,8 +451,9 @@ def calculate_recovery_score(days_since_last: int, volume_7day: float, volume_14
     time_factor = min(days_since_last * 15, 70)
     
     # Volume component: higher recent volume = more fatigue
-    volume_ratio = volume_7day / max(volume_14day, 1)
-    volume_penalty = min(volume_ratio * 40, 50)
+    volume_ratio = (volume_7day / 7) / (volume_14day / 14) # Switching to ACWR
+    volume_penalty = 40 * math.tanh(volume_ratio - 1) # switching to expo smoothin
+    volume_penalty = min(max(volume_penalty, 0), 50)
     
     # Base recovery + time factor - volume penalty
     recovery_score = max(0, min(100, time_factor + 30 - volume_penalty))
@@ -634,33 +636,6 @@ def update_muscle_group_fatigue(conn: sqlite3.Connection):
     conn.commit()
     logger.info("Muscle group fatigue update completed")
 
-def insert_sample_data(conn: sqlite3.Connection):
-    """Insert sample data for testing"""
-    cursor = conn.cursor()
-    
-    # Sample exercise
-    cursor.execute("""
-        INSERT OR REPLACE INTO exercises (id, name, primary_muscles, secondary_muscles, muscle_groups)
-        VALUES (1, 'Weighted Step Up', '["Quadriceps", "Glutes"]', '["Hamstrings", "Calves", "Core"]', 'Lower body')
-    """)
-    
-    # Sample workout data
-    sample_workouts = [
-        (1, 1, '2025-06-03', 3, 12, 25.0, 3, 12, 25.0),
-        (2, 1, '2025-06-01', 3, 10, 30.0, 3, 8, 30.0),
-        (3, 1, '2025-05-30', 4, 15, 20.0, 4, 15, 20.0),
-    ]
-    
-    cursor.executemany("""
-        INSERT OR REPLACE INTO workout_performance 
-        (id, exercise_id, workout_date, planned_sets, planned_reps, planned_load_lbs,
-         actual_sets, actual_reps, actual_load_lbs)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, sample_workouts)
-    
-    conn.commit()
-    logger.info("Sample data inserted")
-
 
 def get_daily_training_data(conn: sqlite3.Connection, muscle_group_filter: str = None, days: int = 7) -> List[Dict]:
     """Get daily training intensity with optional muscle group filtering"""
@@ -746,49 +721,6 @@ def get_fatigue_trend_data(conn: sqlite3.Connection, muscle_group_filter: str = 
     
     return fatigue_trend
 
-def get_fallback_dashboard_data(muscle_group_filter: str = None) -> Dict:
-    """Fallback data with filtering consideration"""
-    all_muscle_data = [
-        {'muscle_group': 'Quadriceps', 'last_trained': '2025-06-03', 'volume_7day': 2400, 'volume_14day': 4200, 'recovery_score': 35, 'fatigue_level': 65, 'broad_group': 'Lower body'},
-        {'muscle_group': 'Glutes', 'last_trained': '2025-06-02', 'volume_7day': 1800, 'volume_14day': 3600, 'recovery_score': 15, 'fatigue_level': 85, 'broad_group': 'Lower body'},
-        {'muscle_group': 'Chest', 'last_trained': '2025-06-01', 'volume_7day': 2000, 'volume_14day': 3800, 'recovery_score': 45, 'fatigue_level': 55, 'broad_group': 'Upper body'},
-        {'muscle_group': 'Triceps', 'last_trained': '2025-06-04', 'volume_7day': 1200, 'volume_14day': 2400, 'recovery_score': 60, 'fatigue_level': 40, 'broad_group': 'Upper body'},
-        {'muscle_group': 'Core', 'last_trained': '2025-06-03', 'volume_7day': 900, 'volume_14day': 1800, 'recovery_score': 30, 'fatigue_level': 70, 'broad_group': 'Core'}
-    ]
-    
-    # Filter muscle data if specified
-    if muscle_group_filter and muscle_group_filter.lower() != 'all':
-        filtered_data = [m for m in all_muscle_data if m['broad_group'].lower() == muscle_group_filter.lower()]
-        muscle_fatigue = filtered_data if filtered_data else all_muscle_data
-    else:
-        muscle_fatigue = all_muscle_data
-    
-    return {
-        'overall_fatigue': 72,
-        'muscle_fatigue': muscle_fatigue,
-        'weekly_stress': [60, 80, 45, 90, 30, 75, 85],
-        'daily_training': [
-            {'day': 'Mon', 'intensity': 85, 'hasTraining': True, 'volume': 4250},
-            {'day': 'Tue', 'intensity': 0, 'hasTraining': False, 'volume': 0},
-            {'day': 'Wed', 'intensity': 70, 'hasTraining': True, 'volume': 3500},
-            {'day': 'Thu', 'intensity': 90, 'hasTraining': True, 'volume': 4500},
-            {'day': 'Fri', 'intensity': 0, 'hasTraining': False, 'volume': 0},
-            {'day': 'Sat', 'intensity': 60, 'hasTraining': True, 'volume': 3000},
-            {'day': 'Sun', 'intensity': 45, 'hasTraining': True, 'volume': 2250}
-        ],
-        'fatigue_trend': [
-            {'day': 'Mon', 'fatigue': 45},
-            {'day': 'Tue', 'fatigue': 50},
-            {'day': 'Wed', 'fatigue': 65},
-            {'day': 'Thu', 'fatigue': 80},
-            {'day': 'Fri', 'fatigue': 75},
-            {'day': 'Sat', 'fatigue': 70},
-            {'day': 'Sun', 'fatigue': 72}
-        ],
-        'active_filter': muscle_group_filter,
-        'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
-    }
-
 def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: str = None) -> Dict:
     """Enhanced dashboard data with optional muscle group filtering"""
     logger.info(f"Fetching fatigue dashboard data with filter: {muscle_group_filter}")
@@ -871,8 +803,6 @@ def run_daily_update(conn: sqlite3.Connection):
     """Main function to run daily fatigue updates"""
     logger.info("Starting daily fatigue tracking update...")
     try:
-        # Insert sample data for testing
-        insert_sample_data(conn)
         
         # Update muscle group fatigue
         update_muscle_group_fatigue(conn)
