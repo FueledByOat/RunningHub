@@ -16,8 +16,9 @@ from werkzeug.utils import secure_filename
 import os
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
 from utils.RunnerVision import runnervision_utils as rv_utils
+from utils.db import db_utils
 
 class RunnerVisionService:
     """Service for RunnerVision biomechanics analysis."""
@@ -37,7 +38,7 @@ class RunnerVisionService:
             video_side = rv_utils.get_latest_file(base_path, 'side', 'mp4')
             
             return {
-                'report_rear': report_rear,
+                'report_rear': report_rear.replace("static/", "") if report_rear else None,
                 'report_side': report_side.replace("static/", "") if report_side else None,
                 'video_rear': video_rear.replace("static/", "") if video_rear else None,
                 'video_side': video_side.replace("static/", "") if video_side else None

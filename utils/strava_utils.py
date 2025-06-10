@@ -13,6 +13,10 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Union
 from dotenv import load_dotenv
 
+from utils.db import db_utils
+from utils.db import dash_db_utils
+from utils.db import language_db_utils
+from config import Config
 
 # Configure module-level logger
 logger = logging.getLogger(__name__)
@@ -358,6 +362,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
     except sqlite3.Error as e:
         logger.error(f"Database error during batch activity insert: {e}")
         raise
+
 
 
 def insert_stream_data(activity_id: int, stream_dict: Dict[str, Any], db_path: str) -> bool:
@@ -756,4 +761,19 @@ def get_database_stats(db_path: str) -> Dict[str, int]:
             
     except sqlite3.Error as e:
         logger.error(f"Database error getting stats: {e}")
+        raise
+
+def update_daily_dashboard_metrics() -> None:
+    """
+    After any potential activity import, call to db to calculate
+    metrics like ctl, atl, tsb, tss, etc.
+    """
+
+    df = dash_db_utils.get_ctl_atl_tsb_tss_data().tail(1)
+    try:
+        with sqlite3.connect(Config.DB_PATH) as conn:
+            language_db_utils.update_daily_training_metrics(conn=conn, df=df)
+            logger.info(f"Daily stats updated with: {df}")
+    except sqlite3.Error as e:
+        logger.error(f"Database error updating daily metrics: {e}")
         raise

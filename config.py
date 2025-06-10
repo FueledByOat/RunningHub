@@ -10,7 +10,7 @@ class Config:
     DB_PATH: Optional[str] = os.getenv('DATABASE', 'strava_data.db')
     DB_PATH_RUNSTRONG: Optional[str] = os.getenv('RUNSTRONG_DATABASE', 'runstrong.db')
     CACHE_TTL = int(os.getenv('CACHE_TTL', '300'))
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     VIDEO_FOLDER = os.getenv('VIDEO_FOLDER', 'videos')
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS', 'mp4')
@@ -50,9 +50,64 @@ class Config:
             
         return True
 
+class LanguageModelConfig:
+    """Language model configuration settings."""
+    LANGUAGE_MODEL_ACTIVE = True
+
+    # Generation parameters
+    MAX_NEW_TOKENS = 100
+    TEMPERATURE = 0.7
+    TOP_P = 0.9
+    REPETITION_PENALTY = 1.1
+    
+    # Context management
+    MAX_CONTEXT_MESSAGES = 5
+    MAX_CONTEXT_TOKENS = 512
+    
+    # Response formatting
+    RESPONSE_MIN_SENTENCES = 1
+    RESPONSE_MAX_SENTENCES = 6
+
+    # Response formatting for data-driven responses
+    RESPONSE_MIN_SENTENCES_DATA_DRIVEN = 1
+    RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 15 # Allow more detailed responses with data
+
+    # LOCAL_MODEL_NAME = "google/gemma-2-2b-it"
+    LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
+    USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
+    USE_REMOTE_MODEL = False  # Set to False to run locally
+    REMOTE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+
+    
+    # Stop sequences to prevent overgeneration
+    STOP_TOKENS = [
+        "\nUser:",
+        "\nCoach G:",
+        "\n\nUser:",
+        "\n\nCoach G:",
+        "---",
+        "***"
+    ]
+    
+    # Personality templates
+    PERSONALITY_TEMPLATES = {
+        'motivational': "an energetic, encouraging running coach who inspires confidence",
+        'analytical': "a data-driven coach who focuses on metrics and structured training",
+        'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
+        'challenging': "a tough but fair coach who pushes runners to exceed their limits",
+        'scientific': "an evidence-based coach who explains the science behind training",
+        'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says hell but gets results"
+    }
+
+class RunnerConfig:
+    """Configuration settings to try and centralize single user site logic."""
+    MAX_HR = 190
+    THRESHOLD_HR = 171
+    TRAINING_SHAPE_WEIGHTS = {'fitness': 0.4, 'speed': 0.25, 'efficiency': 0.2, 'freshness': 0.15}
+
 # Set up logging configuration
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     filename='logs/running_hub.log', 
-    filemode='a')
+    filemode='w')

@@ -10,7 +10,9 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
+from utils.db import db_utils
+import utils.db.running_hub_db_utils as running_hub_db_utils
 
 class TrophyService(BaseService):
     """Service for managing personal records and achievements."""
@@ -35,7 +37,7 @@ class TrophyService(BaseService):
                 # Get records for standard distances
                 for distance_name, min_distance, max_distance in race_distances:
                     try:
-                        record = db_utils.get_distance_record(conn, distance_name, min_distance, max_distance, units)
+                        record = running_hub_db_utils.get_distance_record(conn, distance_name, min_distance, max_distance, units)
                         if record:
                             records.append(self._format_record(record, distance_name, units))
                     except Exception as e:
@@ -43,7 +45,7 @@ class TrophyService(BaseService):
                 
                 # Get longest run
                 try:
-                    longest_run = db_utils.get_longest_run(conn, units)
+                    longest_run = running_hub_db_utils.get_longest_run(conn, units)
                     if longest_run:
                         distance = (
                         round(longest_run['distance'] / 1609, 2) if units == 'mi'

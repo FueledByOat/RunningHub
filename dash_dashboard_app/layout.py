@@ -4,7 +4,8 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import sqlite3
 import pandas as pd
-import utils.db_utils as db_utils
+import utils.db.db_utils as db_utils
+import utils.db.dash_db_utils as dash_db_utils
 import plotly.io as pio
 
 
@@ -408,7 +409,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = db_utils.get_enhanced_training_shape_data(db_path)
+        df = dash_db_utils.get_enhanced_training_shape_data(db_path)
 
         if df.empty:
             # Return empty figure if no data
@@ -438,18 +439,49 @@ def create_dash_dashboard_app(server, db_path):
             row=1, col=1
         )
 
-        # Add Training Shape line
+        # Add Freshness Score line
         fig.add_trace(
             go.Scatter(
                 x=df['start_date'],
                 y=df['freshness_score'],
                 mode='lines',
                 name='Freshness Score',
-                line=dict(color='rgb(0, 64, 0)', width=1, dash='dashdot'),
+                line=dict(color='rgb(0, 64, 0)', width=2),
                 hovertemplate='%{y:.1f}',
+                visible='legendonly'
             ),
             row=1, col=1
         )
+
+        
+        # # Add fitness_trend line
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=df['start_date'],
+        #         y=df['fitness_trend'],
+        #         mode='lines',
+        #         name='fitness_trend Score',
+        #         line=dict(color='rgb(0, 64, 100)', width=2, dash='dashdot'),
+        #         hovertemplate='%{y:.1f}',
+        #         visible='legendonly'
+        #     ),
+        #     row=1, col=1
+        # )
+
+        
+        # # Add form_trend line
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=df['start_date'],
+        #         y=df['form_trend'],
+        #         mode='lines',
+        #         name='form_trend Score',
+        #         line=dict(color='rgb(100, 64, 0)', width=2, dash='dashdot'),
+        #         hovertemplate='%{y:.1f}',
+        #         visible='legendonly'
+        #     ),
+        #     row=1, col=1
+        # )
         
         # Add weekly distance bars
         fig.add_trace(
@@ -560,7 +592,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = db_utils.get_cumulative_training_shape_data(db_path)
+        df = dash_db_utils.get_cumulative_training_shape_data(db_path)
 
         if df.empty:
             # Return empty figure if no data
@@ -646,10 +678,10 @@ def create_dash_dashboard_app(server, db_path):
     def load_dashboard_data(db_path=db_path):
         """Load all required data for the dashboard"""
         # Load data
-        df_acwr = db_utils.get_acwr_data(db_path)
-        df_hr_drift = db_utils.get_hr_drift_data(db_path)
-        df_cadence = db_utils.get_cadence_stability_data(db_path)
-        df_ctl_atl_tsb_tss = db_utils.get_ctl_atl_tsb_tss_data(db_path)
+        df_acwr = dash_db_utils.get_acwr_data(db_path)
+        df_hr_drift = dash_db_utils.get_hr_drift_data(db_path)
+        df_cadence = dash_db_utils.get_cadence_stability_data(db_path)
+        df_ctl_atl_tsb_tss = dash_db_utils.get_ctl_atl_tsb_tss_data(db_path)
 
         
         # Process ACWR data
@@ -720,7 +752,7 @@ def create_dash_dashboard_app(server, db_path):
         
     def load_dashboard_efficiency_data(db_path=db_path):
         """Load all required data for the efficiency metrics"""
-        efficiency = db_utils.get_efficiency_index(db_path)
+        efficiency = dash_db_utils.get_efficiency_index(db_path)
 
         # Process  data
         latest_efficiency_index = efficiency['flat_efficiency_factor'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
@@ -833,42 +865,66 @@ def create_dash_dashboard_app(server, db_path):
 ),
 
         # Dashboard Content
-        html.Main(
-            [
-                html.H2(
-                    "Athlete Performance Dashboard - 90 Days",
-                    className="mb-4",
-                    style={'textAlign': 'center'}
-                ),
-                html.H4(
-                    "These are general metrics where the displayed value is a 90 day average, and the sparklines show point in time calculations for a single activity or day",
-                    className="mb-4",
-                    style={'textAlign': 'center'}
-                ),
-                build_dashboard_layout(),
-                html.H3(
-                    "Athlete Efficiency Metrics",
-                    className="mb-4",
-                    style={'textAlign': 'center'}
-                ),
-                build_dashboard_efficiency_layout(),
-                html.H3(
-                    "Fitness Trends",
-                    className="mb-4",
-                    style={'textAlign': 'center'}
-                ),
-                build_fitness_chart(),
-                # build_cumulative_fitness_chart()
-            ],
-            className="dashboard-content"
+ html.Main(
+    [
+        html.H2(
+            "Athlete Performance Dashboard - 90 Days",
+            className="display-4 mb-4",
+            style={'textAlign': 'center'}
         ),
-    dbc.Button(
+        html.P(
+            "These are general metrics where the displayed value is a 90-day average, and the sparklines show point-in-time calculations for a single activity or day.",
+            className="lead text-muted mb-5",
+            style={'textAlign': 'center', 'maxWidth': '800px', 'margin': '0 auto'}
+        ),
+
+        build_dashboard_layout(),
+
+        html.H3(
+            "Fitness Trends",
+            className="mb-3 mt-5",
+            style={'textAlign': 'center'}
+        ),
+        build_fitness_chart(),
+
+        html.H4(
+            "Training Shape",
+            className="mb-2 mt-4",
+            style={'textAlign': 'center'}
+        ),
+        html.P(
+            "Training Shape is a comprehensive score (0–100) that reflects how well your training is balanced across fitness, speed, efficiency, and recovery. It adapts to your personal heart rate data and workload history to help you gauge your readiness to perform. A higher score suggests you're not just fit — you're fresh, efficient, and fast.",
+            className="text-muted mb-4",
+            style={'textAlign': 'center', 'maxWidth': '800px', 'margin': '0 auto'}
+        ),
+
+        html.H4(
+            "Freshness Score",
+            className="mb-2 mt-4",
+            style={'textAlign': 'center'}
+        ),
+        html.P(
+            "Freshness Score shows how well you've recovered from recent training stress, scaled from 0 to 100. It’s derived from the balance between your short-term and long-term training load — high freshness usually means you're ready to train or race, while low scores may indicate lingering fatigue.",
+            className="text-muted mb-5",
+            style={'textAlign': 'center', 'maxWidth': '800px', 'margin': '0 auto'}
+        ),
+
+        html.H3(
+            "Athlete Efficiency Metrics",
+            className="mb-3 mt-5",
+            style={'textAlign': 'center'}
+        ),
+        build_dashboard_efficiency_layout(),
+    ],
+    className="dashboard-content"
+),
+dbc.Button(
     "🔝", 
     href="/", 
     className="back-button", 
     title="Back to Dashboard", 
-    color="link",  # Bootstrap link button (so we style it ourselves)
-)],
+    color="link"
+),],
     fluid=True
 )
 

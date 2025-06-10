@@ -10,7 +10,10 @@ import sqlite3
 from typing import Dict, Any, Optional
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
+from utils.db import db_utils
+import utils.db.running_hub_db_utils as running_hub_db_utils
+
 
 class ActivityService(BaseService):
     """Service for handling activity-related operations."""
@@ -19,7 +22,7 @@ class ActivityService(BaseService):
         """Get the ID of the most recent run activity."""
         try:
             with self._get_connection() as conn:
-                return db_utils.get_latest_activity_id(conn=conn, activity_types=['Run'])
+                return running_hub_db_utils.get_latest_activity_id(conn=conn, activity_types=['Run'])
         except Exception as e:
             self.logger.error(f"Error getting latest activity: {e}")
             return None
@@ -28,7 +31,7 @@ class ActivityService(BaseService):
         """Retreives all activity information with formatted data."""
         try:
             with self._get_connection() as conn:
-                activity = db_utils.get_activity_details_by_id(conn=conn, activity_id=activity_id)
+                activity = running_hub_db_utils.get_activity_details_by_id(conn=conn, activity_id=activity_id)
                 return self._format_activity_data(activity, units)
                 
         except sqlite3.Error as e:
@@ -70,7 +73,7 @@ class ActivityService(BaseService):
         
         # Date/time formatting
         activity['start_date'], activity['start_time'] = format_utils.format_datetime(
-            activity['start_date']
+            activity['start_date_local']
         )
         
         return activity

@@ -13,7 +13,9 @@ from typing import Dict, List, Any
 from dateutil.relativedelta import relativedelta
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
+from utils.db import db_utils
+import utils.db.running_hub_db_utils as running_hub_db_utils
 
 class StatisticsService(BaseService):
     """Service for generating running statistics."""
@@ -83,21 +85,21 @@ class StatisticsService(BaseService):
         # Total activities
         try:
             with self._get_connection() as conn:
-                total_activities = db_utils.get_total_activities_count(conn, start_date)
+                total_activities = running_hub_db_utils.get_total_activities_count(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting total activity count statistics: {e}")
         
         # Total elevation
         try:
             with self._get_connection() as conn:
-                total_elevation = db_utils.get_total_elevation_count(conn, start_date)
+                total_elevation = running_hub_db_utils.get_total_elevation_count(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting total activity elevation statistics: {e}")
 
         # Total distance
         try:
             with self._get_connection() as conn:
-                total_distance_meters = db_utils.get_total_distance_count(conn, start_date)
+                total_distance_meters = running_hub_db_utils.get_total_distance_count(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting total activity distance statistics: {e}")
         
@@ -109,7 +111,7 @@ class StatisticsService(BaseService):
         # Total time
         try:
             with self._get_connection() as conn:
-                total_seconds = db_utils.get_total_time(conn, start_date)
+                total_seconds = running_hub_db_utils.get_total_time(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting total activity time statistics: {e}")
         
@@ -120,7 +122,7 @@ class StatisticsService(BaseService):
         # Total calories (estimated from kilojoules)
         try:
             with self._get_connection() as conn:
-                calories_result = db_utils.get_total_calories(conn, start_date)
+                calories_result = running_hub_db_utils.get_total_calories(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting total activity calorie statistics: {e}")
         
@@ -144,7 +146,7 @@ class StatisticsService(BaseService):
         
         try:
             with self._get_connection() as conn:
-                activities = db_utils.get_weekly_distances(conn, seven_days_ago)
+                activities = running_hub_db_utils.get_weekly_distances(conn, seven_days_ago)
         except Exception as e:
             self.logger.error(f"Error getting weekly distance statistics: {e}")
         
@@ -166,7 +168,7 @@ class StatisticsService(BaseService):
         """Get pace trends for the last 10 activities."""        
         try:
             with self._get_connection() as conn:
-                activities = db_utils.get_pace_trends(conn)
+                activities = running_hub_db_utils.get_pace_trends(conn)
         except Exception as e:
             self.logger.error(f"Error getting pace trend statistics: {e}")
 
@@ -197,7 +199,7 @@ class StatisticsService(BaseService):
 
         try:
             with self._get_connection() as conn:
-                shoes = db_utils.get_shoe_usage(conn, start_date)
+                shoes = running_hub_db_utils.get_shoe_usage(conn, start_date)
         except Exception as e:
             self.logger.error(f"Error getting shoe usage statistics: {e}")
 
@@ -227,7 +229,7 @@ class StatisticsService(BaseService):
 
         try:
             with self._get_connection() as conn:
-                activities = db_utils.get_recent_activities(conn)
+                activities = running_hub_db_utils.get_recent_activities(conn)
         except Exception as e:
             self.logger.error(f"Error getting recent activity statistics: {e}")
 

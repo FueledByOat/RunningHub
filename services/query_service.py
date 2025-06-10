@@ -10,7 +10,8 @@ import json
 from typing import Dict, Any
 
 from services.base_service import BaseService
-from utils import db_utils, format_utils, exception_utils
+from utils import format_utils, exception_utils
+from utils.db import db_utils
 
 class QueryService(BaseService):
     """Service for handling database queries."""

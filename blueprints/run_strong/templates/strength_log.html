@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RUNSTRONG | Log Strength Workout</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <style>
+        .runstrong-container form {
+            padding: 20px;
+            max-width: 900px;
+            margin: 20px auto;
+            background-color: var(--rs-primary);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px var(--rs-shadow);
+        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: var(--rs-secondary);
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--rs-secondary);
+            background-color: var(--rs-background);
+            color: var(--rs-white);
+            box-sizing: border-box;
+        }
+        .form-group input[type="datetime-local"] { color-scheme: dark; }
+        .btn {
+            background-color: var(--rs-accent);
+            color: var(--rs-white);
+            padding: 0.8rem 1.2rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            transition: background-color 0.3s ease;
+            margin-top: 10px;
+        }
+        .btn:hover { background-color: var(--rs-highlight); }
+        .exercise-block {
+            border: 1px solid var(--rs-secondary);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            background-color: #3a0150;
+        }
+        .exercise-block h4 { color: var(--rs-accent); margin-top: 0; }
+        .set-entry {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 0.7rem;
+            align-items: center;
+        }
+        .set-entry label {
+            margin-bottom: 0;
+            color: var(--rs-white);
+            font-size: 0.9em;
+        }
+        .set-entry input {
+            width: 80px;
+            padding: 8px;
+        }
+        .remove-btn {
+            background-color: #c00000;
+            font-size: 0.8em;
+            padding: 6px 10px;
+            margin-left: auto;
+        }
+        .remove-btn:hover { background-color: #e00000; }
+        hr.form-divider {
+            border-color: var(--rs-secondary);
+            margin: 25px 0;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body class="runstrong">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
+        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
+        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
+        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
+        <a href="{{ url_for('run_strong.dashboard') }}">Dashboard</a>
+    </div>
+
+    <div class="runnervision-header">
+        <a href="{{ url_for('running_hub.home') }}">
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
+                class="runstrong-logo" />
+        </a>
+    </div>
+
+    <div class="runstrong-container">
+        <form id="strengthLogForm" method="POST" action="{{ url_for('run_strong.strength_log_page') }}">
+            <h2>Log Strength Workout</h2>
+            {% if error %}
+                <p style="color: red;">Error: {{ error }}</p>
+            {% endif %}
+            <div class="form-group">
+                <label for="session_date">Date & Time:</label>
+                <input type="datetime-local" id="session_date" name="session_date" required>
+            </div>
+            <div class="form-group">
+                <label for="session_name">Session Name (e.g., Upper Body Day):</label>
+                <input type="text" id="session_name" name="session_name" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label for="duration_minutes">Duration (Minutes):</label>
+                <input type="number" id="duration_minutes" name="duration_minutes" min="0" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label for="perceived_exertion">Perceived Exertion (RPE 1-10):</label>
+                <input type="number" id="perceived_exertion" name="perceived_exertion" min="1" max="10" placeholder="Optional">
+            </div>
+            <div class="form-group">
+                <label for="session_notes">Overall Session Notes:</label>
+                <textarea id="session_notes" name="session_notes" rows="3" placeholder="Optional"></textarea>
+            </div>
+
+            <hr class="form-divider">
+
+            <div id="exercisesContainer"></div>
+
+            <button type="button" class="btn" onclick="addExerciseBlock()">Add Exercise to Session</button>
+            <hr class="form-divider">
+            <button type="submit" class="btn">Save Workout</button>
+        </form>
+    </div>
+
+    <script>
+        let exerciseCounter = 0;
+        const exercisesData = {{ exercises_json | tojson | safe }};
+
+        function setDefaultDateTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            now.setSeconds(0);
+            now.setMilliseconds(0);
+            const Elem = document.getElementById('session_date');
+            if (Elem) {
+                Elem.value = now.toISOString().slice(0, 16);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            setDefaultDateTime();
+            if (document.getElementById('exercisesContainer').children.length === 0) {
+                addExerciseBlock();
+            }
+        });
+
+        function addExerciseBlock() {
+            exerciseCounter++;
+            const container = document.getElementById('exercisesContainer');
+            const exerciseBlock = document.createElement('div');
+            exerciseBlock.classList.add('exercise-block');
+            exerciseBlock.setAttribute('id', `exercise-block-${exerciseCounter}`);
+            exerciseBlock.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4>Exercise Entry ${exerciseCounter}</h4>
+                    <button type="button" class="btn remove-btn" onclick="removeElement('exercise-block-${exerciseCounter}')">Remove Exercise</button>
+                </div>
+                <div class="form-group">
+                    <label for="exercise_id_${exerciseCounter}">Exercise:</label>
+                    <select id="exercise_id_${exerciseCounter}" name="exercises[${exerciseCounter}][exercise_id]" required>
+                        <option value="">--- Select Exercise ---</option>
+                        ${exercisesData.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div id="sets-container-${exerciseCounter}"></div>
+                <button type="button" class="btn" onclick="addSet(${exerciseCounter})" style="font-size:0.9em; padding: 0.5em 0.8em;">Add Set</button>
+                <div class="form-group" style="margin-top:10px;">
+                     <label for="exercise_notes_${exerciseCounter}">Notes for this specific exercise:</label>
+                     <textarea id="exercise_notes_${exerciseCounter}" name="exercises[${exerciseCounter}][exercise_notes]" rows="2" placeholder="Optional (e.g., form cues, how it felt)"></textarea>
+                </div>
+            `;
+            container.appendChild(exerciseBlock);
+            addSet(exerciseCounter);
+        }
+
+        function addSet(exerciseBlockId) {
+            const setsContainer = document.getElementById(`sets-container-${exerciseBlockId}`);
+            const setCount = setsContainer.children.length + 1;
+            const setEntry = document.createElement('div');
+            setEntry.classList.add('set-entry');
+            setEntry.setAttribute('id', `exercise-${exerciseBlockId}-set-${setCount}`);
+            setEntry.innerHTML = `
+                <label>Set ${setCount}:</label>
+                <input type="number" name="exercises[${exerciseBlockId}][sets][${setCount}][reps]" placeholder="Reps" min="0" required title="Reps completed">
+                <input type="number" step="0.01" name="exercises[${exerciseBlockId}][sets][${setCount}][weight]" placeholder="Weight (lbs)" min="0" required title="Weight lifted in lbs">
+                <button type="button" class="btn remove-btn" onclick="removeElement('exercise-${exerciseBlockId}-set-${setCount}')" title="Remove this set">X</button>
+            `;
+            setsContainer.appendChild(setEntry);
+        }
+
+        function removeElement(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.remove();
+            }
+        }
+    </script>
+</body>
+</html>
