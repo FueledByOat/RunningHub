@@ -327,3 +327,21 @@ class RunStrongService(BaseService):
                 runstrong_db_utils.update_weekly_training_summary(conn, week_start)
         except Exception as e:
             self.logger.error(f"Error in update_weekly_summary: {e}")
+
+    def get_recommendation(self, overall_fatigue):
+        if overall_fatigue < 40:
+            return "You're well recovered. Consider a hard or high-volume workout today."
+        elif overall_fatigue < 70:
+            return "You're moderately fatigued. A light workout or recovery session is ideal."
+        else:
+            return "High fatigue detected. Rest or active recovery is strongly recommended."
+
+    def get_least_used_muscle_groups(self, muscle_fatigue, days_threshold=5):
+        try:
+            return sorted(
+                (m for m in muscle_fatigue if m['fatigue_level'] < 40 and m.get('last_trained')),
+                key=lambda m: m['last_trained']
+            )[:3]
+        except Exception as e:
+            self.logger.warning(f"Unable to compute least used muscle groups: {e}")
+            return []

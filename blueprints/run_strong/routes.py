@@ -291,6 +291,9 @@ def register_routes(runstrong_service):
                 muscle_group_filter = None
             
             data = runstrong_service.get_fatigue_dashboard_data(muscle_group_filter)
+            data['recommendation'] = runstrong_service.get_recommendation(data['overall_fatigue'])
+            data['least_used_muscles'] = runstrong_service.get_least_used_muscle_groups(data['muscle_fatigue'])
+            print(data)
             return jsonify(data)
         except Exception as e:
             logger.error(f"API error: {e}")

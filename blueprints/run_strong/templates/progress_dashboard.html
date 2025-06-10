@@ -36,86 +36,98 @@
 
     <div class="dashboard-container">
 
-
-        <!-- Overall Fatigue Score -->
+        <!-- Overall Fatigue Score Section -->
         <div class="overall-fatigue">
             <h2>Overall Training Stress</h2>
             <div class="fatigue-circle">
                 <span id="overall-score">72</span>
             </div>
-            <p id="fatigue-description">Current fatigue level based on recent training volume and recovery</p>
-        </div>
-        <!-- Filter Controls -->
-        <div class="filter-controls">
-            <span class="filter-label">Filter by Muscle Group:</span>
-            <div class="filter-toggle-group">
-                <button class="filter-toggle active" data-filter="all"
-                    onclick="setMuscleGroupFilter('all')">All</button>
-                <button class="filter-toggle" data-filter="upper body"
-                    onclick="setMuscleGroupFilter('upper body')">Upper Body</button>
-                <button class="filter-toggle" data-filter="lower body"
-                    onclick="setMuscleGroupFilter('lower body')">Lower Body</button>
-                <button class="filter-toggle" data-filter="core" onclick="setMuscleGroupFilter('core')">Core</button>
-            </div>
-            <div class="filter-status" id="filter-status">All Muscle Groups</div>
-        </div>
-        <div class="fatigue-grid">
-            <!-- Muscle Group Fatigue -->
-            <div class="fatigue-card">
-                <h3>Muscle Group Fatigue</h3>
-                <div id="muscle-fatigue-container">
-                    <!-- Dynamic content will be inserted here -->
-                </div>
+
+            <!-- Recommendation -->
+            <div id="recommendation-container" class="recommendation-box">
+                <p id="fatigue-description">Current fatigue level based on recent training volume and recovery</p>
             </div>
 
-            <!-- Daily Training Intensity -->
-            <div class="fatigue-card">
-                <h3>Daily Training Intensity</h3>
-                <div class="training-stress-chart">
-                    <div class="stress-bars" id="stress-bars">
-                        <!-- Dynamic bars will be inserted here -->
+            <!-- Filter Controls -->
+            <div class="filter-controls">
+                <span class="filter-label">Filter by Muscle Group:</span>
+                <div class="filter-toggle-group">
+                    <button class="filter-toggle active" data-filter="all"
+                        onclick="setMuscleGroupFilter('all')">All</button>
+                    <button class="filter-toggle" data-filter="upper body"
+                        onclick="setMuscleGroupFilter('upper body')">Upper Body</button>
+                    <button class="filter-toggle" data-filter="lower body"
+                        onclick="setMuscleGroupFilter('lower body')">Lower Body</button>
+                    <button class="filter-toggle" data-filter="core"
+                        onclick="setMuscleGroupFilter('core')">Core</button>
+                </div>
+                <div class="filter-status" id="filter-status">All Muscle Groups</div>
+            </div>
+
+            <!-- Main Dashboard Grid -->
+            <div class="fatigue-grid">
+
+                <!-- Muscle Group Fatigue -->
+                <div class="fatigue-card">
+                    <h3>Muscle Group Fatigue</h3>
+                    <div id="muscle-fatigue-container"></div>
+                </div>
+
+                <!-- Daily Training Intensity -->
+                <div class="fatigue-card">
+                    <h3>Daily Training Intensity</h3>
+                    <div class="training-stress-chart">
+                        <div class="stress-bars" id="stress-bars"></div>
                     </div>
+                    <div class="day-labels" id="day-labels"></div>
+                    <p class="chart-description">Training load per day (last 7 days)</p>
                 </div>
-                <div class="day-labels" id="day-labels">
-                    <!-- Day labels will be inserted here -->
-                </div>
-                <p class="chart-description">
-                    Training load per day (last 7 days)
-                </p>
-            </div>
 
-            <!-- Fatigue Trend -->
-            <div class="fatigue-card">
-                <h3>Fatigue Trend</h3>
-                <div class="fatigue-trend-chart">
-                    <svg class="trend-svg" id="fatigue-trend-svg">
-                        <defs>
-                            <linearGradient id="fatigueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:0.3" />
-                                <stop offset="100%" style="stop-color:#ff6b6b;stop-opacity:0" />
-                            </linearGradient>
-                        </defs>
-                        <!-- Grid lines -->
-                        <line class="chart-grid" x1="0" y1="25%" x2="100%" y2="25%"></line>
-                        <line class="chart-grid" x1="0" y1="50%" x2="100%" y2="50%"></line>
-                        <line class="chart-grid" x1="0" y1="75%" x2="100%" y2="75%"></line>
-                        <!-- Chart content will be inserted here -->
-                    </svg>
+                <!-- Fatigue Trend -->
+                <div class="fatigue-card">
+                    <h3>Fatigue Trend</h3>
+                    <div class="fatigue-trend-chart">
+                        <svg class="trend-svg" id="fatigue-trend-svg">
+                            <defs>
+                                <linearGradient id="fatigueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:0.3" />
+                                    <stop offset="100%" style="stop-color:#ff6b6b;stop-opacity:0" />
+                                </linearGradient>
+                            </defs>
+                            <!-- Grid lines -->
+                            <line class="chart-grid" x1="0" y1="25%" x2="100%" y2="25%"></line>
+                            <line class="chart-grid" x1="0" y1="50%" x2="100%" y2="50%"></line>
+                            <line class="chart-grid" x1="0" y1="75%" x2="100%" y2="75%"></line>
+                        </svg>
+                    </div>
+                    <p class="chart-description">Overall Muscle Fatigue Level Over Time</p>
                 </div>
-                <p class="chart-description">
-                    Overall Muscle Fatigue Level Over Time
-                </p>
-            </div>
 
-            <!-- Days Since Last Training -->
-            <div class="fatigue-card">
-                <h3>Recovery Time</h3>
-                <div class="days-since-training" id="recovery-time-container">
-                    <!-- Dynamic content will be inserted here -->
+                <!-- Recovery Time -->
+                <div class="fatigue-card">
+                    <h3>Recovery Time</h3>
+                    <div class="days-since-training" id="recovery-time-container"></div>
                 </div>
-            </div>
-        </div>
-    </div>
+
+                <!-- Recovery Priority -->
+                <div class="fatigue-card">
+                    <h3>Recovery Priority</h3>
+                    <ul id="recovery-priority-list" class="recovery-list"></ul>
+                </div>
+
+                <!-- Muscle Neglect Watch -->
+                <div class="fatigue-card">
+                    <h3>Neglected Muscles</h3>
+                    <ul class="neglect-list" id="neglect-muscles">
+                        <li>Triceps – Last trained 7 days ago</li>
+                        <li>Glutes – Low activity this week</li>
+                    </ul>
+                </div>
+
+            </div> <!-- end of .fatigue-grid -->
+        </div> <!-- end of .overall-fatigue -->
+    </div> <!-- end of .dashboard-container -->
+
 
 </body>
 

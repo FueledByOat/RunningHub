@@ -30,7 +30,7 @@ class CoachGService(BaseService):
     
     def _initialize_language_model(self):
         """Initialize the language model with error handling."""
-        if self.lm_config == True:
+        if self.lm_config.LANGUAGE_MODEL_ACTIVE == True:
             try:
                 self.coach_g = language_model_utils.LanguageModel()
                 self.tokenizer = self.coach_g.tokenizer
@@ -51,115 +51,55 @@ class CoachGService(BaseService):
 
     def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
         try:
-            # Input validation
-            if not session_id or not user_query.strip():
-                raise ValueError("Session ID and user query are required")
-            
-            sanitized_user_query = self._sanitize_user_input(user_query) # Use sanitized query for processing
-            
-            self._save_message(session_id, "user", sanitized_user_query) # Save sanitized user message
+            sanitized_user_query = self._sanitize_user_input(user_query)
+            self._save_message(session_id, "user", sanitized_user_query)
             
             history = self._get_recent_messages(
                 session_id, 
                 max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
             )
             
-            # Attempt to generate SQL and then a data-driven response
-            raw_sql_suggestion = ""
-            extracted_sql = None
-            query_results = None
-            data_driven_response_generated = False # Flag to track if we went down this path
+            # *** NEW LOGIC FLOW ***
+            intent = self._classify_intent(sanitized_user_query)
 
-            try:
-                # For now, we always attempt SQL generation unless it's a very simple query (future: intent classification)
-                self.logger.info(f"Attempting SQL generation for query: '{sanitized_user_query[:100]}...'")
-                # Pass history to SQL generation for better contextual understanding (e.g., "last week")
-                raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(sanitized_user_query)
-                if raw_sql_suggestion:
-                    extracted_sql = self.coach_g.extract_sql_query(raw_sql_suggestion)
-            except exception_utils.LanguageModelError as e:
-                self.logger.warning(f"SQL generation failed for query '{sanitized_user_query[:100]}...': {e}")
-            except Exception as e:
-                self.logger.error(f"Unexpected error during SQL generation for query '{sanitized_user_query[:100]}...': {e}", exc_info=True)
-
-            if extracted_sql:
-                self.logger.info(f"Extracted SQL: '{extracted_sql}' for query: '{sanitized_user_query[:100]}...'")
-                query_results = self._execute_generated_query(extracted_sql) # Ensure this method exists and is robust
+            if intent == "DAILY_SUMMARY":
+                response = self.daily_training_summary()
+            elif intent == "DATA_QUERY":
+                # Only run the expensive data pipeline if needed
+                response = self._handle_data_query(sanitized_user_query, personality, history)
+            else: # GENERAL_CHAT
+                # Go directly to the general-purpose response generator
+                response = self._generate_with_quality_check(sanitized_user_query, personality, history)
+            
+            self._save_message(session_id, "coach", response)
+            return response
                 
-                # --- Enhanced Logging for Query Results ---
-                if query_results:
-                    log_msg = (f"Query results for SQL '{extracted_sql[:100]}...': "
-                               f"Columns: {query_results.get('columns')}, "
-                               f"Num_Rows: {len(query_results.get('rows', [])) if query_results.get('rows') is not None else 'N/A'}, " # Handle if 'rows' key is missing or None
-                               f"Error: {query_results.get('error')}")
-                    if query_results.get('rows') and len(query_results.get('rows')) > 0 and len(query_results.get('rows')) <=3 : # Log first few rows if not too many
-                        log_msg += f", Rows_Data: {str(query_results.get('rows'))[:200]}..." # Log sample data carefully
-                    self.logger.debug(log_msg)
-                # --- End Enhanced Logging ---
-
-                # Check if query execution was successful and returned data to process
-                if query_results and query_results.get('error') is None:
-                    # Even if no rows are returned, we might want the LLM to say "no data found"
-                    # So, proceed if there's no error, regardless of whether rows exist.
-                    self.logger.info(f"Attempting to generate response from data for query: '{sanitized_user_query[:100]}...'")
-                    data_driven_response = self.coach_g.generate_response_from_data(
-                        sanitized_user_query, extracted_sql, query_results, personality, history
-                    )
-                    data_driven_response_generated = True # We attempted this path
-
-                    # --- Pass is_data_driven=True for quality check ---
-                    if self._is_response_acceptable(data_driven_response, is_data_driven=True):
-                        self.logger.info("Data-driven response passed quality check.")
-                        self._save_message(session_id, "coach", data_driven_response)
-                        return data_driven_response
-                    else:
-                        self.logger.warning(f"Data-driven response FAILED quality check. Response: '{data_driven_response[:100]}...' Will fall back.")
-                elif query_results and query_results.get('error'):
-                    self.logger.warning(f"SQL execution error for query '{sanitized_user_query[:100]}...': {query_results.get('error')}. Will fall back.")
-            
-            # Fallback to general chat if SQL path wasn't taken, failed, or data-driven response was poor
-            self.logger.info(f"Falling back to general reply for query: '{sanitized_user_query[:100]}...' (Data-driven attempt: {data_driven_response_generated})")
-            # _generate_with_quality_check uses is_data_driven=False internally for its checks
-            general_response = self._generate_with_quality_check(sanitized_user_query, personality, history)
-            self._save_message(session_id, "coach", general_response)
-            return general_response
-            
         except Exception as e:
-            self.logger.error(f"Critical error in general_reply for query '{user_query[:50]}...': {e}", exc_info=True) # Log full traceback
-            fallback_msg = self._get_fallback_response(user_query) # Use original user_query for fallback context
+            self.logger.error(f"Critical error in general_reply: {e}", exc_info=True)
+            fallback_msg = self._get_fallback_response(user_query)
             self._save_message(session_id, "coach", fallback_msg)
             return fallback_msg
+
+    def _handle_data_query(self, user_query: str, personality: str, history: List[Dict]) -> str:
+        """The original logic for handling text-to-sql, now isolated."""
+        try:
+            raw_sql_suggestion = self.coach_g.generate_sql_from_natural_language(user_query)
+            if raw_sql_suggestion:
+                extracted_sql = self.coach_g.extract_sql_query(raw_sql_suggestion)
+                if extracted_sql:
+                    query_results = self._execute_generated_query(extracted_sql)
+                    if query_results and query_results.get('error') is None:
+                        data_driven_response = self.coach_g.generate_response_from_data(
+                            user_query, extracted_sql, query_results, personality, history
+                        )
+                        if self._is_response_acceptable(data_driven_response, is_data_driven=True):
+                            return data_driven_response
+        except Exception as e:
+            self.logger.warning(f"Data query handler failed: {e}. Falling back.")
         
-    # def general_reply(self, session_id: str, user_query: str, personality: str) -> str:
-    #     """Generate a controlled coaching response with validation."""
-    #     try:
-    #         # Input validation
-    #         if not session_id or not user_query.strip():
-    #             raise ValueError("Session ID and user query are required")
-            
-    #         # Sanitize input
-    #         user_query = self._sanitize_user_input(user_query)
-            
-    #         # Save user message
-    #         self._save_message(session_id, "user", user_query)
-            
-    #         # Get conversation history
-    #         history = self._get_recent_messages(
-    #             session_id, 
-    #             max_tokens=self.lm_config.MAX_CONTEXT_TOKENS
-    #         )
-            
-    #         # Generate response with retries for quality
-    #         response = self._generate_with_quality_check(user_query, personality, history)
-            
-    #         # Save assistant's response
-    #         self._save_message(session_id, "coach", response)
-            
-    #         return response
-            
-    #     except Exception as e:
-    #         self.logger.error(f"Error in general_reply: {e}")
-    #         return self._get_fallback_response(user_query)
+        # Fallback if any step in the data query process fails
+        self.logger.info(f"Falling back to general reply for data query: '{user_query[:50]}...'")
+        return self._generate_with_quality_check(user_query, personality, history)
     
     def _sanitize_user_input(self, user_query: str) -> str:
         """Sanitize user input to prevent prompt injection."""
@@ -314,3 +254,25 @@ class CoachGService(BaseService):
         except Exception as e: # Catch other unexpected errors
             self.logger.error(f"Unexpected error executing generated SQL query '{sql_query}': {e}")
             return {'columns': [], 'rows': [], 'error': f"Unexpected error: {str(e)}"}
+        
+    def _classify_intent(self, user_query: str) -> str:
+        """Classifies user intent to decide the response strategy."""
+        query_lower = user_query.lower().strip()
+        
+        # --- Predefined commands ---
+        if query_lower in ['whats my training status for today?', 'training status']:
+            return "DAILY_SUMMARY"
+
+        # --- Simple keyword-based classification for data queries ---
+        data_keywords = [
+            'what was', 'how many', 'how far', 'show me', 'what is my',
+            'average', 'total', 'longest', 'shortest', 'last week', 
+            'this month', 'compare', 'ctl', 'tsb', 'atl', 'fatigue', 'fitness'
+        ]
+        if any(keyword in query_lower for keyword in data_keywords):
+            self.logger.info("Intent classified as: DATA_QUERY")
+            return "DATA_QUERY"
+        
+        # --- Default to general conversation ---
+        self.logger.info("Intent classified as: GENERAL_CHAT")
+        return "GENERAL_CHAT"

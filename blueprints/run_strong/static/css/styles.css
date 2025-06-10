@@ -989,6 +989,8 @@ body.runstrong {
   padding: 2rem;
   box-shadow: 0 8px 32px var(--rs-shadow);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .fatigue-card h3 {
@@ -1078,38 +1080,42 @@ body.runstrong {
 }
 
 .fatigue-circle {
-  width: 150px;
-  height: 150px;
+  width: clamp(100px, 20vw, 180px);
+  height: clamp(100px, 20vw, 180px);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: bold;
+  position: relative;
   border-radius: 50%;
   margin: 0 auto 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 3rem;
-  font-weight: bold;
-  position: relative;
+  z-index: 1;
 }
 
-.fatigue-circle::before {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg,
-      #4ade80 0deg 120deg,
-      var(--rs-secondary) 120deg 240deg,
-      var(--rs-accent) 240deg 360deg);
-  z-index: -1;
-}
-
+.fatigue-circle::before,
 .fatigue-circle::after {
   content: '';
   position: absolute;
+  border-radius: 50%;
+}
+
+.fatigue-circle::before {
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(
+    from 0deg,
+    #4ade80 0deg 120deg,
+    var(--rs-secondary) 120deg 240deg,
+    var(--rs-accent) 240deg 360deg
+  );
+  z-index: -2;
+}
+
+.fatigue-circle::after {
   width: 80%;
   height: 80%;
   background: var(--rs-background);
-  border-radius: 50%;
   z-index: -1;
 }
 
@@ -1344,4 +1350,144 @@ body {
 
 .filter-toggle:not(:last-child) {
   border-right: 1px solid #444;
+}
+
+.fatigue-low {
+    background-color: #28a745; /* green */
+}
+
+.fatigue-moderate {
+    background-color: #ffc107; /* yellow */
+}
+
+.fatigue-high {
+    background-color: #dc3545; /* red */
+}
+.recovery-fresh {
+    background-color: #007bff;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.recovery-ready {
+    background-color: #17a2b8;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+
+.recovery-fatigued {
+    background-color: #6c757d;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+}
+.filter-toggle {
+    padding: 6px 12px;
+    margin: 0 4px;
+    background-color: transparent;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+}
+
+.filter-toggle.active {
+    background-color: #ff4ec7; /* your --rs-highlight or accent */
+    color: white;
+    border-color: #ff4ec7;
+}
+.trend-path {
+    stroke: #ff0080;
+    stroke-width: 2;
+    fill: none;
+}
+
+.trend-area {
+    fill: rgba(255, 0, 128, 0.15);
+}
+
+.trend-point {
+    fill: #fff;
+    stroke: #ff0080;
+    stroke-width: 2;
+    r: 4;
+}
+
+.chart-label {
+    font-size: 0.7rem;
+    text-anchor: middle;
+    fill: #ccc;
+}
+.muscle-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    border: 1px solid #444;
+    border-radius: 10px;
+    background-color: #1e1e2f;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.muscle-name {
+    font-weight: bold;
+    flex: 1;
+}
+
+.fatigue-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 2;
+}
+
+.fatigue-bar {
+    background-color: #333;
+    width: 100px;
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.fatigue-fill {
+    height: 100%;
+}
+#recovery-time-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: flex-start;
+}
+
+.days-item {
+    background-color: #2b2b3c;
+    padding: 8px 10px;
+    border-radius: 8px;
+    text-align: center;
+    width: 80px;
+}
+
+.days-number {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ff4ec7;
+}
+
+.days-label {
+    font-size: 0.75rem;
+    color: #ccc;
+}
+.recommendation-box {
+  background-color: #ffe8f1;
+  border-left: 5px solid #ff4ec7;
+  padding: 1em;
+  margin-bottom: 1em;
+  font-weight: bold;
 }
