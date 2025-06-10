@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from functools import lru_cache
 
 from transformers import pipeline, AutoTokenizer
-from huggingface_hub import login
+from huggingface_hub import login, InferenceClient
 
 from utils import exception_utils
 from config import Config, LanguageModelConfig
@@ -22,9 +22,10 @@ class LanguageModel:
    
     def __init__(self):
         self._pipe = None
-        self.tokenizer = None
         self.config = LanguageModelConfig()
-        self._initialize_model()
+        self.tokenizer = AutoTokenizer.from_pretrained(self.config.LOCAL_MODEL_NAME)
+        if not self.config.USE_REMOTE_MODEL:
+            self._initialize_model()
    
     def _initialize_model(self):
         """Initialize the Hugging Face model pipeline."""
@@ -33,7 +34,7 @@ class LanguageModel:
             login(token=Config.HF_TOKEN, add_to_git_credential=False)
             
             # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(self.config.MODEL_NAME)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.config.LOCAL_MODEL_NAME)
            
             # --- GPU Configuration ---
             device_to_use = "cpu" # Default
@@ -41,10 +42,6 @@ class LanguageModel:
                 device_to_use = "cuda" # For NVIDIA GPUs
                 logger.info("CUDA (NVIDIA GPU) is available. Setting device_map to 'cuda'.")
             elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
-                # For Apple Silicon (M1/M2/M3 Macs)
-                # Note: MPS support can sometimes be less stable or performant than CUDA for certain models/ops.
-                # It also might not support all dtypes like bfloat16 as well as CUDA.
-                # You might need to use torch.float16 or torch.float32 if bfloat16 causes issues on MPS.
                 device_to_use = "mps"
                 logger.info("MPS (Apple Silicon GPU) is available. Setting device_map to 'mps'.")
             else:
@@ -57,7 +54,7 @@ class LanguageModel:
             # Initialize text generation pipeline
             self._pipe = pipeline(
                 "text-generation",
-                model=self.config.MODEL_NAME,
+                model=self.config.LOCAL_MODEL_NAME,
                 model_kwargs={"torch_dtype": model_dtype}, # bfloat16 is good for Ampere+ NVIDIA GPUs. float16 for broader compatibility.
                 device_map="auto", # Was "cpu"
                 return_full_text=False
@@ -278,7 +275,7 @@ The user's question is:""" # The user_input (actual question) will be appended a
             prompt = self._build_summary_prompt(metrics)
             
             # Call the central generator. We can consider this "data_driven" to allow for a slightly longer response.
-            return self._generate_response(prompt, is_data_driven=True)
+            return self._generate_response(prompt, user_query = "What's my latest training summary?", is_data_driven=True)
                 
         except Exception as e:
             logger.error(f"Failed to generate training summary: {e}")
@@ -322,7 +319,7 @@ The user's question is:""" # The user_input (actual question) will be appended a
         logger.debug(f"Generated prompt for general reply: {prompt[:200]}...")
         
         # Call the central generator
-        return self._generate_response(prompt, is_data_driven=False)
+        return self._generate_response(prompt, user_query, is_data_driven=False)
         
     def _build_chat_prompt(self, personality_prompt: str, context: str, user_query: str) -> str:
         """Build a structured chat prompt."""
@@ -549,7 +546,7 @@ The user's question is:""" # The user_input (actual question) will be appended a
         logger.debug(f"Prompt for generate_response_from_data (first 300 chars): {prompt[:300]}...")
         
         # Call the central generator
-        return self._generate_response(prompt, is_data_driven=True)
+        return self._generate_response(prompt, user_query, is_data_driven=True)
 
     def _format_query_results_for_llm(self, query_results: Dict[str, Any], max_rows_to_show: int = 5) -> str:
         """
@@ -601,43 +598,79 @@ The user's question is:""" # The user_input (actual question) will be appended a
             formatted_string += "| " + " | ".join(row_values) + " |\n"
         
         return formatted_string.strip()
-    def _generate_response(self, prompt: str, is_data_driven: bool = False) -> str:
-        """
-        A single, private, unified generation method.
-        This is the central point for calling the LLM pipeline and cleaning the output.
-        """
-        if not self._pipe:
-            raise exception_utils.LanguageModelError("Model not initialized")
-
+    def _generate_response(self, prompt: str, user_query: str, is_data_driven: bool = False) -> str:
+        """Generate a response using either local or remote model."""
         try:
             max_tokens = self.config.MAX_NEW_TOKENS
             if is_data_driven:
-                # Allow slightly more tokens for interpreting data
-                max_tokens += 50 
+                max_tokens += 50
 
-            generation_params = {
-                'max_new_tokens': max_tokens,
-                'temperature': self.config.TEMPERATURE,
-                'top_p': self.config.TOP_P,
-                'repetition_penalty': self.config.REPETITION_PENALTY,
-                'do_sample': True,
-                'pad_token_id': self.tokenizer.eos_token_id,
-            }
-            
-            pipeline_output = self._pipe(prompt, **generation_params)
-            
-            if not pipeline_output or not pipeline_output[0].get("generated_text"):
-                raise exception_utils.LanguageModelError("Model returned empty response.")
-            
-            raw_output = pipeline_output[0]["generated_text"].strip()
-            
-            # Your existing cleaning function is called here
+            if self.config.USE_REMOTE_MODEL:
+                raw_output = self._generate_remote_response(prompt, user_query, max_tokens)
+            else:
+                if not self._pipe:
+                    raise exception_utils.LanguageModelError("Local model not initialized.")
+                
+                generation_params = {
+                    'max_new_tokens': max_tokens,
+                    'temperature': self.config.TEMPERATURE,
+                    'top_p': self.config.TOP_P,
+                    'repetition_penalty': self.config.REPETITION_PENALTY,
+                    'do_sample': True,
+                    'pad_token_id': self.tokenizer.eos_token_id,
+                }
+
+                pipeline_output = self._pipe(prompt, **generation_params)
+                if not pipeline_output or not pipeline_output[0].get("generated_text"):
+                    raise exception_utils.LanguageModelError("Local model returned empty response.")
+                
+                raw_output = pipeline_output[0]["generated_text"].strip()
+
             return self._clean_and_format_response(raw_output, is_data_driven=is_data_driven)
 
         except Exception as e:
             logger.error(f"Response generation failed for prompt '{prompt[:100]}...': {e}", exc_info=True)
-            # Re-raise as a custom exception so the service layer can handle it
             raise exception_utils.LanguageModelError(f"Response generation failed: {e}") from e
+        
+    def _generate_remote_response(self, prompt: str, user_query: str, max_tokens: int) -> str:
+        """Generate response using Hugging Face InferenceClient for chat models."""
+        try:
+            # Initialize client once per call (or you can move this to __init__ and cache)
+            client = InferenceClient(
+                provider="hf-inference",
+                model=self.config.REMOTE_MODEL_NAME,
+                token=Config.HF_TOKEN,
+            )
+            
+            # Use Coach G system message to match local model behavior
+            messages = [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_query}
+            ]
+            
+            # Generate chat completion with all available parameters
+            completion = client.chat.completions.create(
+                model=self.config.REMOTE_MODEL_NAME,
+                messages=messages,
+                temperature=self.config.TEMPERATURE,
+                top_p=self.config.TOP_P,
+                max_tokens=max_tokens,
+                # Note: repetition_penalty may not be supported by all remote models
+                # repetition_penalty=self.config.REPETITION_PENALTY,
+            )
+            
+            # Return the full generated text to match local model output format
+            # This ensures _extract_coach_reply can process it consistently
+            response_content = completion.choices[0].message.content.strip()
+            
+            # Since remote model returns just the assistant response, we need to 
+            # format it to match what _extract_coach_reply expects from local model
+            # The local model returns the full prompt + generated text
+            return f"{prompt}\n\nCoach G: {response_content}"
+            
+        except Exception as e:
+            logger.error(f"Remote chat completion failed: {e}", exc_info=True)
+            raise exception_utils.LanguageModelError(f"Remote chat completion failed: {e}") from e
 
 # Global instance
 _sql_generator = None

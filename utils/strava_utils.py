@@ -14,6 +14,8 @@ from typing import Dict, List, Optional, Any, Union
 from dotenv import load_dotenv
 
 from utils.db import db_utils
+from utils.db import dash_db_utils
+from utils.db import language_db_utils
 from config import Config
 
 # Configure module-level logger
@@ -767,10 +769,10 @@ def update_daily_dashboard_metrics() -> None:
     metrics like ctl, atl, tsb, tss, etc.
     """
 
-    df = db_utils.get_ctl_atl_tsb_tss_data().tail(1)
+    df = dash_db_utils.get_ctl_atl_tsb_tss_data().tail(1)
     try:
         with sqlite3.connect(Config.DB_PATH) as conn:
-            db_utils.update_daily_training_metrics(conn=conn, df=df)
+            language_db_utils.update_daily_training_metrics(conn=conn, df=df)
             logger.info(f"Daily stats updated with: {df}")
     except sqlite3.Error as e:
         logger.error(f"Database error updating daily metrics: {e}")

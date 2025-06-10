@@ -722,82 +722,66 @@ def get_fatigue_trend_data(conn: sqlite3.Connection, muscle_group_filter: str = 
     return fatigue_trend
 
 def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: str = None) -> Dict:
-    """Enhanced dashboard data with optional muscle group filtering"""
     logger.info(f"Fetching fatigue dashboard data with filter: {muscle_group_filter}")
     cursor = conn.cursor()
     cursor.row_factory = sqlite3.Row
 
-    try:
-        muscle_mapping = get_muscle_group_mapping()
-        
-        # Base query for muscle fatigue
-        base_query = """
-            SELECT muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score
-            FROM muscle_group_fatigue
-        """
-        
-        # Apply filtering if specified
-        if muscle_group_filter and muscle_group_filter.lower() in ['upper body', 'lower body', 'core']:
-            # Get muscles that belong to the selected group
-            filtered_muscles = [muscle for muscle, group in muscle_mapping.items() 
-                              if group.lower() == muscle_group_filter.lower()]
-            
-            if filtered_muscles:
-                placeholders = ','.join(['?' for _ in filtered_muscles])
-                query = base_query + f" WHERE muscle_group IN ({placeholders})"
-                cursor.execute(query + " ORDER BY recovery_score ASC", filtered_muscles)
-            else:
-                cursor.execute(base_query + " ORDER BY recovery_score ASC")
+    muscle_mapping = get_muscle_group_mapping()
+
+    base_query = """
+        SELECT muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score
+        FROM muscle_group_fatigue
+    """
+
+    if muscle_group_filter and muscle_group_filter.lower() in ['upper body', 'lower body', 'core']:
+        filtered_muscles = [muscle for muscle, group in muscle_mapping.items()
+                            if group.lower() == muscle_group_filter.lower()]
+        if filtered_muscles:
+            placeholders = ','.join(['?' for _ in filtered_muscles])
+            query = base_query + f" WHERE muscle_group IN ({placeholders})"
+            cursor.execute(query + " ORDER BY recovery_score ASC", filtered_muscles)
         else:
             cursor.execute(base_query + " ORDER BY recovery_score ASC")
-        
-        muscle_fatigue = []
-        for row in cursor.fetchall():
-            muscle_fatigue.append({
-                'muscle_group': row['muscle_group'],
-                'last_trained': row['last_trained_date'],
-                'volume_7day': row['volume_7day'],
-                'volume_14day': row['volume_14day'],
-                'recovery_score': row['recovery_score'],
-                'fatigue_level': max(0, min(100, 100 - row['recovery_score'])),
-                'broad_group': muscle_mapping.get(row['muscle_group'], 'Other')
-            })
+    else:
+        cursor.execute(base_query + " ORDER BY recovery_score ASC")
 
-        # Weekly stress (keep existing)
-        cursor.execute("""
-            SELECT training_stress_score
-            FROM weekly_training_summary
-            ORDER BY week_start_date DESC
-            LIMIT 7
-        """)
-        weekly_stress = [row['training_stress_score'] for row in cursor.fetchall()]
-        
-        if not weekly_stress:
-            weekly_stress = [60, 80, 45, 90, 30, 75, 85]
+    muscle_fatigue = []
+    for row in cursor.fetchall():
+        last_trained = row['last_trained_date']
+        fatigue_level = max(0, min(100, 100 - row['recovery_score']))
 
-        # Calculate overall fatigue (filtered if applicable)
-        if muscle_fatigue:
-            overall_fatigue = sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue)
-        else:
-            overall_fatigue = 50
+        muscle_fatigue.append({
+            'muscle_group': row['muscle_group'],
+            'last_trained': last_trained,
+            'volume_7day': row['volume_7day'],
+            'volume_14day': row['volume_14day'],
+            'recovery_score': row['recovery_score'],
+            'fatigue_level': fatigue_level,
+            'broad_group': muscle_mapping.get(row['muscle_group'], 'Other'),
+        })
 
-        # Get chart data (can also be filtered)
-        daily_training = get_daily_training_data(conn, muscle_group_filter)
-        fatigue_trend = get_fatigue_trend_data(conn, muscle_group_filter)
+    cursor.execute("""
+        SELECT training_stress_score
+        FROM weekly_training_summary
+        ORDER BY week_start_date DESC
+        LIMIT 7
+    """)
+    weekly_stress = [row['training_stress_score'] for row in cursor.fetchall()] or [60, 80, 45, 90, 30, 75, 85]
 
-        return {
-            'overall_fatigue': round(overall_fatigue),
-            'muscle_fatigue': muscle_fatigue,
-            'weekly_stress': weekly_stress,
-            'daily_training': daily_training,
-            'fatigue_trend': fatigue_trend,
-            'active_filter': muscle_group_filter,
-            'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
-        }
-    
-    except Exception as e:
-        logger.error(f"Error fetching dashboard data: {e}")
-        return get_fallback_dashboard_data(muscle_group_filter)
+    overall_fatigue = (sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue)) if muscle_fatigue else 50
+
+    daily_training = get_daily_training_data(conn, muscle_group_filter)
+    fatigue_trend = get_fatigue_trend_data(conn, muscle_group_filter)
+
+    return {
+        'overall_fatigue': round(overall_fatigue),
+        'muscle_fatigue': muscle_fatigue,
+        'weekly_stress': weekly_stress,
+        'daily_training': daily_training,
+        'fatigue_trend': fatigue_trend,
+        'active_filter': muscle_group_filter,
+        'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
+    }
     
 def run_daily_update(conn: sqlite3.Connection):
     """Main function to run daily fatigue updates"""

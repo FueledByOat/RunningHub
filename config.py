@@ -72,9 +72,11 @@ class LanguageModelConfig:
     RESPONSE_MIN_SENTENCES_DATA_DRIVEN = 1
     RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 15 # Allow more detailed responses with data
 
-    MODEL_NAME = "google/gemma-2-2b-it"
+    # LOCAL_MODEL_NAME = "google/gemma-2-2b-it"
+    LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
-
+    USE_REMOTE_MODEL = False  # Set to False to run locally
+    REMOTE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
 
     
     # Stop sequences to prevent overgeneration
@@ -96,6 +98,12 @@ class LanguageModelConfig:
         'scientific': "an evidence-based coach who explains the science behind training",
         'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says hell but gets results"
     }
+
+class RunnerConfig:
+    """Configuration settings to try and centralize single user site logic."""
+    MAX_HR = 190
+    THRESHOLD_HR = 171
+    TRAINING_SHAPE_WEIGHTS = {'fitness': 0.4, 'speed': 0.25, 'efficiency': 0.2, 'freshness': 0.15}
 
 # Set up logging configuration
 logging.basicConfig(

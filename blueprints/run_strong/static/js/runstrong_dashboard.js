@@ -224,6 +224,14 @@ function updateFatigueData(data) {
         ? 'Current fatigue level based on recent training volume and recovery'
         : `Current ${currentFilter} fatigue level based on recent training`;
 
+    // const recommendationContainer = document.getElementById('recommendation-container');
+    // if (recommendationContainer) {
+    //     if (data.recommendation) {
+    //         recommendationContainer.textContent = data.recommendation;
+    //     } else {
+    //         recommendationContainer.textContent = "No recommendation available.";
+    //     }
+    // }
     const container = document.getElementById('muscle-fatigue-container');
     if (!container) return;
     container.innerHTML = '';
@@ -288,7 +296,7 @@ function refreshDashboard() {
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     refreshDashboard();
-    setInterval(refreshDashboard, 30000);
+    // setInterval(refreshDashboard, 30000);
 });
 
 // Expose for debugging/testing
