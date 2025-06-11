@@ -682,7 +682,6 @@ def create_dash_dashboard_app(server, db_path):
         df_hr_drift = dash_db_utils.get_hr_drift_data(db_path)
         df_cadence = dash_db_utils.get_cadence_stability_data(db_path)
         df_ctl_atl_tsb_tss = dash_db_utils.get_ctl_atl_tsb_tss_data(db_path)
-
         
         # Process ACWR data
         latest_acwr = df_acwr['acwr'].iloc[0] if not df_acwr.empty and 'acwr' in df_acwr.columns else None

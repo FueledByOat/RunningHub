@@ -23,7 +23,8 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-from runnervision_utils.reports.report_generators import SideViewReportGenerator, RearViewReportGenerator
+from runnervision_utils.reports.report_generators.rear_report_details.rear_report_generator import RearViewReportGenerator
+from runnervision_utils.reports.report_generators.side_report_details.side_report_generator import SideViewReportGenerator
 from utils.RunnerVision.RunnerVisionClass import RunnerVisionAnalyzer
 
 class RunAnalyzer:

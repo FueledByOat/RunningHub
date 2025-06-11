@@ -55,14 +55,14 @@ class LanguageModelConfig:
     LANGUAGE_MODEL_ACTIVE = True
 
     # Generation parameters
-    MAX_NEW_TOKENS = 100
+    MAX_NEW_TOKENS = 250
     TEMPERATURE = 0.7
     TOP_P = 0.9
     REPETITION_PENALTY = 1.1
     
     # Context management
     MAX_CONTEXT_MESSAGES = 5
-    MAX_CONTEXT_TOKENS = 512
+    MAX_CONTEXT_TOKENS = 1024
     
     # Response formatting
     RESPONSE_MIN_SENTENCES = 1
@@ -73,7 +73,8 @@ class LanguageModelConfig:
     RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 15 # Allow more detailed responses with data
 
     # LOCAL_MODEL_NAME = "google/gemma-2-2b-it"
-    LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
+    # LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
+    LOCAL_MODEL_NAME = "google/gemma-3-1b-it"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
     USE_REMOTE_MODEL = False  # Set to False to run locally
     REMOTE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
