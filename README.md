@@ -2,7 +2,7 @@
 
 A modular, open-source project for runners and coaches to analyze running data, visualize training history, detect metric changes, and generate summaries using machine learning and language models.
 
-![runninghub_demo](./blueprints\running_hub\static\images\RunningHub_Demo.gif)
+![runninghub_demo](./blueprints/running_hub/static/images/RunningHub_Demo.gif)
 
 RunningHub is the primary metrics engine and visualization foundation, supported by 3 dedicated pillars. 
 * [RunnerVision](#runnervision), which provides running biomechanic analysis of video taken from the rear and right side of a runner
@@ -46,7 +46,7 @@ RunningHub is the primary metrics engine and visualization foundation, supported
 A running biomechanic analysis system for analyzing running form using computer vision and wearable data integration.
 
 ## Overview
-![runnervision_demo](./blueprints\runner_vision\static\images\RunnerVision_Demo.gif)
+![runnervision_demo](./blueprints/runner_vision/static/images/RunnerVision_Demo.gif)
 
 RunnerVision uses computer vision (BlazePose) to provide detailed analysis of running biomechanics. The system captures, processes, and visualizes key running form metrics to track improvements and identify potential issues before they lead to injury.
 
