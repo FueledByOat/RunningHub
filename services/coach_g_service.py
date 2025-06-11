@@ -35,6 +35,16 @@ class CoachGService(BaseService):
         else:
             self.logger.info("Language Model activation set to False")
 
+    def _create_text_summary_for_history(self, metrics: Dict) -> str:
+        """Creates a simple, text-only summary for the LLM's context history."""
+        tsb = metrics.get('tsb', 0)
+        return (
+            f"Here is the user's training status for {metrics['date']}: "
+            f"CTL (Fitness) is {metrics.get('ctl', 0):.1f}, "
+            f"ATL (Fatigue) is {metrics.get('atl', 0):.1f}, "
+            f"and TSB (Freshness) is {tsb:.1f}."
+        )
+
     def handle_user_query(self, session_id: str, user_query: str, personality: str) -> str:
         """
         Handles the user's query by routing to the appropriate function.
@@ -45,15 +55,27 @@ class CoachGService(BaseService):
         daily_metric_keywords = ['atl', 'ctl', 'fatigue', 'freshness', 'training status']
 
         try:
-            if any(keyword in sanitized_query.lower() for keyword in daily_metric_keywords):
-                # This function now returns HTML
-                response = self._get_daily_training_summary()
+            is_data_query = any(keyword in sanitized_query.lower() for keyword in daily_metric_keywords)
+
+            if is_data_query:
+                # Get the HTML response for the user
+                response_for_user = self._get_daily_training_summary()
+                
+                # If a summary was successfully generated, create and save a text version for history
+                if "<p>" in response_for_user: # A simple check to see if we have data
+                    with self._get_connection() as conn:
+                        latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+                    if latest_metrics:
+                        text_for_history = self._create_text_summary_for_history(latest_metrics[0])
+                        self._save_message(session_id, "coach", text_for_history)
+                
+                return response_for_user
             else:
                 history = self._get_recent_messages(session_id, max_tokens=self.lm_config.MAX_CONTEXT_TOKENS)
                 response = self.coach_g.generate_general_coach_g_reply(sanitized_query, personality, history)
+                self._save_message(session_id, "coach", response)
+                return response
 
-            self._save_message(session_id, "coach", response)
-            return response
         except Exception as e:
             self.logger.error(f"Error handling user query: {e}", exc_info=True)
             return "<p>I'm having a bit of trouble connecting right now. Let's try again in a moment.</p>"
@@ -69,10 +91,7 @@ class CoachGService(BaseService):
             if not latest_metrics:
                 return "<p>I couldn't find any recent training data to give you a summary.</p>"
             
-            # 1. Get the markdown-formatted string from the language model utility
             markdown_summary = self.coach_g.format_daily_training_summary(latest_metrics[0])
-            
-            # 2. Convert the markdown to HTML before returning
             html_summary = markdown.markdown(markdown_summary)
             
             return html_summary
