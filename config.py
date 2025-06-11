@@ -73,7 +73,8 @@ class LanguageModelConfig:
     RESPONSE_MAX_SENTENCES_DATA_DRIVEN = 15 # Allow more detailed responses with data
 
     # LOCAL_MODEL_NAME = "google/gemma-2-2b-it"
-    LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
+    # LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
+    LOCAL_MODEL_NAME = "google/gemma-3-1b-it"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
     USE_REMOTE_MODEL = False  # Set to False to run locally
     REMOTE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"

@@ -43,7 +43,6 @@ def register_routes(coach_g_service):
     def coach_g_chat():
         """Handle Coach G chat interactions."""
         try:
-            # Validate request
             data = request.get_json()
             if not data:
                 return jsonify({'error': 'No data provided'}), 400
@@ -53,20 +52,13 @@ def register_routes(coach_g_service):
                 return jsonify({'error': 'Message is required'}), 400
             
             personality_selection = data.get('personality', 'motivational')
-            
-            # Get or create session ID
             session_id = request.cookies.get('session_id') or str(uuid.uuid4())
             
-            # Handle predefined queries
-            if user_message.lower() in ['whats my training status for today?', 'training status']:
-                coach_reply = coach_g_service.daily_training_summary()
-            else:
-                # Generate contextual response
-                coach_reply = coach_g_service.general_reply(session_id, user_message, personality_selection)
+            # Simplified call to the service layer
+            coach_reply = coach_g_service.handle_user_query(session_id, user_message, personality_selection)
             
             response = jsonify({'response': coach_reply})
             
-            # Set session cookie if new
             if 'session_id' not in request.cookies:
                 response.set_cookie('session_id', session_id, max_age=86400)  # 24 hours
             
