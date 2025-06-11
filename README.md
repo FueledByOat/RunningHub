@@ -2,6 +2,7 @@
 
 A modular, open-source project for runners and coaches to analyze running data, visualize training history, detect metric changes, and generate summaries using machine learning and language models.
 
+## Demo
 ![runninghub_demo](./blueprints/running_hub/static/images/RunningHub_Demo.gif)
 
 RunningHub is the primary metrics engine and visualization foundation, supported by 3 dedicated pillars. 
@@ -46,10 +47,11 @@ RunningHub is the primary metrics engine and visualization foundation, supported
 A running biomechanic analysis system for analyzing running form using computer vision and wearable data integration.
 
 ## Overview
-![runnervision_demo](./blueprints/runner_vision/static/images/RunnerVision_Demo.gif)
 
 RunnerVision uses computer vision (BlazePose) to provide detailed analysis of running biomechanics. The system captures, processes, and visualizes key running form metrics to track improvements and identify potential issues before they lead to injury.
 
+## Demo
+![runnervision_demo](./blueprints/runner_vision/static/images/RunnerVision_Demo.gif)
 
 
 ## Features
@@ -181,6 +183,10 @@ A modular, open-source strength training resource for runners.
 # Coach G
 
 ![coach_g](./blueprints/coach_g/static/images/coach_g_profile_pic.png)
+
+## Demo
+
+![coach_g_demo](./blueprints\coach_g\static\images\CoachG_Demo.gif)
 
 Language model currently running google/gemma-2-2b-it
 

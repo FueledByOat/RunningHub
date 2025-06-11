@@ -54,14 +54,24 @@ class LanguageModel:
         context = self._build_conversation_context(history)
         personality_prompt = self.config.PERSONALITY_TEMPLATES.get(personality, self.config.PERSONALITY_TEMPLATES['motivational'])
 
-        prompt = f"""You are Coach G, a {personality_prompt} running coach.
+        # --- REFINED PROMPT ---
+        # Provides clearer, more explicit instructions to the model.
+        prompt = f"""You are Coach G, a {personality_prompt} running coach. Your task is to provide a supportive and insightful response to the user.
+Follow these rules strictly:
+1.  Your reply must be a thoughtful, long-form response of 2-4 complete sentences.
+2.  Do NOT mention that you are an AI, a language model, or a bot.
+3.  Directly address the user's message in your reply.
+4.  Do not output anything other than Coach G's response.
+
+Here is the conversation history:
 {context}
 User: {user_query}
+
+Now, provide only Coach G's response.
 Coach G:"""
 
         try:
             if self.config.USE_REMOTE_MODEL:
-                # Add remote model generation logic here if needed
                 pass 
             
             if not self._pipe:
@@ -76,8 +86,9 @@ Coach G:"""
                 pad_token_id=self.tokenizer.eos_token_id
             )
             
-            response = outputs[0]['generated_text'].strip()
-            return self._clean_response(response)
+            raw_response = outputs[0]['generated_text']
+            # Use the new, more robust cleaning function
+            return self._clean_response(raw_response)
 
         except Exception as e:
             logger.error(f"Failed to generate general reply: {e}")
@@ -85,8 +96,7 @@ Coach G:"""
 
     def format_daily_training_summary(self, metrics: Dict) -> str:
         """
-        Formats the daily training metrics into a friendly, pre-built response.
-        This function does not call the language model.
+        Formats the daily training metrics into a markdown-ready string.
         """
         tsb = metrics.get('tsb', 0)
         interpretation = ""
@@ -98,33 +108,49 @@ Coach G:"""
             interpretation = "You're likely carrying some fatigue from your recent training. It might be a good day to focus on recovery or a lighter session."
 
         return (
-            f"Here is your training status for today ({metrics['date']}):\n"
-            f"- **CTL (Fitness):** {metrics.get('ctl', 0):.1f}\n"
-            f"- **ATL (Fatigue):** {metrics.get('atl', 0):.1f}\n"
-            f"- **TSB (Freshness):** {tsb:.1f}\n\n"
+            f"### Your Training Status for {metrics['date']}\n\n"
+            f"**CTL (Fitness):** {metrics.get('ctl', 0):.1f}\n\n"
+            f"**ATL (Fatigue):** {metrics.get('atl', 0):.1f}\n\n"
+            f"**TSB (Freshness):** {tsb:.1f}\n\n"
             f"**Coach G's Advice:** {interpretation}"
         )
 
     def _build_conversation_context(self, history: List[Dict]) -> str:
         """Builds a string of the recent conversation history."""
         if not history:
-            return ""
+            return "(No history yet)"
         
         context_lines = []
         for msg in reversed(history[-self.config.MAX_CONTEXT_MESSAGES:]):
             role = "User" if msg.get("role") == "user" else "Coach G"
             context_lines.append(f"{role}: {msg.get('message', '')}")
         
-        return "\n".join(reversed(context_lines)) + "\n"
+        return "\n".join(reversed(context_lines))
 
     def _clean_response(self, text: str) -> str:
-        """Basic cleaning of the model's generated text."""
-        # Remove any lingering "User:" or "Coach G:" tags
-        text = re.sub(r'\b(User|Coach G):.*', '', text, flags=re.IGNORECASE).strip()
-        
-        # Find the first complete sentence
-        match = re.search(r'[^.!?]*[.!?]', text)
-        return match.group(0) if match else text
+        """
+        Cleans the raw model output to ensure it's a coherent and safe reply from Coach G.
+        """
+        # Stop the response at the next conversational turn or end-of-text token.
+        stop_phrases = ['\nUser:', '\nCoach G:', '<|endoftext|>', '[INST]']
+        for phrase in stop_phrases:
+            stop_index = text.find(phrase)
+            if stop_index != -1:
+                text = text[:stop_index]
+
+        # Remove JSON/code block artifacts
+        text = re.sub(r'```(json|sql|)?', '', text)
+        text = text.replace('```', '')
+
+        # Standardize whitespace and remove leading/trailing junk
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        # If the response is empty or too short after cleaning, return a safe default.
+        if not text or len(text) < 20:
+            logger.warning(f"Cleaned response was too short. Returning a default. Original: '{text}'")
+            return "That's a great question. Consistency is key in training. Keep up the great work and let me know what else is on your mind!"
+
+        return text
         
     def _generate_report_summary_response(self, prompt: str, max_tokens: int = 400) -> str:
         """

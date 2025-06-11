@@ -70,13 +70,13 @@ function addMessage(content, sender) {
     if (sender === 'coach_g_user') {
         avatar.innerHTML = '<i class="fas fa-user"></i>';
     } else {
-        // For Coach G - you can replace this with an actual image
         avatar.innerHTML = '<img src="static/images/coach_g_profile_pic.png" alt="Coach G" class="coach_g_coach_image" onerror="this.parentElement.innerHTML=\'<i class=&quot;fas fa-user-tie&quot;></i>\'">';
     }
 
     const messageContent = document.createElement('div');
     messageContent.className = 'coach_g_message_content';
-    messageContent.textContent = content;
+    // messageContent.textContent = content;
+    messageContent.innerHTML = content;
 
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(messageContent);

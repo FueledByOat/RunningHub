@@ -1,33 +1,27 @@
-# coach_g_service.py
+# services/coach_g_service.py
 """
 Service layer for running Coach G Language Model.
-
-This module contains all business logic services that handle data processing,
-database interactions, and business rules while keeping the Flask routes clean.
 """
 import logging
 import re
+from typing import List, Dict
 
-import json
-from typing import Dict, Any, Optional, List
-
+import markdown  # Import the markdown library
 from services.base_service import BaseService
-from utils import format_utils, exception_utils, language_model_utils
-from config import LanguageModelConfig, Config
-from utils.db import db_utils
+from utils import language_model_utils, exception_utils
+from config import LanguageModelConfig
 from utils.db import language_db_utils
 
 class CoachGService(BaseService):
     """Service for handling Coach G interactions."""
     
     def __init__(self, config):
-        # Extract db_path from config object and pass to parent
-        super().__init__(config.DB_PATH)  
+        super().__init__(config.DB_PATH)
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         self.lm_config = LanguageModelConfig()
         self._initialize_language_model()
-    
+
     def _initialize_language_model(self):
         """Initialize the language model."""
         if self.lm_config.LANGUAGE_MODEL_ACTIVE:
@@ -48,11 +42,11 @@ class CoachGService(BaseService):
         sanitized_query = self._sanitize_user_input(user_query)
         self._save_message(session_id, "user", sanitized_query)
 
-        # Keywords to trigger the daily training metrics summary
         daily_metric_keywords = ['atl', 'ctl', 'fatigue', 'freshness', 'training status']
 
         try:
             if any(keyword in sanitized_query.lower() for keyword in daily_metric_keywords):
+                # This function now returns HTML
                 response = self._get_daily_training_summary()
             else:
                 history = self._get_recent_messages(session_id, max_tokens=self.lm_config.MAX_CONTEXT_TOKENS)
@@ -62,25 +56,30 @@ class CoachGService(BaseService):
             return response
         except Exception as e:
             self.logger.error(f"Error handling user query: {e}", exc_info=True)
-            return "I'm having a bit of trouble connecting right now. Let's try again in a moment."
+            return "<p>I'm having a bit of trouble connecting right now. Let's try again in a moment.</p>"
 
     def _get_daily_training_summary(self) -> str:
         """
-        Fetches and formats the latest daily training metrics.
+        Fetches, formats, and converts the latest daily training metrics to HTML.
         """
         try:
             with self._get_connection() as conn:
                 latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
             
             if not latest_metrics:
-                return "I couldn't find any recent training data to give you a summary."
+                return "<p>I couldn't find any recent training data to give you a summary.</p>"
             
-            # The database utility returns a list of dictionaries
-            return self.coach_g.format_daily_training_summary(latest_metrics[0])
+            # 1. Get the markdown-formatted string from the language model utility
+            markdown_summary = self.coach_g.format_daily_training_summary(latest_metrics[0])
+            
+            # 2. Convert the markdown to HTML before returning
+            html_summary = markdown.markdown(markdown_summary)
+            
+            return html_summary
 
         except Exception as e:
             self.logger.error(f"Error getting daily training summary: {e}")
-            return "I was unable to retrieve your latest training summary."
+            return "<p>I was unable to retrieve your latest training summary.</p>"
 
     def _sanitize_user_input(self, user_query: str) -> str:
         """Basic sanitization of user input."""

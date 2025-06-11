@@ -55,14 +55,14 @@ class LanguageModelConfig:
     LANGUAGE_MODEL_ACTIVE = True
 
     # Generation parameters
-    MAX_NEW_TOKENS = 100
+    MAX_NEW_TOKENS = 250
     TEMPERATURE = 0.7
     TOP_P = 0.9
     REPETITION_PENALTY = 1.1
     
     # Context management
     MAX_CONTEXT_MESSAGES = 5
-    MAX_CONTEXT_TOKENS = 512
+    MAX_CONTEXT_TOKENS = 1024
     
     # Response formatting
     RESPONSE_MIN_SENTENCES = 1
