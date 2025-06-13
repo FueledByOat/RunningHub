@@ -1,7 +1,6 @@
 docker_compose.yml
 dockerfile.txt
 secrets.env
-strava_data_pipeline.py
 /venv
 *.db
 *.bat
@@ -21,3 +20,6 @@ dev.ipynb
 find_pip_imports.py
 /__pycache__
 *.ipynb
+/blueprints/running_hub/static/images/motivation
+/blueprints/running_hub/templates/motivation.html
+/blueprints/running_hub/static/js/motivation.js

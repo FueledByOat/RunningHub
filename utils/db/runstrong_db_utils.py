@@ -151,6 +151,46 @@ def save_workout_performance(conn: sqlite3.Connection, routine_id: int, exercise
     conn.commit()
     return cursor.lastrowid
 
+def save_workout_performance_bulk(conn: sqlite3.Connection, routine_id: int, workout_date: str, exercises: List[Dict]) -> bool:
+    """
+    Saves a list of workout performance records in a single database transaction.
+    Returns True on success.
+    """
+    cursor = conn.cursor()
+    try:
+        for exercise_data in exercises:
+            cursor.execute("""
+                INSERT INTO workout_performance 
+                (routine_id, exercise_id, workout_date, planned_sets, actual_sets,
+                 planned_reps, actual_reps, planned_load_lbs, actual_load_lbs,
+                 notes, completion_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                routine_id, 
+                exercise_data.get('exercise_id'), 
+                workout_date,
+                exercise_data.get('planned_sets'), 
+                exercise_data.get('actual_sets'),
+                exercise_data.get('planned_reps'), 
+                exercise_data.get('actual_reps'),
+                exercise_data.get('planned_load_lbs'), 
+                exercise_data.get('actual_load_lbs'),
+                exercise_data.get('notes'), 
+                exercise_data.get('completion_status', 'completed')
+            ))
+        
+        # Commit all inserts at once
+        conn.commit()
+        logger.info(f"Successfully saved {len(exercises)} performance records for routine {routine_id} on {workout_date}.")
+        return True
+
+    except sqlite3.Error as e:
+        # If any insert fails, roll back all of them
+        conn.rollback()
+        logger.error(f"Database error during bulk save for routine {routine_id}. Rolling back. Error: {e}")
+        # Re-raise the exception to be caught by the service layer
+        raise e
+
 def get_workout_history(conn: sqlite3.Connection, routine_id: int) -> List[Dict]:
     """Get workout history for a specific routine"""
     cursor = conn.execute("""
@@ -358,7 +398,7 @@ def initialize_runstrong_database(conn: sqlite3.Connection) -> bool:
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS muscle_group_fatigue (
     id INTEGER PRIMARY KEY,
-    muscle_group TEXT,
+    muscle_group TEXT UNIQUE,
     last_trained_date DATE,
     volume_7day FLOAT,
     volume_14day FLOAT,
@@ -445,196 +485,237 @@ def get_muscle_groups_from_exercise(exercise_data: dict) -> List[str]:
     
     return list(set(muscles))
 
-def calculate_recovery_score(days_since_last: int, volume_7day: float, volume_14day: float) -> float:
-    """Calculate recovery score based on time and volume"""
-    # Time component: more days = better recovery (max 70 points)
-    time_factor = min(days_since_last * 15, 70)
+def calculate_recovery_score(days_since_last: int, volume_7day: float, volume_14day: float) -> int:
+    """
+    Calculates a recovery score based on time since last workout and training load ratio.
+    This version uses a tiered, rule-based system for clearer, more stable results.
+    The final score is rounded to the nearest integer.
+    """
+    # Ensure inputs are valid numbers to prevent errors
+    days_since_last = int(days_since_last or 0)
+    volume_7day = float(volume_7day or 0.0)
+    volume_14day = float(volume_14day or 0.0)
+
+    # 1. Time Component: Recovery from being recently trained (Max 70 points)
+    # Every day of rest adds 10 points to recovery, capping at 7 days.
+    time_factor = min(days_since_last * 10, 70)
+
+    # 2. Volume Component: Calculate Acute:Chronic Workload Ratio (ACWR)
+    # This ratio compares the last 7 days of training load to the last 14.
+    if volume_14day == 0:
+        volume_ratio = 0
+    else:
+        # To avoid division by zero if there's volume in the last 14 days but not the last 7
+        acute_load = volume_7day / 7
+        chronic_load = volume_14day / 14
+        if chronic_load == 0:
+            volume_ratio = 2.0 # Assign a high ratio if there's acute load but no chronic load
+        else:
+            volume_ratio = acute_load / chronic_load
+
+    # 3. Tiered Penalty System (Replaces the complex math.tanh function)
+    volume_penalty = 0
+    if volume_ratio > 1.5:  # Danger Zone: Sharp increase in load
+        volume_penalty = 40
+    elif volume_ratio > 1.2: # Caution Zone: Significant increase
+        volume_penalty = 20
+    elif volume_ratio > 1.0: # Slight increase
+        volume_penalty = 5
+    # If ratio is < 1.0, it means load is stable or decreasing, so no penalty.
+
+    # 4. Final Score Calculation
+    # A base score of 30 represents a baseline level of 'ready'.
+    # This is increased by rest (time_factor) and decreased by recent hard training (volume_penalty).
+    recovery_score = (30 + time_factor) - volume_penalty
+
+    # Clamp the score between 0 and 100 and round to the nearest whole number.
+    final_score = round(max(0, min(100, recovery_score)))
     
-    # Volume component: higher recent volume = more fatigue
-    volume_ratio = (volume_7day / 7) / (volume_14day / 14) # Switching to ACWR
-    volume_penalty = 40 * math.tanh(volume_ratio - 1) # switching to expo smoothin
-    volume_penalty = min(max(volume_penalty, 0), 50)
-    
-    # Base recovery + time factor - volume penalty
-    recovery_score = max(0, min(100, time_factor + 30 - volume_penalty))
-    return recovery_score
+    return final_score
 
 def get_muscle_group_mapping() -> Dict[str, str]:
-    """Map individual muscles to broader muscle groups"""
+    """
+    Maps standardized muscle names to their broad anatomical group.
+    This is the second step after normalization.
+    """
     return {
-        # Upper Body
-        'Chest': 'Upper body',
-        'Triceps': 'Upper body',
-        'Anterior deltoids': 'Upper body',
-        'Posterior deltoids': 'Upper body',
-        'Lateral deltoids': 'Upper body',
-        'Deltoids': 'Upper body',
-        'Shoulders': 'Upper body',
+        # --- Upper Body ---
+        'Back': 'Upper body',
         'Biceps': 'Upper body',
-        'Lats': 'Upper body',
-        'Latissimus dorsi': 'Upper body',
-        'Rhomboids': 'Upper body',
-        'Traps': 'Upper body',
-        'Trapezius': 'Upper body',
-        'Upper back': 'Upper body',
-        'Middle back': 'Upper body',
-        'Lower back': 'Upper body',
-        'Erector spinae': 'Upper body',
+        'Chest': 'Upper body',
         'Forearms': 'Upper body',
-        'Wrists': 'Upper body',
-        
-        # Lower Body
-        'Quadriceps': 'Lower body',
-        'Quads': 'Lower body',
-        'Hamstrings': 'Lower body',
-        'Glutes': 'Lower body',
-        'Gluteus maximus': 'Lower body',
-        'Gluteus medius': 'Lower body',
+        'Shoulders': 'Upper body',
+        'Triceps': 'Upper body',
+        'Upper Body': 'Upper body', # Passthrough
+
+        # --- Lower Body ---
+        'Ankles': 'Lower body',
         'Calves': 'Lower body',
-        'Gastrocnemius': 'Lower body',
-        'Soleus': 'Lower body',
-        'Hip flexors': 'Lower body',
-        'Hip abductors': 'Lower body',
-        'Hip adductors': 'Lower body',
-        'Tibialis anterior': 'Lower body',
-        
-        # Core (can be considered separate or part of upper)
-        'Core': 'Core',
-        'Abs': 'Core',
-        'Abdominals': 'Core',
-        'Obliques': 'Core',
-        'Transverse abdominis': 'Core'
+        'Glutes': 'Lower body',
+        'Hamstrings': 'Lower body',
+        'Hips': 'Lower body',
+        'Quadriceps': 'Lower body',
+        'Lower Body': 'Lower body', # Passthrough
+
+        # --- Core ---
+        'Core': 'Core'
     }
 
 def normalize_muscle_name(muscle: str) -> str:
-    """Normalize muscle names for consistent matching"""
+    """
+    (FINAL CORRECTED VERSION) Normalizes a comprehensive list of muscle names
+    into a single, standardized name without using aggressive suffix removal.
+    """
+    if not isinstance(muscle, str):
+        return ''
+    # Standardize by making lowercase and removing extra spaces
+    normalized = muscle.lower().strip()
+    
+    # --- Comprehensive mapping with both singular and plural variations ---
     muscle_map = {
-        'quads': 'Quadriceps',
-        'quadriceps': 'Quadriceps',
-        'glutes': 'Glutes',
-        'glute': 'Glutes',
-        'hams': 'Hamstrings',
-        'hamstrings': 'Hamstrings',
-        'calves': 'Calves',
-        'calf': 'Calves',
-        'core': 'Core',
-        'abs': 'Core',
-        'chest': 'Chest',
-        'pecs': 'Chest',
-        'back': 'Back',
-        'lats': 'Back',
-        'shoulders': 'Shoulders',
-        'delts': 'Shoulders',
-        'arms': 'Arms',
-        'biceps': 'Arms',
-        'triceps': 'Arms'
+        # Back
+        'back': 'Back', 'lats': 'Back', 'lat': 'Back', 'latissimus dorsi': 'Back', 
+        'rhomboids': 'Back', 'rhomboid': 'Back', 'traps': 'Back', 'trapezius': 'Back', 
+        'upper back': 'Back', 'middle back': 'Back', 'lower back': 'Back', 
+        'erector spinae': 'Back', 'levator scapulae': 'Back', 'lower trapezius': 'Back', 
+        'middle trapezius': 'Back', 'upper trapezius': 'Back',
+        
+        # Chest
+        'chest': 'Chest', 'pecs': 'Chest', 'pec': 'Chest', 'pectorals': 'Chest', 
+        'pectoral': 'Chest', 'serratus anterior': 'Chest',
+
+        # Shoulders
+        'shoulders': 'Shoulders', 'shoulder': 'Shoulders', 'delts': 'Shoulders', 
+        'delt': 'Shoulders', 'deltoid': 'Shoulders', 'deltoids': 'Shoulders',
+        'anterior deltoid': 'Shoulders', 'lateral deltoid': 'Shoulders',
+        'posterior deltoid': 'Shoulders', 'rear deltoid': 'Shoulders',
+        'anterior deltoids': 'Shoulders', 'rear deltoids': 'Shoulders',
+        
+        # Arms
+        'biceps': 'Biceps', 'bicep': 'Biceps', 'brachialis': 'Biceps', 
+        'triceps': 'Triceps', 'tricep': 'Triceps', 
+        'forearms': 'Forearms', 'forearm': 'Forearms', 'wrists': 'Forearms', 
+        'wrist': 'Forearms', 'brachioradialis': 'Forearms',
+
+        # Quads
+        'quads': 'Quadriceps', 'quad': 'Quadriceps', 'quadriceps': 'Quadriceps', 
+        'quadricep': 'Quadriceps',
+
+        # Hamstrings
+        'hams': 'Hamstrings', 'ham': 'Hamstrings', 'hamstrings': 'Hamstrings', 
+        'hamstring': 'Hamstrings',
+
+        # Glutes
+        'glutes': 'Glutes', 'glute': 'Glutes', 'gluteus maximus': 'Glutes',
+        'gluteus medius': 'Glutes', 'gluteus minimus': 'Glutes',
+        'glute medius': 'Glutes', 'glute minimus': 'Glutes',
+        'glute maximus': 'Glutes', 
+
+        # Calves / Lower Leg
+        'calves': 'Calves', 'calf': 'Calves', 'gastrocnemius': 'Calves',
+        'soleus': 'Calves', 'achilles tendon': 'Calves', 'ankles': 'Ankles', 'ankle': 'Ankles',
+
+        # Hips
+        'hips': 'Hips', 'hip': 'Hips', 'hip flexors': 'Hips', 'hip flexor': 'Hips',
+        'hip abductors': 'Hips', 'hip abductor': 'Hips', 'hip adductors': 'Hips',
+        'hip adductor': 'Hips', 'hip stabilizers': 'Hips', 'hip stabilizer': 'Hips',
+
+        # Core
+        'core': 'Core', 'abs': 'Core', 'ab': 'Core', 'abdominals': 'Core', 
+        'abdominal': 'Core', 'obliques': 'Core', 'oblique': 'Core',
+        'transverse abdominis': 'Core', 'deep abdominals': 'Core',
+        'lower abdominals': 'Core', 'rectus abdominis': 'Core',
+
+        # Handle broad categories found in your data
+        'upper body': 'Upper Body',
+        'lower body': 'Lower Body',
+
+        # Ignore overly generic terms by mapping them to an empty string
+        'full body': '',
+        'stabilizers': '',
+        'stabilizer': '',
     }
     
-    normalized = muscle.lower().strip()
-    return muscle_map.get(normalized, muscle.title())
+    # Use the map, otherwise, return the original name, cleaned and title-cased
+    return muscle_map.get(normalized, muscle.strip().title())
 
 def update_muscle_group_fatigue(conn: sqlite3.Connection):
-    """Updated function to handle both database and direct exercise data"""
-    logger.info("Updating muscle group fatigue...")
+    """(DEBUGGING VERSION) Updates muscle group fatigue."""
+    logger.info("--- STARTING FATIGUE UPDATE (DEBUG MODE) ---")
     cursor = conn.cursor()
-    
-    # Set row factory to return Row objects that support both index and name access
     cursor.row_factory = sqlite3.Row
-    
-    # Get muscle groups from exercises table
-    cursor.execute("""
-        SELECT primary_muscles, secondary_muscles, muscle_groups
-        FROM exercises
-        WHERE primary_muscles IS NOT NULL 
-           OR secondary_muscles IS NOT NULL 
-           OR muscle_groups IS NOT NULL
-    """)
-    
+    cursor.execute("SELECT name, primary_muscles, secondary_muscles, muscle_groups FROM exercises")
     results = cursor.fetchall()
-    muscle_groups = set()
     
-    # Parse muscle groups from database
+    unique_normalized_muscles = set()
+    print("\n[DEBUG] Stage 1: Parsing and Normalizing Muscle Names from 'exercises' table...")
     for row in results:
-        for muscle_field in row:
-            if muscle_field:
-                try:
-                    # Try parsing as JSON first
-                    parsed = json.loads(muscle_field)
-                    if isinstance(parsed, list):
-                        muscle_groups.update([normalize_muscle_name(m) for m in parsed])
-                    else:
-                        muscle_groups.add(normalize_muscle_name(str(parsed)))
-                except (json.JSONDecodeError, TypeError):
-                    # Fallback to string parsing
-                    if isinstance(muscle_field, str):
-                        muscles = [normalize_muscle_name(m.strip()) for m in muscle_field.split(',') if m.strip()]
-                        muscle_groups.update(muscles)
+        for key in ['primary_muscles', 'secondary_muscles', 'muscle_groups']:
+            field = row[key]
+            if not field: continue
+            
+            muscles_to_process = []
+            try: # Assume JSON first
+                loaded_muscles = json.loads(field)
+                if isinstance(loaded_muscles, list):
+                    muscles_to_process = loaded_muscles
+                elif isinstance(loaded_muscles, str):
+                     muscles_to_process = [m.strip() for m in loaded_muscles.split(',')]
+            except (json.JSONDecodeError, TypeError): # Fallback to comma-separated string
+                muscles_to_process = str(field).split(',')
+
+            for muscle_name in muscles_to_process:
+                if muscle_name and muscle_name.strip():
+                    normalized = normalize_muscle_name(muscle_name)
+                    print(f"  - Original: '{muscle_name.strip()}' -> Normalized: '{normalized}'")
+                    unique_normalized_muscles.add(normalized)
     
-    # If no data in database, use default muscle groups
-    if not muscle_groups:
-        muscle_groups = {'Quadriceps', 'Glutes', 'Hamstrings', 'Calves', 'Core', 'Chest', 'Back', 'Shoulders', 'Arms'}
-        logger.info("Using default muscle groups as no data found in database")
-    
-    muscle_groups = list(muscle_groups)
-    logger.info(f"Processing muscle groups: {muscle_groups}")
-    
+    print(f"\n[DEBUG] Stage 2: Final unique muscle groups to be processed: {sorted(list(unique_normalized_muscles))}\n")
+
     today = datetime.datetime.now().date()
     seven_days_ago = today - timedelta(days=7)
     fourteen_days_ago = today - timedelta(days=14)
-    
-    for muscle_group in muscle_groups:
-        logger.info(f"Processing muscle group: {muscle_group}")
-        
-        # More flexible query that handles different data formats
+
+    for muscle_group in unique_normalized_muscles:
+        if not muscle_group or not muscle_group.strip():
+            continue
+
+        # This query should be the corrected version from our previous discussion
         cursor.execute("""
             SELECT
                 MAX(wp.workout_date) as last_trained,
                 COALESCE(SUM(CASE WHEN wp.workout_date >= ? THEN
                     (COALESCE(wp.actual_sets, 0) * COALESCE(wp.actual_reps, 0) * COALESCE(wp.actual_load_lbs, 0))
                     ELSE 0 END), 0) as volume_7day,
-                COALESCE(SUM(CASE WHEN wp.workout_date >= ? THEN
-                    (COALESCE(wp.actual_sets, 0) * COALESCE(wp.actual_reps, 0) * COALESCE(wp.actual_load_lbs, 0))
-                    ELSE 0 END), 0) as volume_14day
+                COALESCE(SUM(COALESCE(wp.actual_sets, 0) * COALESCE(wp.actual_reps, 0) * COALESCE(wp.actual_load_lbs, 0)), 0) as volume_14day
             FROM workout_performance wp
             JOIN exercises e ON wp.exercise_id = e.id
             WHERE (e.primary_muscles LIKE ? OR e.secondary_muscles LIKE ? OR e.muscle_groups LIKE ?)
             AND wp.workout_date >= ?
-        """, (seven_days_ago, fourteen_days_ago,
-            f'%{muscle_group}%', f'%{muscle_group}%', f'%{muscle_group}%', fourteen_days_ago))
+        """, (str(seven_days_ago), f'%{muscle_group}%', f'%{muscle_group}%', f'%{muscle_group}%', str(fourteen_days_ago)))
         
         result = cursor.fetchone()
         
-        # Fix: Use column names instead of indices
-        if result and result['last_trained']:
-            last_trained = result['last_trained']
-            volume_7day = result['volume_7day'] or 0
-            volume_14day = result['volume_14day'] or 0
-            
-            # Calculate days since last training
-            if isinstance(last_trained, str):
-                last_trained = datetime.datetime.strptime(last_trained, '%Y-%m-%d').date()
-            days_since = (today - last_trained).days
+        last_trained_str = result['last_trained'] if result else None
+        if last_trained_str:
+            last_trained_date = datetime.datetime.strptime(last_trained_str, '%Y-%m-%d').date()
+            days_since = (today - last_trained_date).days
         else:
-            # No training data found - assume longer recovery time
-            last_trained = fourteen_days_ago
-            volume_7day = 0
-            volume_14day = 0
-            days_since = 14
+            days_since = 99 # A high number for untrained muscles
         
-        # Calculate recovery score
+        volume_7day = result['volume_7day'] if result else 0
+        volume_14day = result['volume_14day'] if result else 0
+        
         recovery_score = calculate_recovery_score(days_since, volume_7day, volume_14day)
         
-        # Insert/update muscle group fatigue
         cursor.execute("""
             INSERT OR REPLACE INTO muscle_group_fatigue
-            (muscle_group, last_trained_date, volume_7day, volume_14day,
-            recovery_score, updated_at)
+            (muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (muscle_group, last_trained, volume_7day, volume_14day,
-            recovery_score, datetime.datetime.now()))
+        """, (muscle_group, last_trained_str, volume_7day, volume_14day, recovery_score, datetime.datetime.now()))
     
     conn.commit()
-    logger.info("Muscle group fatigue update completed")
+    logger.info("--- FINISHED FATIGUE UPDATE (DEBUG MODE) ---")
 
 
 def get_daily_training_data(conn: sqlite3.Connection, muscle_group_filter: str = None, days: int = 7) -> List[Dict]:
@@ -721,68 +802,95 @@ def get_fatigue_trend_data(conn: sqlite3.Connection, muscle_group_filter: str = 
     
     return fatigue_trend
 
-def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: str = None) -> Dict:
-    logger.info(f"Fetching fatigue dashboard data with filter: {muscle_group_filter}")
+def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: str = None) -> dict:
+    """
+    (FINAL ROBUST VERSION)
+    Gets all data required for the fatigue dashboard, applying filters at the
+    database level and using case-insensitive mapping for robust categorization.
+    """
+    logger.info(f"Fetching dashboard data with filter: '{muscle_group_filter}'")
     cursor = conn.cursor()
     cursor.row_factory = sqlite3.Row
 
-    muscle_mapping = get_muscle_group_mapping()
+    # Get the canonical mapping of standard muscle names to broad groups
+    muscle_to_broad_group_map = get_muscle_group_mapping()
+    
+    # --- Database Query with Filtering ---
+    query = "SELECT muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score FROM muscle_group_fatigue"
+    params = ()
 
-    base_query = """
-        SELECT muscle_group, last_trained_date, volume_7day, volume_14day, recovery_score
-        FROM muscle_group_fatigue
-    """
-
-    if muscle_group_filter and muscle_group_filter.lower() in ['upper body', 'lower body', 'core']:
-        filtered_muscles = [muscle for muscle, group in muscle_mapping.items()
-                            if group.lower() == muscle_group_filter.lower()]
+    # If a filter is active, build the WHERE clause to select only the relevant muscles
+    if muscle_group_filter and muscle_group_filter.lower() != 'all':
+        # Find all standard muscle names that belong to the desired broad group
+        filtered_muscles = [
+            std_name for std_name, broad_group in muscle_to_broad_group_map.items() 
+            if broad_group.lower() == muscle_group_filter.lower()
+        ]
+        
+        # If we found any muscles for that group, add them to the query
         if filtered_muscles:
             placeholders = ','.join(['?' for _ in filtered_muscles])
-            query = base_query + f" WHERE muscle_group IN ({placeholders})"
-            cursor.execute(query + " ORDER BY recovery_score ASC", filtered_muscles)
+            query += f" WHERE muscle_group IN ({placeholders})"
+            params = tuple(filtered_muscles)
         else:
-            cursor.execute(base_query + " ORDER BY recovery_score ASC")
-    else:
-        cursor.execute(base_query + " ORDER BY recovery_score ASC")
+            # If the filter is valid but has no muscles (e.g., "Core" if no core exercises exist)
+            # ensure the query returns no results.
+            query += " WHERE 1=0"
 
+    query += " ORDER BY recovery_score ASC"
+    cursor.execute(query, params)
+    
+    db_results = cursor.fetchall()
+
+    # --- Process Results with Case-Insensitive Mapping ---
+    
+    # Create a case-insensitive lookup dictionary for maximum robustness
+    case_insensitive_lookup = {k.lower(): v for k, v in muscle_to_broad_group_map.items()}
+    
     muscle_fatigue = []
-    for row in cursor.fetchall():
-        last_trained = row['last_trained_date']
-        fatigue_level = max(0, min(100, 100 - row['recovery_score']))
+    for row in db_results:
+        stored_muscle_group = row['muscle_group']
+        
+        # Look up the broad group using the case-insensitive dictionary
+        broad_group = case_insensitive_lookup.get(stored_muscle_group.lower(), 'Other')
+        
+        fatigue_level = round(max(0, min(100, 100 - row['recovery_score'])))
 
         muscle_fatigue.append({
-            'muscle_group': row['muscle_group'],
-            'last_trained': last_trained,
+            'muscle_group': stored_muscle_group,
+            'last_trained': row['last_trained_date'],
             'volume_7day': row['volume_7day'],
             'volume_14day': row['volume_14day'],
             'recovery_score': row['recovery_score'],
             'fatigue_level': fatigue_level,
-            'broad_group': muscle_mapping.get(row['muscle_group'], 'Other'),
+            'broad_group': broad_group,
         })
 
-    cursor.execute("""
-        SELECT training_stress_score
-        FROM weekly_training_summary
-        ORDER BY week_start_date DESC
-        LIMIT 7
-    """)
-    weekly_stress = [row['training_stress_score'] for row in cursor.fetchall()] or [60, 80, 45, 90, 30, 75, 85]
+    # --- Assemble Final Payload ---
 
-    overall_fatigue = (sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue)) if muscle_fatigue else 50
+    # Calculate overall fatigue based on the (now filtered) list of muscles
+    if muscle_fatigue:
+        overall_fatigue = sum(m['fatigue_level'] for m in muscle_fatigue) / len(muscle_fatigue)
+    else:
+        overall_fatigue = 0 # Default to 0 if no data matches the filter
 
+    # These functions also need to respect the filter
     daily_training = get_daily_training_data(conn, muscle_group_filter)
     fatigue_trend = get_fatigue_trend_data(conn, muscle_group_filter)
 
+    # Note: The 'recommendation' and 'least_used_muscles' are added in the
+    # service layer, which is the correct place for that logic. This function
+    # correctly returns all the necessary source data.
+    
     return {
         'overall_fatigue': round(overall_fatigue),
         'muscle_fatigue': muscle_fatigue,
-        'weekly_stress': weekly_stress,
         'daily_training': daily_training,
         'fatigue_trend': fatigue_trend,
-        'active_filter': muscle_group_filter,
-        'available_filters': ['All', 'Upper body', 'Lower body', 'Core']
+        'available_filters': ['All', 'Upper body', 'Lower body', 'Core'],
     }
-    
+
+
 def run_daily_update(conn: sqlite3.Connection):
     """Main function to run daily fatigue updates"""
     logger.info("Starting daily fatigue tracking update...")
@@ -812,3 +920,58 @@ def run_daily_update(conn: sqlite3.Connection):
         logger.error(f"Error in run_daily_update: {e}")
         import traceback
         logger.error(traceback.format_exc())
+
+def get_or_create_freestyle_routine(conn: sqlite3.Connection) -> int:
+    """
+    Finds the 'Freestyle Workouts' routine or creates it if it doesn't exist.
+    Returns the ID of the routine.
+    """
+    FREESTYLE_ROUTINE_NAME = "Freestyle Workouts"
+    cursor = conn.cursor()
+    
+    # Check if the routine exists
+    cursor.execute("SELECT id FROM workout_routines WHERE name = ?", (FREESTYLE_ROUTINE_NAME,))
+    result = cursor.fetchone()
+    
+    if result:
+        # Return existing routine's ID
+        return result['id']
+    else:
+        # Create it if it doesn't exist
+        cursor.execute(
+            "INSERT INTO workout_routines (name, date_created) VALUES (?, ?)",
+            (FREESTYLE_ROUTINE_NAME, datetime.datetime.now().date())
+        )
+        conn.commit()
+        logger.info(f"Created special routine: '{FREESTYLE_ROUTINE_NAME}'")
+        return cursor.lastrowid
+    
+def rebuild_fatigue_table(conn: sqlite3.Connection):
+    """
+    Drops, recreates, and repopulates the muscle_group_fatigue table from scratch.
+    """
+    logger.warning("Rebuilding the muscle_group_fatigue table...")
+    cursor = conn.cursor()
+    
+    # 1. Drop the existing table
+    cursor.execute("DROP TABLE IF EXISTS muscle_group_fatigue")
+    
+    # 2. Re-create the table from its schema definition
+    cursor.execute('''
+        CREATE TABLE muscle_group_fatigue (
+            id INTEGER PRIMARY KEY,
+            muscle_group TEXT UNIQUE,
+            last_trained_date DATE,
+            volume_7day FLOAT,
+            volume_14day FLOAT,
+            recovery_score FLOAT,
+            updated_at TIMESTAMP
+        )
+    ''')
+    
+    # 3. Repopulate it with fresh data by calling the update function
+    #    (Ensure you have applied the bug fix to this function first!)
+    update_muscle_group_fatigue(conn)
+    
+    conn.commit()
+    logger.info("Successfully rebuilt and repopulated the muscle_group_fatigue table.")

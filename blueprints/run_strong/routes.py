@@ -10,6 +10,8 @@ from flask import Blueprint, render_template, request, jsonify, render_template_
 from werkzeug.exceptions import BadRequest
 from services.runstrong_service import RunStrongService
 
+from utils.db import runstrong_db_utils
+
 logger = logging.getLogger(__name__)
 
 # Create blueprint
@@ -189,34 +191,31 @@ def register_routes(runstrong_service):
     # API Routes for Journal
     @run_strong_bp.route('/api/workout-performance', methods=['POST'])
     def save_workout_performance():
-        """Save workout performance data."""
+        """Save workout performance data for an entire session."""
         try:
             data = request.get_json()
+            if not data:
+                return jsonify({'error': 'Invalid request body.'}), 400
+
             routine_id = data.get('routine_id')
             workout_date = data.get('workout_date')
             exercises = data.get('exercises', [])
             
             if not routine_id or not workout_date:
                 return jsonify({'error': 'Routine ID and workout date are required'}), 400
+
+            if not exercises:
+                return jsonify({'error': 'No exercises to log.'}), 400
             
-            # Save performance data for each exercise
-            for exercise_data in exercises:
-                runstrong_service.save_workout_performance(
-                    routine_id=exercise_data['routine_id'],
-                    exercise_id=exercise_data['exercise_id'],
-                    workout_date=exercise_data['workout_date'],
-                    planned_sets=exercise_data['planned_sets'],
-                    actual_sets=exercise_data['actual_sets'],
-                    planned_reps=exercise_data['planned_reps'],
-                    actual_reps=exercise_data['actual_reps'],
-                    planned_load_lbs=exercise_data['planned_load_lbs'],
-                    actual_load_lbs=exercise_data['actual_load_lbs'],
-                    notes=exercise_data.get('notes', ''),
-                    completion_status=exercise_data.get('completion_status', 'completed')
-                )
+            # Single call to the new bulk save service method
+            runstrong_service.save_workout_performance_bulk(
+                routine_id, workout_date, exercises
+            )
             
             return jsonify({'message': 'Workout performance saved successfully'})
+
         except Exception as e:
+            logger.error(f"Error saving workout performance: {e}")
             return jsonify({'error': str(e)}), 500
 
     @run_strong_bp.route('/api/workout-performance/<int:routine_id>', methods=['GET'])
@@ -320,3 +319,22 @@ def register_routes(runstrong_service):
         except Exception as e:
             logger.error(f"Update error: {e}")
             return jsonify({'error': 'Failed to update data'}), 500
+        
+    @run_strong_bp.route('/api/workout-performance/freestyle', methods=['POST'])
+    def save_freestyle_workout():
+        """API endpoint to save an ad-hoc/freestyle workout session."""
+        try:
+            data = request.get_json()
+            workout_date = data.get('workout_date')
+            exercises = data.get('exercises', [])
+
+            if not workout_date or not exercises:
+                return jsonify({'error': 'Workout date and at least one exercise are required'}), 400
+
+            runstrong_service.save_freestyle_workout(workout_date, exercises)
+            
+            return jsonify({'message': 'Freestyle workout saved successfully'})
+        except Exception as e:
+            logger.error(f"Error saving freestyle workout: {e}")
+            return jsonify({'error': str(e)}), 500
+    

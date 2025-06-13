@@ -50,12 +50,17 @@ def register_routes(coach_g_service):
             user_message = data.get('message', '').strip()
             if not user_message:
                 return jsonify({'error': 'Message is required'}), 400
-            
+
+
             personality_selection = data.get('personality', 'motivational')
             session_id = request.cookies.get('session_id') or str(uuid.uuid4())
-            
+                
+            if data.get('is_quick') == True:
+                coach_reply = coach_g_service.handle_quick_query(session_id, user_message, personality_selection, data.get('quick_question_topic'))
+                                                                                 
             # Simplified call to the service layer
-            coach_reply = coach_g_service.handle_user_query(session_id, user_message, personality_selection)
+            else:
+                coach_reply = coach_g_service.handle_user_query(session_id, user_message, personality_selection)
             
             response = jsonify({'response': coach_reply})
             

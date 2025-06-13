@@ -155,3 +155,13 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
             logger.error(f"Error loading trophy room: {e}")
             return render_template("trophy_room.html", 
                                  personal_records=[], units=units)
+        
+    @running_hub_bp.route("/motivation")
+    def motivation():
+        """Motivation Page"""
+        try:
+            x = 1
+            return render_template("motivation.html")
+        except Exception as e:
+            logger.error(f"Error loading RunningHub motivation: {e}")
+            return render_template("motivation.html")

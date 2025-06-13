@@ -1,92 +1,10 @@
-// Global variables
-let currentFilter = 'all';
+// runstrong_dashboard.js
 
-// Enhanced mock data with broad muscle groups (kept as fallback)
-const mockFatigueData = {
-    overall_fatigue: 72,
-    muscle_fatigue: [
-        {
-            muscle_group: 'Quadriceps',
-            last_trained: '2025-06-03',
-            volume_7day: 2400,
-            volume_14day: 4200,
-            recovery_score: 35,
-            fatigue_level: 65,
-            broad_group: 'Lower body'
-        },
-        {
-            muscle_group: 'Glutes',
-            last_trained: '2025-06-02',
-            volume_7day: 1800,
-            volume_14day: 3600,
-            recovery_score: 15,
-            fatigue_level: 85,
-            broad_group: 'Lower body'
-        },
-        {
-            muscle_group: 'Chest',
-            last_trained: '2025-06-01',
-            volume_7day: 2000,
-            volume_14day: 3800,
-            recovery_score: 45,
-            fatigue_level: 55,
-            broad_group: 'Upper body'
-        },
-        {
-            muscle_group: 'Triceps',
-            last_trained: '2025-06-04',
-            volume_7day: 1200,
-            volume_14day: 2400,
-            recovery_score: 60,
-            fatigue_level: 40,
-            broad_group: 'Upper body'
-        },
-        {
-            muscle_group: 'Hamstrings',
-            last_trained: '2025-06-01',
-            volume_7day: 1200,
-            volume_14day: 2800,
-            recovery_score: 65,
-            fatigue_level: 35,
-            broad_group: 'Lower body'
-        },
-        {
-            muscle_group: 'Core',
-            last_trained: '2025-06-03',
-            volume_7day: 900,
-            volume_14day: 1800,
-            recovery_score: 30,
-            fatigue_level: 70,
-            broad_group: 'Core'
-        }
-    ],
-    weekly_stress: [60, 80, 45, 90, 30, 75, 85],
-    daily_training: [
-        { day: 'Mon', intensity: 85, hasTraining: true, volume: 4250 },
-        { day: 'Tue', intensity: 0, hasTraining: false, volume: 0 },
-        { day: 'Wed', intensity: 70, hasTraining: true, volume: 3500 },
-        { day: 'Thu', intensity: 90, hasTraining: true, volume: 4500 },
-        { day: 'Fri', intensity: 0, hasTraining: false, volume: 0 },
-        { day: 'Sat', intensity: 60, hasTraining: true, volume: 3000 },
-        { day: 'Sun', intensity: 45, hasTraining: true, volume: 2250 }
-    ],
-    fatigue_trend: [
-        { day: 'Mon', fatigue: 45 },
-        { day: 'Tue', fatigue: 50 },
-        { day: 'Wed', fatigue: 65 },
-        { day: 'Thu', fatigue: 80 },
-        { day: 'Fri', fatigue: 75 },
-        { day: 'Sat', fatigue: 70 },
-        { day: 'Sun', fatigue: 72 }
-    ],
-    active_filter: 'all',
-    available_filters: ['All', 'Upper body', 'Lower body', 'Core']
-};
-// Utility Functions
-function getFatigueClass(fatigueLevel) {
-    if (fatigueLevel < 40) return 'fatigue-low';
-    if (fatigueLevel < 70) return 'fatigue-moderate';
-    return 'fatigue-high';
+// --- UTILITY FUNCTIONS ---
+function getFatigueClass(score) {
+  if (score < 50) return 'fatigue-low';
+  else if (score < 75) return 'fatigue-moderate';
+  else return 'fatigue-high';
 }
 
 function getRecoveryStatus(recoveryScore) {
@@ -95,51 +13,145 @@ function getRecoveryStatus(recoveryScore) {
     return { class: 'recovery-fatigued', text: 'Fatigued' };
 }
 
-function calculateDaysSince(dateString) {
-    const lastTrained = new Date(dateString);
-    const today = new Date();
-    const diffTime = today - lastTrained;
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+// --- RENDER FUNCTIONS ---
+
+/**
+ * Main function to update all dashboard components with new data.
+ * This is now the single entry point for rendering.
+ */
+function updateDashboardUI(data) {
+    console.log('Updating dashboard with data:', data);
+
+    renderOverallFatigue(data.overall_fatigue, data.recommendation);
+    renderTrainingIntensity(data.daily_training || []);
+    renderFatigueTrend(data.fatigue_trend || []);
+    renderMuscleFatigueGroups(data.muscle_fatigue || []);
+    renderInsights(data.muscle_fatigue || [], data.least_used_muscles || []);
 }
 
-// Filtering and Data Handling
-function setMuscleGroupFilter(filter) {
-    currentFilter = filter;
-
-    // Update filter buttons
-    document.querySelectorAll('.filter-toggle').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    const activeBtn = document.querySelector(`[data-filter="${filter}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
-
-    // Update status text
-    const status = filter === 'all' ? 'All Muscle Groups' :
-        `${filter.charAt(0).toUpperCase() + filter.slice(1)} Only`;
-    const filterStatusEl = document.getElementById('filter-status');
-    if (filterStatusEl) filterStatusEl.textContent = status;
-
-    refreshDashboard();
+function renderFilterButtons(filters = ['All', 'Upper body', 'Lower body', 'Core'], activeFilter = 'all') {
+    const container = document.getElementById('filter-buttons-container');
+    if (!container) return;
+    container.innerHTML = filters.map(filter => `
+        <button 
+            class="filter-btn ${activeFilter.toLowerCase() === filter.toLowerCase() ? 'active' : ''}" 
+            onclick="setMuscleGroupFilter('${filter.toLowerCase()}')">
+            ${filter}
+        </button>
+    `).join('');
 }
 
-function filterMuscleData(data, filter) {
-    if (filter === 'all') return data;
+function getFatigueClass(score) {
+  if (score < 50) return 'fatigue-low';
+  else if (score < 75) return 'fatigue-moderate';
+  else return 'fatigue-high';
+}
 
-    const filtered = { ...data };
-    filtered.muscle_fatigue = data.muscle_fatigue.filter(m =>
-        m.broad_group?.toLowerCase() === filter.toLowerCase()
-    );
 
-    if (filtered.muscle_fatigue.length > 0) {
-        const total = filtered.muscle_fatigue.reduce((sum, m) => sum + m.fatigue_level, 0);
-        filtered.overall_fatigue = Math.round(total / filtered.muscle_fatigue.length);
+function renderOverallFatigue(score, recommendation) {
+    const progressCircle = document.getElementById('progress-circle');
+    const progressText = document.getElementById('progress-text');
+    const recommendationEl = document.getElementById('recommendation-container');
+    const descriptionEl = document.getElementById('fatigue-description');
+
+    if (progressCircle && progressText) {
+        const fatigueClass = getFatigueClass(score);
+        progressCircle.className = `progress-circle ${fatigueClass}`;
+
+        // ** ADD THIS: Animate the circle based on score **
+        const circumference = 339.292;
+        const offset = circumference - (score / 100) * circumference;
+        progressCircle.style.strokeDashoffset = offset;
+
+        progressText.textContent = score;
     }
 
-    return filtered;
+    if (recommendationEl) recommendationEl.textContent = recommendation || "No recommendation available.";
+
+    if (descriptionEl) {
+        const status = score < 40 ? 'Fresh' : score < 70 ? 'Moderate' : 'High Fatigue';
+        descriptionEl.textContent = status;
+        descriptionEl.className = 'fatigue-status';
+    }
 }
 
-// Visualization and DOM Manipulation
-function updateTrainingIntensity(data) {
+function renderMuscleFatigueGroups(muscleData) {
+    const container = document.getElementById('muscle-fatigue-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const grouped = muscleData.reduce((acc, muscle) => {
+        const group = muscle.broad_group || 'Other';
+        if (!acc[group]) acc[group] = [];
+        acc[group].push(muscle);
+        return acc;
+    }, {});
+
+    ['Upper body', 'Lower body', 'Core', 'Other'].forEach(groupName => {
+        if (grouped[groupName]) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'fatigue-group';
+            
+            const title = document.createElement('h4');
+            title.className = 'fatigue-group-title';
+            title.textContent = groupName;
+            groupDiv.appendChild(title);
+            
+            grouped[groupName].forEach(muscle => {
+                const fatigueClass = getFatigueClass(muscle.fatigue_level);
+                const recovery = getRecoveryStatus(muscle.recovery_score);
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'muscle-group-item';
+                itemDiv.innerHTML = `
+                    <span class="muscle-name">${muscle.muscle_group}</span>
+                    <div class="fatigue-indicator">
+                        <div class="fatigue-bar">
+                            <div class="fatigue-fill ${fatigueClass}" style="width: ${muscle.fatigue_level}%"></div>
+                        </div>
+                        <span class="fatigue-score">${muscle.fatigue_level}</span>
+                        <span class="recovery-badge ${recovery.class}">${recovery.text}</span>
+                    </div>`;
+                groupDiv.appendChild(itemDiv);
+            });
+            container.appendChild(groupDiv);
+        }
+    });
+
+    if (container.innerHTML === '') {
+        container.innerHTML = `<p class="no-data">No data available for selected filter.</p>`;
+    }
+}
+
+function renderInsights(muscleData, leastUsedMuscles) {
+    const priorityContainer = document.getElementById('recovery-priority-container');
+    const neglectedContainer = document.getElementById('neglected-muscles-container');
+
+    // Render Recovery Priority (Top 3 most fatigued)
+    if (priorityContainer) {
+        const mostFatigued = [...muscleData].sort((a, b) => b.fatigue_level - a.fatigue_level).slice(0, 5);
+        priorityContainer.innerHTML = mostFatigued.map(m => `
+            <div class="insight-item">
+                <span class="muscle-name">${m.muscle_group}</span>
+                <span class="fatigue-value ${getFatigueClass(m.fatigue_level)}">${m.fatigue_level}% Fatigued</span>
+            </div>
+        `).join('');
+    }
+
+    // Render Neglected Muscles (from backend or calculated)
+    if (neglectedContainer) {
+        neglectedContainer.innerHTML = leastUsedMuscles.map(m => {
+            const days = Math.round((new Date() - new Date(m.last_trained)) / (1000 * 60 * 60 * 24));
+            return `
+            <div class="insight-item">
+                <span class="muscle-name">${m.muscle_group}</span>
+                <span class="days-value">Rested ${days} days</span>
+            </div>
+            `
+        }).join('');
+    }
+}
+
+function renderTrainingIntensity(dailyTraining) {
     const stressBars = document.getElementById('stress-bars');
     const dayLabels = document.getElementById('day-labels');
     if (!stressBars || !dayLabels) return;
@@ -147,7 +159,7 @@ function updateTrainingIntensity(data) {
     stressBars.innerHTML = '';
     dayLabels.innerHTML = '';
 
-    data.daily_training.forEach(day => {
+    dailyTraining.forEach(day => {
         const bar = document.createElement('div');
         bar.className = day.hasTraining ? 'stress-bar' : 'stress-bar rest-day';
         bar.style.height = `${day.intensity}%`;
@@ -160,146 +172,204 @@ function updateTrainingIntensity(data) {
     });
 }
 
-function updateFatigueTrend(data) {
+function renderFatigueTrend(fatigueTrend) {
     const svg = document.getElementById('fatigue-trend-svg');
-    if (!svg || !data.fatigue_trend?.length) return;
+    if (!svg || !fatigueTrend?.length) return;
 
-    const width = 300, height = 120;
+    // Get the actual container dimensions
+    const container = svg.parentElement;
+    const containerRect = container.getBoundingClientRect();
+    const width = containerRect.width || 400; // fallback width
+    const height = 140; // Keep your desired height
+    
+    const padding = { top: 10, right: 10, bottom: 25, left: 30 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    
+    // Set SVG to fill container
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', height);
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    svg.innerHTML = ''; // Clear all elements
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.innerHTML = '';
 
-    const points = data.fatigue_trend.map((item, index) => ({
-        x: (index / (data.fatigue_trend.length - 1)) * width,
-        y: height - (item.fatigue / 100) * height,
+    // Create main group for chart area
+    const chartGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    chartGroup.setAttribute('transform', `translate(${padding.left}, ${padding.top})`);
+    svg.appendChild(chartGroup);
+
+    // Scale data points
+    const maxFatigue = Math.max(...fatigueTrend.map(d => d.fatigue), 100);
+    const points = fatigueTrend.map((item, index) => ({
+        x: (index / (fatigueTrend.length - 1)) * chartWidth,
+        y: chartHeight - (item.fatigue / maxFatigue) * chartHeight,
         fatigue: item.fatigue,
         day: item.day
     }));
 
-    const pathData = points.map((pt, i) =>
-        `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`
-    ).join(' ');
+    // Add horizontal grid lines and labels
+    [0, 25, 50, 75, 100].forEach(value => {
+        const y = chartHeight - (value / maxFatigue) * chartHeight;
+        
+        // Grid line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', 0);
+        line.setAttribute('x2', chartWidth);
+        line.setAttribute('y1', y);
+        line.setAttribute('y2', y);
+        line.setAttribute('stroke', 'rgba(255,255,255,0.1)');
+        line.setAttribute('stroke-width', '1');
+        chartGroup.appendChild(line);
+        
+        // Y-axis label
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', -5);
+        label.setAttribute('y', y + 3);
+        label.setAttribute('text-anchor', 'end');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('fill', 'rgba(255,255,255,0.6)');
+        label.textContent = value;
+        chartGroup.appendChild(label);
+    });
 
-    const areaData = `${pathData} L ${width},${height} L 0,${height} Z`;
+    // Create path for trend line
+    const pathData = points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x},${pt.y}`).join(' ');
+    const areaData = `${pathData} L ${chartWidth},${chartHeight} L 0,${chartHeight} Z`;
 
+    // Add area fill
     const area = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     area.setAttribute('d', areaData);
     area.classList.add('trend-area');
-    svg.appendChild(area);
+    chartGroup.appendChild(area);
 
+    // Add trend line
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', pathData);
     path.classList.add('trend-path');
-    svg.appendChild(path);
+    chartGroup.appendChild(path);
 
-    points.forEach(pt => {
+    // Add data points with hover effects
+    points.forEach((point, index) => {
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', pt.x);
-        circle.setAttribute('cy', pt.y);
-        circle.setAttribute('r', 4);
-        circle.classList.add('trend-point');
-
-        const tooltip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-        tooltip.textContent = `${pt.day}: ${pt.fatigue}% fatigue`;
-        circle.appendChild(tooltip);
-
-        svg.appendChild(circle);
-    });
-
-    points.forEach(pt => {
-        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        text.setAttribute('x', pt.x);
-        text.setAttribute('y', height - 5);
-        text.setAttribute('text-anchor', 'middle');
-        text.setAttribute('class', 'chart-label');
-        text.textContent = pt.day;
-        svg.appendChild(text);
-    });
-}
-
-function updateFatigueData(data) {
-    console.log('Updating dashboard with data:', data);
-
-    document.getElementById('overall-score').textContent = data.overall_fatigue;
-    document.getElementById('fatigue-description').textContent = currentFilter === 'all'
-        ? 'Current fatigue level based on recent training volume and recovery'
-        : `Current ${currentFilter} fatigue level based on recent training`;
-
-    // const recommendationContainer = document.getElementById('recommendation-container');
-    // if (recommendationContainer) {
-    //     if (data.recommendation) {
-    //         recommendationContainer.textContent = data.recommendation;
-    //     } else {
-    //         recommendationContainer.textContent = "No recommendation available.";
-    //     }
-    // }
-    const container = document.getElementById('muscle-fatigue-container');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (!data.muscle_fatigue.length) {
-        container.innerHTML = `<p class="no-data">No data available for selected muscle group</p>`;
-        return;
-    }
-
-    data.muscle_fatigue.forEach(muscle => {
-        const fatigueClass = getFatigueClass(muscle.fatigue_level);
-        const recovery = getRecoveryStatus(muscle.recovery_score);
-
-        const div = document.createElement('div');
-        div.className = 'muscle-group-item';
-        div.innerHTML = `
-            <span class="muscle-name">${muscle.muscle_group}</span>
-            <div class="fatigue-indicator">
-                <div class="fatigue-bar">
-                    <div class="fatigue-fill ${fatigueClass}" style="width: ${muscle.fatigue_level}%"></div>
-                </div>
-                <span class="fatigue-score">${muscle.fatigue_level}</span>
-                <span class="recovery-badge ${recovery.class}">${recovery.text}</span>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-
-    updateTrainingIntensity(data);
-    updateFatigueTrend(data);
-
-    const recoveryContainer = document.getElementById('recovery-time-container');
-    if (recoveryContainer) {
-        recoveryContainer.innerHTML = '';
-        data.muscle_fatigue.slice(0, 8).forEach(muscle => {
-            const days = calculateDaysSince(muscle.last_trained);
-            const div = document.createElement('div');
-            div.className = 'days-item';
-            div.innerHTML = `<div class="days-number">${days}</div><div class="days-label">${muscle.muscle_group}</div>`;
-            recoveryContainer.appendChild(div);
+        circle.setAttribute('cx', point.x);
+        circle.setAttribute('cy', point.y);
+        circle.setAttribute('r', '4');
+        circle.setAttribute('fill', 'var(--rs-highlight, #ff4ec7)');
+        circle.setAttribute('stroke', '#fff');
+        circle.setAttribute('stroke-width', '2');
+        circle.style.cursor = 'pointer';
+        
+        // Add tooltip
+        circle.addEventListener('mouseenter', () => {
+            circle.setAttribute('r', '6');
         });
+        circle.addEventListener('mouseleave', () => {
+            circle.setAttribute('r', '4');
+        });
+        
+        chartGroup.appendChild(circle);
+    });
+
+    // Add day labels on x-axis
+    points.forEach((point, index) => {
+        if (index % Math.ceil(points.length / 4) === 0) {
+            const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            label.setAttribute('x', point.x);
+            label.setAttribute('y', chartHeight + 15);
+            label.setAttribute('text-anchor', 'middle');
+            label.setAttribute('font-size', '9');
+            label.setAttribute('fill', 'rgba(255,255,255,0.6)');
+            label.textContent = fatigueTrend[index].day;
+            chartGroup.appendChild(label);
+        }
+    });
+
+    // Add trend indicator
+    const currentFatigue = points[points.length - 1]?.fatigue || 0;
+    const previousFatigue = points[points.length - 2]?.fatigue || currentFatigue;
+    const trend = currentFatigue - previousFatigue;
+    
+    const trendText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    trendText.setAttribute('x', chartWidth);
+    trendText.setAttribute('y', 15);
+    trendText.setAttribute('text-anchor', 'end');
+    trendText.setAttribute('font-size', '11');
+    trendText.setAttribute('font-weight', 'bold');
+    
+    if (trend > 5) {
+        trendText.setAttribute('fill', '#dc3545');
+        trendText.textContent = '↗ Rising';
+    } else if (trend < -5) {
+        trendText.setAttribute('fill', '#4ade80');
+        trendText.textContent = '↘ Improving';
+    } else {
+        trendText.setAttribute('fill', '#ffc107');
+        trendText.textContent = '→ Stable';
     }
+    
+    chartGroup.appendChild(trendText);
 }
 
-// Dashboard Refresh Logic
-function refreshDashboard() {
+
+// --- API AND EVENT HANDLERS ---
+let currentFilter = 'all';
+
+function setMuscleGroupFilter(filter) {
+    currentFilter = filter;
+    fetchDashboardData();
+}
+
+function fetchDashboardData() {
     console.log(`Refreshing dashboard with filter: ${currentFilter}`);
-    const url = currentFilter === 'all'
-        ? '/strong/api/fatigue-data'
-        : `/strong/api/fatigue-data?muscle_group=${encodeURIComponent(currentFilter)}`;
+    const url = `/strong/api/fatigue-data?muscle_group=${encodeURIComponent(currentFilter)}`;
 
     fetch(url)
-        .then(r => r.json())
-        .then(data => updateFatigueData(data))
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            renderFilterButtons(data.available_filters, currentFilter);
+            updateDashboardUI(data);
+        })
         .catch(err => {
-            console.error('Error fetching data, falling back to mock:', err);
-            const fallback = filterMuscleData(mockFatigueData, currentFilter);
-            updateFatigueData(fallback);
+            console.error('Error fetching dashboard data:', err);
+            // You can display an error message to the user here
+            document.getElementById('muscle-fatigue-column').innerHTML = 
+                `<div class="dashboard-card"><p class="error">Could not load dashboard data. Please try again later.</p></div>`;
         });
 }
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    refreshDashboard();
-    // setInterval(refreshDashboard, 30000);
-});
+function triggerManualUpdate() {
+    const btn = document.getElementById('update-btn');
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
 
-// Expose for debugging/testing
-window.setMuscleGroupFilter = setMuscleGroupFilter;
-window.refreshDashboard = refreshDashboard;
-window.updateFatigueData = updateFatigueData;
+    fetch('/strong/api/update-fatigue')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Manual update triggered successfully.');
+                fetchDashboardData(); // Refresh the dashboard with new data
+            } else {
+                throw new Error(data.error || 'Unknown update error');
+            }
+        })
+        .catch(err => {
+            console.error('Error triggering manual update:', err);
+            alert('Failed to update data.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = `<img src="/strong/static/images/refresh_icon.svg" alt="Refresh"/> Update Now`;
+        });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    fetchDashboardData();
+});
+window.addEventListener('resize', () => {
+    // Redraw chart with new dimensions
+    fetchDashboardData();
+});
