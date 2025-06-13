@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from utils.db import db_utils
 from utils.db import dash_db_utils
 from utils.db import language_db_utils
+from utils.db import runstrong_db_utils
 from config import Config
 
 # Configure module-level logger
@@ -776,4 +777,16 @@ def update_daily_dashboard_metrics() -> None:
             logger.info(f"Daily stats updated with: {df}")
     except sqlite3.Error as e:
         logger.error(f"Database error updating daily metrics: {e}")
+        raise
+
+def update_daily_runstrong_metrics() -> None:
+    """
+    Updates fatigue metrics on strength training data
+    """
+    try:
+        with sqlite3.connect(Config.DB_PATH) as conn:
+            runstrong_db_utils.update_muscle_group_fatigue(conn=conn)
+            logger.info(f"Muscle group fatigue updated")
+    except sqlite3.Error as e:
+        logger.error(f"Database error updating muscle group fatigue: {e}")
         raise

@@ -1,12 +1,117 @@
+// runstrong_journal.js
+
 let currentRoutine = null;
 let routineExercises = [];
+let allExercises = [];
+let freestyleExercises = [];
 
 // Load routines on page load
 document.addEventListener('DOMContentLoaded', function () {
     loadRoutines();
-    // Set today's date as default
+    loadAllExercisesForFreestyle(); // New function call
     document.getElementById('workout-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('freestyle-workout-date').value = new Date().toISOString().split('T')[0];
 });
+
+
+// New function to fetch all exercises
+async function loadAllExercisesForFreestyle() {
+    try {
+        const response = await fetch('/strong/api/exercises');
+        allExercises = await response.json();
+        const select = document.getElementById('freestyle-exercise-select');
+        select.innerHTML = allExercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+    } catch (error) {
+        console.error('Error loading exercises for freestyle logging:', error);
+    }
+}
+
+// New function to show the freestyle form
+function startFreestyleWorkout() {
+    document.getElementById('routine-selection').style.display = 'none';
+    document.getElementById('freestyle-form').style.display = 'block';
+}
+
+// New function to go back to routine selection
+function cancelFreestyleWorkout() {
+    document.getElementById('freestyle-form').style.display = 'none';
+    document.getElementById('routine-selection').style.display = 'block';
+    freestyleExercises = []; // Clear the session
+    renderFreestyleExercises(); // Update display
+}
+
+// New function to add an exercise to the temporary freestyle session
+function addFreestyleExercise() {
+    const exerciseSelect = document.getElementById('freestyle-exercise-select');
+    const exerciseId = parseInt(exerciseSelect.value);
+    const selectedExercise = allExercises.find(ex => ex.id === exerciseId);
+
+    if (!selectedExercise) return;
+
+    const exerciseData = {
+        exercise_id: selectedExercise.id,
+        name: selectedExercise.name, // Store name for display
+        actual_sets: parseInt(document.getElementById('freestyle-sets').value) || 0,
+        actual_reps: parseInt(document.getElementById('freestyle-reps').value) || 0,
+        actual_load_lbs: parseFloat(document.getElementById('freestyle-load').value) || 0,
+    };
+
+    freestyleExercises.push(exerciseData);
+    renderFreestyleExercises();
+}
+
+// New function to display the list of exercises in the current freestyle session
+function renderFreestyleExercises() {
+    const container = document.getElementById('freestyle-exercises-container');
+    if (freestyleExercises.length === 0) {
+        container.innerHTML = '<p>No exercises added yet.</p>';
+        return;
+    }
+
+    container.innerHTML = freestyleExercises.map((ex, index) => `
+        <div class="exercise-entry">
+            <div class="exercise-name">${ex.name}</div>
+            <span>${ex.actual_sets} sets × ${ex.actual_reps} reps @ ${ex.actual_load_lbs} lbs</span>
+            <button class="btn-danger-small" onclick="removeFreestyleExercise(${index})">Remove</button>
+        </div>
+    `).join('');
+}
+
+// New function to remove an exercise from the temporary list
+function removeFreestyleExercise(index) {
+    freestyleExercises.splice(index, 1);
+    renderFreestyleExercises();
+}
+
+// New function to save the entire freestyle session
+async function saveFreestyleSession() {
+    const workoutDate = document.getElementById('freestyle-workout-date').value;
+    if (freestyleExercises.length === 0) {
+        alert('Please add at least one exercise to the session.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/strong/api/workout-performance/freestyle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                workout_date: workoutDate,
+                exercises: freestyleExercises
+            })
+        });
+
+        if (response.ok) {
+            alert('Freestyle workout saved successfully!');
+            cancelFreestyleWorkout();
+        } else {
+            alert('Error saving workout. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error saving freestyle workout:', error);
+        alert('An error occurred. Please try again.');
+    }
+}
 
 async function loadRoutines() {
     try {

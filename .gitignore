@@ -20,3 +20,4 @@ dev.ipynb
 find_pip_imports.py
 /__pycache__
 *.ipynb
+/blueprints/running_hub/static/images/motivation

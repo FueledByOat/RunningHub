@@ -18,16 +18,7 @@ from utils.db import runstrong_db_utils
 class RunStrongService(BaseService):
     """Service for RunStrong strength training operations."""
 
-    # def get_exercises(self) -> List[Tuple[int, str]]:
-    #     """Get all available exercises."""
-    #     try:
-    #         with self._get_connection() as conn:
-    #             cursor = conn.cursor()
-    #             return cursor.execute("SELECT * FROM exercises").fetchall()
-    #     except Exception as e:
-    #         self.logger.error(f"Error getting exercises: {e}")
-    #         raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
-        
+     
     def add_exercise(self, data: dict) -> None:
         """Add single exercise to db."""
         try:
@@ -75,24 +66,7 @@ class RunStrongService(BaseService):
         except Exception as e:
             self.logger.error(f"Error getting routines: {e}")
             raise exception_utils.DatabaseError(f"Failed to get routines: {e}")
-    
-    # def get_routine_exercises(self, routine_id: int) -> List[Tuple[int, str]]:
-    #     """Get exercises for a specific routine."""
-    #     try:
-    #         with self._get_connection() as conn:
-    #             cursor = conn.cursor()
-    #             cursor.execute("""
-    #                 SELECT e.id, e.name
-    #                 FROM routine_exercises re
-    #                 JOIN exercises e ON e.id = re.exercise_id
-    #                 WHERE re.routine_id = ?
-    #                 ORDER BY re.order_index ASC
-    #             """, (routine_id,))
-    #             return cursor.fetchall()
-    #     except Exception as e:
-    #         self.logger.error(f"Error getting routine exercises for {routine_id}: {e}")
-    #         raise exception_utils.DatabaseError(f"Failed to get routine exercises: {e}")
-    # Late Night C team section
+
 
     def get_exercises(self) -> List[Tuple[int, str]]:
         """Get all available exercises."""
@@ -176,21 +150,21 @@ class RunStrongService(BaseService):
             self.logger.error(f"Error deleting routine {routine_id}: {e}")
             return False
 
-    def save_workout_performance(self, routine_id: int, exercise_id: int, workout_date: str,
-                        planned_sets: int, actual_sets: int, planned_reps: int,
-                        actual_reps: int, planned_load_lbs: float, actual_load_lbs: float,
-                        notes: str = '', completion_status: str = 'completed') -> Optional[int]:
-        """Save workout performance data"""
+    def save_workout_performance_bulk(self, routine_id: int, workout_date: str, exercises: List[Dict]):
+        """
+        Service layer method to save a complete workout performance log.
+        Handles the database connection and calls the bulk DB utility.
+        """
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.save_workout_performance(conn, routine_id, exercise_id, workout_date,
-                        planned_sets, actual_sets, planned_reps,
-                        actual_reps, planned_load_lbs, actual_load_lbs,
-                        notes, completion_status)
-            return result
+                runstrong_db_utils.save_workout_performance_bulk(
+                    conn, routine_id, workout_date, exercises
+                )
         except Exception as e:
-            self.logger.error(f"Error saving workout data for routine {routine_id}, exercise {exercise_id}: {e}")
-            return None
+            # The DB layer will log the specific DB error. This logs the service-level failure.
+            self.logger.error(f"Failed to save bulk workout performance for routine {routine_id}: {e}")
+            # Propagate a generic error to the route layer
+            raise exception_utils.DatabaseError(f"Failed to save workout: {e}")
 
     def get_workout_history(self, routine_id: int) -> List[Dict]:
         """Get workout history for a specific routine"""
@@ -278,24 +252,6 @@ class RunStrongService(BaseService):
             self.logger.error(f"Error fetching max exercise loads: {e}")
             return {}
 
-    # def delete_routine(self, routine_id: int):
-    #     """Delete a workout routine and its exercises."""
-    #     try:
-    #         with self._get_connection() as conn:
-    #             db_utils.clear_routine_exercises(conn, routine_id)
-    #             db_utils.delete_routine(conn, routine_id)
-    #     except Exception as e:
-    #         self.logger.error(f"Error deleting routine {routine_id}: {e}")
-
-    # def get_routine_by_id(self, routine_id: int) -> dict:
-    #     """Get a specific routine by ID."""
-    #     try:
-    #         with self._get_connection() as conn:
-    #             return db_utils.get_routine_by_id(conn, routine_id)
-    #     except Exception as e:
-    #         self.logger.error(f"Error fetching routine by ID {routine_id}: {e}")
-    #         return {}
-
     def get_routine_name_datecreated(self) -> list:
         """Get all workout routines."""
         try:
@@ -345,3 +301,22 @@ class RunStrongService(BaseService):
         except Exception as e:
             self.logger.warning(f"Unable to compute least used muscle groups: {e}")
             return []
+
+    def save_freestyle_workout(self, workout_date: str, exercises: List[Dict]):
+        """
+        Saves an ad-hoc (freestyle) workout session.
+        It finds/creates a special routine and logs the exercises under it.
+        """
+        try:
+            with self._get_connection() as conn:
+                # Get the ID for the special freestyle routine
+                freestyle_routine_id = runstrong_db_utils.get_or_create_freestyle_routine(conn)
+                
+                # Use the existing bulk save function with the special ID
+                runstrong_db_utils.save_workout_performance_bulk(
+                    conn, freestyle_routine_id, workout_date, exercises
+                )
+                
+        except Exception as e:
+            self.logger.error(f"Failed to save freestyle workout: {e}")
+            raise exception_utils.DatabaseError(f"Failed to save freestyle workout: {e}")

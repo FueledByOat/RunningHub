@@ -255,6 +255,17 @@ class StravaDataPipeline:
 
         self.logger.info(f"Daily Dashboard Metrics Update is successful")
 
+    def update_daily_runstrong_metrics(self) -> None:
+        """
+        Updates fatigue metrics on strength training data
+        """
+        try:
+            strava_utils.update_daily_runstrong_metrics()
+        except Exception as e:
+            self.logger.warning("Muscle fatigue database update failed!")
+
+        self.logger.info(f"Daily Dashboard Metrics Update is successful")
+
     def run_pipeline(self) -> bool:
         """
         Execute the complete data pipeline.

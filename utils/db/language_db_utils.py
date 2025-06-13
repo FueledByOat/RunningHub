@@ -183,3 +183,63 @@ def execute_generated_query(conn: sqlite3.Connection, sql_query: str):
     except sqlite3.Error as e:
         logger.error(f"Error executing generated SQL query '{sql_query}': {e}")
         raise exception_utils.DatabaseError(f"Failed to execute query: {e}") from e
+
+def get_running_summary_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -> dict:
+    """
+    Fetches a summary of running activities from the last N days.
+    (Corrected and Robust Version)
+    """
+    # Set the row_factory to sqlite3.Row to get dict-like rows
+    conn.row_factory = sqlite3.Row
+
+    start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    query = """
+        SELECT
+            SUM(distance) as total_distance,
+            SUM(moving_time) as total_moving_time,
+            COUNT(id) as num_runs,
+            SUM(total_elevation_gain) as total_elevation
+        FROM
+            activities
+        WHERE
+            type = 'Run' AND start_date_local >= ?
+    """
+    params = (start_date_str,)
+    cursor = conn.execute(query, params)
+    summary_data = cursor.fetchone()
+    
+    # Reset row_factory if other parts of your app expect tuples (optional but good practice)
+    conn.row_factory = None
+
+    # Convert the sqlite3.Row object to a standard dict before returning
+    return dict(summary_data) if summary_data and summary_data['num_runs'] is not None else {}
+
+
+def get_daily_metrics_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -> list[dict]:
+    """
+    Fetches the daily training metrics (CTL, ATL, TSB) for the last N days.
+    (Corrected and Robust Version)
+    """
+    # Set the row_factory to sqlite3.Row to get dict-like rows
+    conn.row_factory = sqlite3.Row
+
+    start_date = datetime.datetime.now() - datetime.timedelta(days=days)
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    
+    query = """
+        SELECT date, ctl, atl, tsb
+        FROM daily_training_metrics
+        WHERE date >= ?
+        ORDER BY date ASC
+    """
+    params = (start_date_str,)
+    cursor = conn.execute(query, params)
+    rows = cursor.fetchall()
+    
+    # Reset row_factory if other parts of your app expect tuples
+    conn.row_factory = None
+
+    # Convert the list of sqlite3.Row objects to a list of standard dicts
+    return [dict(row) for row in rows]

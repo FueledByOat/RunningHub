@@ -14,12 +14,14 @@
 </head>
 
 <body>
-  <header class="site-header">
-    <div class="container">
-      <h1 class="logo">RUNNING<span>HUB</span></h1>
-      <p class="tagline">Track, analyze, and improve your running performance</p>
-    </div>
-  </header>
+    <header class="site-header">
+        <div class="container">
+            <a href="{{ url_for('running_hub.home') }}">
+                <h1 class="logo">RUNNING<span>HUB</span></h1>
+            </a>
+            <p class="tagline">Detailed activity analysis</p>
+        </div>
+    </header>
 
   <main class="container">
     <div class="btn-container">
@@ -37,6 +39,9 @@
       </a>
       <a href="{{ url_for('running_hub.query') }}" class="btn btn-accent">
         <i class="fas fa-magnifying-glass"></i> Query
+      </a>
+      <a href="{{ url_for('running_hub.motivation') }}" class="btn">
+        <i class="fas fa-battery-full"></i> Motivation
       </a>
     </div>
 

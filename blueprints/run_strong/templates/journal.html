@@ -21,23 +21,70 @@
 
     <div class="runnervision-header">
         <a href="{{ url_for('running_hub.home') }}">
-            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
-                class="runstrong-logo" />
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}"
+                alt="RunStrong Logo" class="runstrong-logo" />
         </a>
     </div>
     <div class="runstrong-container">
         <h1 style="text-align: center; color: var(--rs-white); margin-bottom: 2rem;">Workout Journal</h1>
 
-        <!-- Routine Selection Section -->
         <div class="journal-section" id="routine-selection">
-            <h2>Select a Routine</h2>
+            <h2>Select an Option</h2>
+
+            <div class="routine-card" onclick="startFreestyleWorkout()">
+                <h3>Log a Freestyle Workout</h3>
+                <p>Log exercises without a pre-built routine.</p>
+            </div>
             <div class="routine-list" id="routine-list">
-                <!-- Routines will be loaded here -->
             </div>
         </div>
 
-        <!-- Workout Form Section -->
-        <div class="workout-form" id="workout-form">
+        <div id="freestyle-form" style="display: none;">
+            <div class="workout-header">
+                <h2 id="freestyle-title">Log Freestyle Workout</h2>
+                <div class="date-selector">
+                    <label for="freestyle-workout-date">Date:</label>
+                    <input type="date" id="freestyle-workout-date" required>
+                    <button type="button" class="btn-secondary" onclick="cancelFreestyleWorkout()">Back to
+                        Options</button>
+                </div>
+            </div>
+
+            <div class="add-exercise-section">
+                <h3>Add an Exercise</h3>
+                <div class="form-group">
+                    <label for="freestyle-exercise-select">Select Exercise:</label>
+                    <select id="freestyle-exercise-select" class="form-control"></select>
+                </div>
+                <div class="performance-grid">
+                    <div class="form-group">
+                        <label for="freestyle-sets">Sets:</label>
+                        <input type="number" id="freestyle-sets" value="3" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="freestyle-reps">Reps:</label>
+                        <input type="number" id="freestyle-reps" value="10" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="freestyle-load">Load (lbs):</label>
+                        <input type="number" id="freestyle-load" value="0" step="0.5" min="0">
+                    </div>
+                </div>
+                <button onclick="addFreestyleExercise()" class="btn-primary">Add Exercise to Session</button>
+            </div>
+
+            <div class="session-summary">
+                <h3>Today's Freestyle Session</h3>
+                <div id="freestyle-exercises-container">
+                    <p>No exercises added yet.</p>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button onclick="saveFreestyleSession()" class="btn-primary">Save Session</button>
+            </div>
+        </div>
+        <div class="workout-form" id="workout-form" style="display: none;">
             <div class="workout-header">
                 <h2 id="routine-title">Workout Session</h2>
                 <div class="date-selector">
@@ -48,7 +95,6 @@
             </div>
 
             <div id="exercises-container">
-                <!-- Exercise entries will be loaded here -->
             </div>
 
             <div style="text-align: center; margin-top: 2rem;">

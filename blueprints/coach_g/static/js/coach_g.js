@@ -19,7 +19,7 @@ messageInput.addEventListener('keydown', function (e) {
 
 sendButton.addEventListener('click', sendMessage);
 
-function sendMessage() {
+function sendMessage(isQuickQuestion = false, questionTopic = null) {
     const message = messageInput.value.trim();
     const personality = document.getElementById('coachGPersonality').value;
     if (!message) return;
@@ -40,7 +40,9 @@ function sendMessage() {
         },
         body: JSON.stringify({
             message: message,
-            personality: personality
+            personality: personality,
+            is_quick: isQuickQuestion,
+            quick_question_topic: questionTopic
         })
     })
         .then(response => response.json())
@@ -55,9 +57,11 @@ function sendMessage() {
         });
 }
 
-function sendQuickQuestion(question) {
+function sendQuickQuestion(question, topic) {
     messageInput.value = question;
-    sendMessage();
+    isQuickQuestion= true; 
+    questionTopic = topic; 
+    sendMessage(isQuickQuestion, questionTopic);
 }
 
 function addMessage(content, sender) {

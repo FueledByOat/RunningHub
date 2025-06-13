@@ -648,3 +648,209 @@ textarea {
 .styled-table tbody tr:hover {
   background-color: var(--accent-light);
 }
+
+/* Trophy Room Updates */
+
+.race-countdowns {
+  margin-top: 30px;
+  padding: 20px;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px var(--shadow);
+}
+
+.race-countdowns h3 {
+  margin-bottom: 20px;
+  color: var(--primary-dark);
+}
+
+.race-event {
+  margin-bottom: 25px;
+}
+
+.race-event h4 {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.countdown {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 12px;
+  background: var(--gray-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.progress {
+  height: 100%;
+  background: var(--accent);
+  width: 0%;
+  transition: width 0.6s ease-in-out;
+}
+.race-countdowns {
+  margin-top: 30px;
+  padding: 20px;
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 4px 8px var(--shadow);
+}
+
+.race-item {
+  margin-bottom: 25px;
+}
+
+.race-item h4 {
+  margin-bottom: 15px;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.flip-clock {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flip-unit {
+  text-align: center;
+  min-width: 70px;
+}
+
+.flip-unit-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin-top: 5px;
+}
+
+.flip-number {
+  font-size: 2.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: var(--primary-light);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: 2px;
+}
+
+.race-goal {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  margin-top: 10px;
+}
+
+.race-goal a {
+  color: var(--primary-light);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.flip-number {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.flip-number.flip {
+  transform: rotateX(360deg);
+  opacity: 0.85;
+}
+.race-item {
+  margin-bottom: 25px;
+}
+
+.race-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  background: var(--white);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px var(--shadow);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.race-info {
+  flex: 1 1 250px;
+}
+
+.race-countdown {
+  flex: 0 0 auto;
+}
+
+.race-goal {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  margin-top: 10px;
+}
+
+.race-goal a {
+  color: var(--primary-light);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.flip-clock {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.flip-unit {
+  text-align: center;
+  min-width: 70px;
+}
+
+/* .flip-number {
+  font-size: 2.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: var(--primary-light);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 10px 14px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: 2px;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.flip-number.flip {
+  transform: rotateX(360deg);
+  opacity: 0.85;
+} */
+
+.flip-unit-label {
+  font-size: 0.9rem;
+  color: var(--text-light);
+  margin-top: 5px;
+}
+
+.flip-number {
+    display: inline-block;
+    font-size: 2.5rem;
+    background: var(--primary-light);
+    color: var(--accent);
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-family: monospace;
+    transition: transform 0.5s ease;
+}
+
+.flip-number.flip {
+    animation: flipAnimation 0.5s ease;
+}
+
+@keyframes flipAnimation {
+    0% { transform: rotateX(0deg); }
+    50% { transform: rotateX(180deg); }
+    100% { transform: rotateX(360deg); }
+}
+
+/* Motivation */
