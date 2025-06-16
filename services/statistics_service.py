@@ -82,53 +82,29 @@ class StatisticsService(BaseService):
     
     def _get_summary_statistics(self, start_date: str, units: str) -> Dict[str, Any]:
         """Get summary statistics for the period."""
-        # Total activities
-        try:
-            with self._get_connection() as conn:
-                total_activities = running_hub_db_utils.get_total_activities_count(conn, start_date)
-        except Exception as e:
-            self.logger.error(f"Error getting total activity count statistics: {e}")
-        
-        # Total elevation
-        try:
-            with self._get_connection() as conn:
-                total_elevation = running_hub_db_utils.get_total_elevation_count(conn, start_date)
-        except Exception as e:
-            self.logger.error(f"Error getting total activity elevation statistics: {e}")
 
-        # Total distance
-        try:
-            with self._get_connection() as conn:
-                total_distance_meters = running_hub_db_utils.get_total_distance_count(conn, start_date)
-        except Exception as e:
-            self.logger.error(f"Error getting total activity distance statistics: {e}")
+        with self._get_connection() as conn:
+            stats = running_hub_db_utils.get_summary_stats(conn, start_date)
+
+        total_activities = stats.get('total_activities', 0)
+        total_elevation = stats.get('total_elevation', 0)
+        total_distance_meters = stats.get('total_distance_meters', 0)
         
         total_distance = (
             round(total_distance_meters / 1609, 2) if units == 'mi' 
             else round(total_distance_meters / 1000, 2)
         )
-        
-        # Total time
-        try:
-            with self._get_connection() as conn:
-                total_seconds = running_hub_db_utils.get_total_time(conn, start_date)
-        except Exception as e:
-            self.logger.error(f"Error getting total activity time statistics: {e}")
+        total_seconds = stats.get('total_seconds', 0)
         
         hours = total_seconds // 3600
         minutes = (total_seconds % 3600) // 60
         total_time = f"{hours}h {minutes}m"
-        
-        # Total calories (estimated from kilojoules)
-        try:
-            with self._get_connection() as conn:
-                calories_result = running_hub_db_utils.get_total_calories(conn, start_date)
-        except Exception as e:
-            self.logger.error(f"Error getting total activity calorie statistics: {e}")
-        
+
+        total_kilojoules = stats.get('total_kilojoules', 0)
+
         total_calories = (
-            round(calories_result / 4.184) 
-            if calories_result else 0
+            round(total_kilojoules / 4.184) 
+            if total_kilojoules else 0
         )
         
         return {

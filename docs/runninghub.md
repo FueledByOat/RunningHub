@@ -26,4 +26,4 @@ This is the main web interface for runners to view, summarize, and understand th
 ## Strava Data
 
 ### ERD
-![Strava ERD](../blueprints/running_hub/static/images/strava_db_diagram.png)
+![Strava ERD](images/strava_db_diagram.png)

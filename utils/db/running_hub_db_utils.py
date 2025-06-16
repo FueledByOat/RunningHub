@@ -108,7 +108,7 @@ def get_latest_activity_id(conn, activity_types: List[str] = None) -> Optional[i
 
 
 def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = Config.DB_PATH) -> List[Dict[str, Any]]:
-    """Retrieve activities by type.
+    """Retrieve activities by type. May not be used and can be purged. 
     
     Args:
         activity_type: Type of activity to retrieve
@@ -140,44 +140,20 @@ def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = C
 # Statistics Page SQL Logic
 # -------------------------------------
 
-def get_total_activities_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get count of run activities since start_date."""
-    result = conn.execute(
-        "SELECT COUNT(*) as count FROM activities WHERE start_date >= ? AND type = 'Run'",
-        (start_date,)
-    ).fetchone()
-    return result['count'] or 0
-
-def get_total_elevation_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of elevation for run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(total_elevation_gain) as elevation_sum FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)).fetchone()
-    return result['elevation_sum'] or 0
-
-def get_total_distance_count(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of distance of run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(distance) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
-
-def get_total_time(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of run time for activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(moving_time) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
-
-def get_total_calories(conn: sqlite3.Connection, start_date: str) -> int:
-    """Get sum of kilojoules burned for run activities since start_date."""
-    result = conn.execute(
-            "SELECT SUM(kilojoules) as total FROM activities WHERE start_date >= ? AND type = 'Run'",
-            (start_date,)
-        ).fetchone()
-    return result['total'] or 0
+def get_summary_stats(conn: sqlite3.Connection, start_date: str) -> Dict[str, Any]:
+    """Get all summary stats in one query."""
+    query = """
+        SELECT
+            COUNT(*) as total_activities,
+            SUM(total_elevation_gain) as total_elevation,
+            SUM(distance) as total_distance_meters,
+            SUM(moving_time) as total_seconds,
+            SUM(kilojoules) as total_kilojoules
+        FROM activities
+        WHERE start_date >= ? AND type = 'Run'
+    """
+    result = conn.execute(query, (start_date,)).fetchone()
+    return dict(result) if result else {}
 
 def get_weekly_distances(conn: sqlite3.Connection, seven_days_ago: str) -> int:
     """Get distance data for the last 7 days."""

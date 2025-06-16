@@ -1,6 +1,6 @@
 # RunnerVision
 
-![runnervision_logo](../blueprints/runner_vision/static/images/RunnerVisionLogo_transparent.png)
+![runnervision_logo](images/RunnerVisionLogo_v3.png)
 
 RunnerVision is a running biomechanic analysis system for analyzing running form using computer vision.
 
@@ -9,7 +9,7 @@ RunnerVision is a running biomechanic analysis system for analyzing running form
 RunnerVision uses computer vision (BlazePose) to provide detailed analysis of running biomechanics. The system captures, processes, and visualizes key running form metrics to track improvements and identify potential issues before they lead to injury.
 
 ## Demo
-![runnervision_demo](../blueprints/runner_vision/static/images/RunnerVision_Demo.gif)
+![runnervision_demo](images/RunnerVision_Demo.gif)
 
 ## Features
 

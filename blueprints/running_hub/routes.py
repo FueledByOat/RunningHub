@@ -21,6 +21,9 @@ from utils.db import db_utils
 
 logger = logging.getLogger(__name__)
 
+BLUEPRINT_PATH = os.path.dirname(__file__)
+USER_PROFILE_PATH = os.path.join(BLUEPRINT_PATH, 'data', 'user_profile_data.json')
+
 # Create blueprint with static folder for pillar-specific assets
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 static_dir = os.path.join(os.path.dirname(__file__), 'static')
@@ -35,7 +38,7 @@ running_hub_bp = Blueprint(
 
 def load_user_profile_data():
     """Loads user profile data from the central JSON file."""
-    with open('blueprints/running_hub/data/user_profile_data.json', 'r') as f:
+    with open(USER_PROFILE_PATH, 'r') as f:
         return json.load(f)
 
 def init_running_hub_blueprint(config):
@@ -67,7 +70,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     # Activity Routes
     @running_hub_bp.route("/activity/")
     def activity():
-        """Display detailed activity information."""
+        """Display detailed activity information for specific activity ID."""
         activity_id = request.args.get("id", type=int)
         units = request.args.get('units', 'mi')
         
@@ -136,7 +139,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     # Statistics Routes
     @running_hub_bp.route('/statistics/', methods=['GET'])
     def statistics():
-        """Display running statistics."""
+        """Display time period aggregated running statistics."""
         period = request.args.get('period', 'week')
         units = request.args.get('units', 'mi')
         
@@ -167,7 +170,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
         
     @running_hub_bp.route("/motivation")
     def motivation():
-        """Motivation Page"""
+        """Motivation Page, including upcoming races and inspriational LLM quote generator"""
         try:
             """Renders the main motivation page with data injected."""
             profile_data = load_user_profile_data()
@@ -195,7 +198,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     # Motivation Routes
     @running_hub_bp.route('/api/daily_motivation', methods=['POST'])
     def daily_motivation():
-        """Generate a daily motivational message."""
+        """API endpoint to generate a daily motivational message based on selected personality."""
         try:
             data = request.get_json()
             if not data:
@@ -217,7 +220,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     # Skill Tree Routes
     @running_hub_bp.route('/skill_tree/')
     def skill_tree():
-        """Display personal records and achievements."""
+        """Progressive skill tree for running achievement and side-quests."""
         
         try:
             return render_template("skill_tree.html")

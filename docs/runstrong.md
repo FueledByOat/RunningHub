@@ -1,6 +1,6 @@
 # RunStrong
 
-![runstrong_logo](../blueprints/run_strong/static/images/RUN_STRONG_logo_transparent.png)
+![runstrong_logo](images/RUN_STRONG_full_image.png)
 
 RunStrong is a strength training resource for runners, enabling planning, tracking, and visualization of strength sessions and fatigue.
 
@@ -27,4 +27,4 @@ RunStrong is a strength training resource for runners, enabling planning, tracki
 - User-entered data
 
 ## Database ERD
-![RunStrong ERD](../blueprints/run_strong/static/images/runstrong_db_diagram.png)
+![RunStrong ERD](images/runstrong_db_diagram.png)

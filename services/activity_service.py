@@ -14,7 +14,6 @@ from utils import format_utils, exception_utils
 from utils.db import db_utils
 import utils.db.running_hub_db_utils as running_hub_db_utils
 
-
 class ActivityService(BaseService):
     """Service for handling activity-related operations."""
     
@@ -28,7 +27,7 @@ class ActivityService(BaseService):
             return None
         
     def get_formatted_activity_page_details(self, activity_id: int, units: str = 'mi') -> Optional[Dict[str, Any]]:
-        """Retreives all activity information with formatted data."""
+        """Retrieves all activity information with formatted data."""
         try:
             with self._get_connection() as conn:
                 activity = running_hub_db_utils.get_activity_details_by_id(conn=conn, activity_id=activity_id)
