@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -27,7 +28,7 @@
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .stats {
@@ -39,7 +40,7 @@
         }
 
         .stat {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             padding: 15px 25px;
             border-radius: 10px;
             text-align: center;
@@ -61,11 +62,11 @@
         }
 
         .category {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
             padding: 20px;
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             transition: transform 0.3s ease;
             position: relative;
         }
@@ -80,7 +81,7 @@
             margin-bottom: 15px;
             color: #FFD700;
             text-align: center;
-            border-bottom: 2px solid rgba(255,215,0,0.3);
+            border-bottom: 2px solid rgba(255, 215, 0, 0.3);
             padding-bottom: 10px;
             display: flex;
             align-items: center;
@@ -91,7 +92,7 @@
         .category-icon {
             width: 24px;
             height: 24px;
-            background: rgba(255,215,0,0.3);
+            background: rgba(255, 215, 0, 0.3);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -130,8 +131,8 @@
             padding: 10px 15px;
             margin: 8px 0;
             border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
@@ -139,7 +140,7 @@
         }
 
         .achievement:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             transform: translateX(5px);
         }
 
@@ -156,7 +157,7 @@
 
         .achievement.milestone {
             border: 2px solid #FFD700;
-            background: linear-gradient(45deg, rgba(255,215,0,0.2), rgba(255,215,0,0.1));
+            background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
         }
 
         .achievement.milestone.completed {
@@ -227,7 +228,7 @@
         .progress-bar {
             width: 100%;
             height: 6px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
             margin-top: 15px;
             overflow: hidden;
@@ -289,7 +290,7 @@
             .skill-tree {
                 grid-template-columns: 1fr;
             }
-            
+
             .stats {
                 flex-direction: column;
                 align-items: center;
@@ -297,9 +298,12 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
-        <h1>🏃‍♂️ Advanced Runner Skill Tree</h1>
+        <a href="{{ url_for('running_hub.home') }}">
+            <h1>🏃‍♂️ Advanced Runner Skill Tree</h1>
+        </a>
         <div class="stats">
             <div class="stat">
                 <div class="stat-value" id="totalAchievements">0</div>
@@ -558,7 +562,7 @@
             Object.entries(skillTreeData).forEach(([categoryName, categoryData]) => {
                 const categoryEl = document.createElement('div');
                 categoryEl.className = 'category';
-                
+
                 const titleEl = document.createElement('div');
                 titleEl.className = 'category-title';
                 titleEl.innerHTML = `
@@ -568,11 +572,11 @@
                 categoryEl.appendChild(titleEl);
 
                 const subcategories = Object.entries(categoryData).filter(([key]) => key !== 'icon');
-                
+
                 subcategories.forEach(([subcategoryName, achievements]) => {
                     const subcategoryEl = document.createElement('div');
                     subcategoryEl.className = 'subcategory';
-                    
+
                     const subtitleEl = document.createElement('div');
                     subtitleEl.className = 'subcategory-title';
                     subtitleEl.textContent = subcategoryName;
@@ -587,23 +591,23 @@
                         const isCompleted = completedAchievements.includes(achievement.name);
                         const isLocked = !isPrerequisiteMet(achievement);
                         const isMilestone = achievement.milestone;
-                        
+
                         let className = 'achievement';
                         if (isCompleted) className += ' completed';
                         if (isLocked) className += ' locked';
                         if (isMilestone) className += ' milestone';
-                        
+
                         achievementEl.className = className;
-                        
+
                         if (!isLocked) {
                             achievementEl.onclick = () => toggleAchievement(achievement.name);
                         }
 
                         let iconClass = isCompleted ? 'completed' : (isLocked ? 'locked' : 'uncompleted');
                         if (isMilestone && isCompleted) iconClass = 'milestone';
-                        
+
                         const autoTrackBadge = achievement.autoTrack ? '<div class="auto-track-badge">AUTO</div>' : '';
-                        
+
                         achievementEl.innerHTML = `
                             <span class="achievement-icon ${iconClass}">${isMilestone ? '★' : (isCompleted ? '✓' : '')}</span>
                             <div class="achievement-text">
@@ -613,7 +617,7 @@
                             <span class="achievement-points">${achievement.points}pts</span>
                             ${autoTrackBadge}
                         `;
-                        
+
                         subcategoryEl.appendChild(achievementEl);
                     });
 
@@ -667,4 +671,5 @@
         updateStats();
     </script>
 </body>
-</html> 
+
+</html>

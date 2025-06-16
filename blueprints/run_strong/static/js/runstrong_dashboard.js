@@ -2,9 +2,9 @@
 
 // --- UTILITY FUNCTIONS ---
 function getFatigueClass(score) {
-  if (score < 50) return 'fatigue-low';
-  else if (score < 75) return 'fatigue-moderate';
-  else return 'fatigue-high';
+    if (score < 50) return 'fatigue-low';
+    else if (score < 75) return 'fatigue-moderate';
+    else return 'fatigue-high';
 }
 
 function getRecoveryStatus(recoveryScore) {
@@ -41,38 +41,32 @@ function renderFilterButtons(filters = ['All', 'Upper body', 'Lower body', 'Core
     `).join('');
 }
 
-function getFatigueClass(score) {
-  if (score < 50) return 'fatigue-low';
-  else if (score < 75) return 'fatigue-moderate';
-  else return 'fatigue-high';
-}
-
-
 function renderOverallFatigue(score, recommendation) {
-    const progressCircle = document.getElementById('progress-circle');
-    const progressText = document.getElementById('progress-text');
-    const recommendationEl = document.getElementById('recommendation-container');
+    const statusBlock = document.getElementById('fatigue-status-block');
+    const scoreDisplay = document.getElementById('fatigue-score-display');
     const descriptionEl = document.getElementById('fatigue-description');
+    const recommendationEl = document.getElementById('recommendation-container');
 
-    if (progressCircle && progressText) {
-        const fatigueClass = getFatigueClass(score);
-        progressCircle.className = `progress-circle ${fatigueClass}`;
-
-        // ** ADD THIS: Animate the circle based on score **
-        const circumference = 339.292;
-        const offset = circumference - (score / 100) * circumference;
-        progressCircle.style.strokeDashoffset = offset;
-
-        progressText.textContent = score;
+    // Guard clause to handle null or invalid data
+    if (score === null || score === undefined || isNaN(score)) {
+        if (statusBlock) statusBlock.className = 'fatigue-status-block'; // Reset to default color
+        if (scoreDisplay) scoreDisplay.textContent = '--';
+        if (descriptionEl) descriptionEl.textContent = 'No Data';
+        if (recommendationEl) recommendationEl.textContent = "Not enough data to generate a recommendation.";
+        return;
     }
+    
+    // Determine status text and fatigue class
+    const fatigueClass = getFatigueClass(score); // Uses your existing utility function
+    let statusText = 'High';
+    if (score < 50) statusText = 'Fresh';
+    else if (score < 75) statusText = 'Moderate';
 
+    // Update the UI
+    if (statusBlock) statusBlock.className = `fatigue-status-block ${fatigueClass}`;
+    if (scoreDisplay) scoreDisplay.textContent = Math.round(score);
+    if (descriptionEl) descriptionEl.textContent = statusText;
     if (recommendationEl) recommendationEl.textContent = recommendation || "No recommendation available.";
-
-    if (descriptionEl) {
-        const status = score < 40 ? 'Fresh' : score < 70 ? 'Moderate' : 'High Fatigue';
-        descriptionEl.textContent = status;
-        descriptionEl.className = 'fatigue-status';
-    }
 }
 
 function renderMuscleFatigueGroups(muscleData) {
@@ -91,12 +85,12 @@ function renderMuscleFatigueGroups(muscleData) {
         if (grouped[groupName]) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'fatigue-group';
-            
+
             const title = document.createElement('h4');
             title.className = 'fatigue-group-title';
             title.textContent = groupName;
             groupDiv.appendChild(title);
-            
+
             grouped[groupName].forEach(muscle => {
                 const fatigueClass = getFatigueClass(muscle.fatigue_level);
                 const recovery = getRecoveryStatus(muscle.recovery_score);
@@ -181,11 +175,11 @@ function renderFatigueTrend(fatigueTrend) {
     const containerRect = container.getBoundingClientRect();
     const width = containerRect.width || 400; // fallback width
     const height = 140; // Keep your desired height
-    
+
     const padding = { top: 10, right: 10, bottom: 25, left: 30 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    
+
     // Set SVG to fill container
     svg.setAttribute('width', '100%');
     svg.setAttribute('height', height);
@@ -210,7 +204,7 @@ function renderFatigueTrend(fatigueTrend) {
     // Add horizontal grid lines and labels
     [0, 25, 50, 75, 100].forEach(value => {
         const y = chartHeight - (value / maxFatigue) * chartHeight;
-        
+
         // Grid line
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', 0);
@@ -220,7 +214,7 @@ function renderFatigueTrend(fatigueTrend) {
         line.setAttribute('stroke', 'rgba(255,255,255,0.1)');
         line.setAttribute('stroke-width', '1');
         chartGroup.appendChild(line);
-        
+
         // Y-axis label
         const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         label.setAttribute('x', -5);
@@ -258,7 +252,7 @@ function renderFatigueTrend(fatigueTrend) {
         circle.setAttribute('stroke', '#fff');
         circle.setAttribute('stroke-width', '2');
         circle.style.cursor = 'pointer';
-        
+
         // Add tooltip
         circle.addEventListener('mouseenter', () => {
             circle.setAttribute('r', '6');
@@ -266,7 +260,7 @@ function renderFatigueTrend(fatigueTrend) {
         circle.addEventListener('mouseleave', () => {
             circle.setAttribute('r', '4');
         });
-        
+
         chartGroup.appendChild(circle);
     });
 
@@ -288,14 +282,14 @@ function renderFatigueTrend(fatigueTrend) {
     const currentFatigue = points[points.length - 1]?.fatigue || 0;
     const previousFatigue = points[points.length - 2]?.fatigue || currentFatigue;
     const trend = currentFatigue - previousFatigue;
-    
+
     const trendText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     trendText.setAttribute('x', chartWidth);
     trendText.setAttribute('y', 15);
     trendText.setAttribute('text-anchor', 'end');
     trendText.setAttribute('font-size', '11');
     trendText.setAttribute('font-weight', 'bold');
-    
+
     if (trend > 5) {
         trendText.setAttribute('fill', '#dc3545');
         trendText.textContent = '↗ Rising';
@@ -306,7 +300,7 @@ function renderFatigueTrend(fatigueTrend) {
         trendText.setAttribute('fill', '#ffc107');
         trendText.textContent = '→ Stable';
     }
-    
+
     chartGroup.appendChild(trendText);
 }
 
@@ -335,7 +329,7 @@ function fetchDashboardData() {
         .catch(err => {
             console.error('Error fetching dashboard data:', err);
             // You can display an error message to the user here
-            document.getElementById('muscle-fatigue-column').innerHTML = 
+            document.getElementById('muscle-fatigue-column').innerHTML =
                 `<div class="dashboard-card"><p class="error">Could not load dashboard data. Please try again later.</p></div>`;
         });
 }
@@ -361,7 +355,7 @@ function triggerManualUpdate() {
         })
         .finally(() => {
             btn.disabled = false;
-            btn.innerHTML = `<img src="/strong/static/images/refresh_icon.svg" alt="Refresh"/> Update Now`;
+            btn.innerHTML = `<i class="fas fa-sync"></i> Update Now`;
         });
 }
 

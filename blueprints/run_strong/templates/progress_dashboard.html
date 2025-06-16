@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fatigue Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="{{ url_for('run_strong.static', filename='js/runstrong_dashboard.js') }}" defer></script>
 
     <style>
@@ -24,7 +25,7 @@
         <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
     </div>
 
-    <div class="runnervision-header">
+    <div class="runstrong-header">
         <a href="{{ url_for('running_hub.home') }}">
             <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}"
                 alt="RunStrong Logo" class="runstrong-logo" />
@@ -48,20 +49,16 @@
 
             <div class="dashboard-column">
                 <div class="dashboard-card" id="overall-fatigue-card">
-                    <h3>Overall Fatigue</h3>
-                    <div class="fatigue-gauge">
-                        <div class="circular-progress">
-                            <svg viewBox="0 0 120 120" width="120" height="120">
-                                <circle class="bg-circle" cx="60" cy="60" r="54"></circle>
-                                <circle class="progress-circle" cx="60" cy="60" r="54" id="progress-circle"></circle>
-                            </svg>
-                            <div class="progress-text" id="progress-text">--</div>
-                        </div>
-                        <div id="fatigue-description" class="fatigue-status">Loading...</div>
-                    </div>
-                    <div id="recommendation-container" class="recommendation-text">
-                    </div>
-                </div>
+    <h3>Overall Fatigue</h3>
+    
+    <div id="fatigue-status-block" class="fatigue-status-block">
+        <div id="fatigue-score-display" class="fatigue-score">--</div>
+        <div id="fatigue-description" class="fatigue-description">No Data</div>
+    </div>
+
+    <div id="recommendation-container" class="recommendation-text">
+    </div>
+</div>
 
                 <div class="dashboard-card">
                     <h3>Daily Training Intensity (Last 7 Days)</h3>
