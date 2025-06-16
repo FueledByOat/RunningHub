@@ -21,5 +21,4 @@ find_pip_imports.py
 /__pycache__
 *.ipynb
 /blueprints/running_hub/static/images/motivation
-/blueprints/running_hub/templates/motivation.html
-/blueprints/running_hub/static/js/motivation.js
+/blueprints/running_hub/data/user_profile_data.json

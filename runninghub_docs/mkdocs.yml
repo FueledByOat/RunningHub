@@ -1,0 +1,27 @@
+site_name: RunningHub Analytics
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - toc.integrate
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+nav:
+  - Home: index.md
+  - RunningHub Core: docs/runninghub.md
+  - RunnerVision: docs/runnervision.md
+  - RunStrong: docs/runstrong.md
+  - Coach G: docs/coachg.md
+markdown_extensions:
+  - admonition
+  - codehilite
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.details
+  - pymdownx.inlinehilite

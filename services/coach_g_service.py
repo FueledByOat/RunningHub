@@ -356,3 +356,56 @@ class CoachGService(BaseService):
         except Exception as e:
             self.logger.error(f"Error getting training trend summary: {e}")
             return "Error fetching training trend.", "<p>I was unable to retrieve your training trend summary.</p>"
+
+    def get_daily_motivational_message(self, session_id: str, personality: str, profile_data: dict) -> str:
+        self.logger.info(f"Generating daily motivation for session {session_id} with personality '{personality}'.")
+        try:
+            # --- 1. GATHER CONTEXTUAL DATA (NOW CENTRALIZED) ---
+            profile_data = profile_data
+            
+            with self._get_connection() as conn:
+                latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+                weekly_summary_text, _ = self._get_weekly_running_summary()
+
+            # Format motivations and races from the loaded JSON data
+            upcoming_races_summary = "\n".join(
+                [f"- {race['name']}: Goal is {race['goal']}" for race in profile_data.get('races', [])]
+            )
+            reasons_for_running = "\n".join(
+                [f"- {m}" for m in profile_data.get('motivations', [])]
+            )
+
+            # --- 2. CONSTRUCT A DETAILED PROMPT ---
+            context_summary = (
+                f"Here is a snapshot of the user's current running journey:\n\n"
+                f"**Stated Motivations:**\n{reasons_for_running}\n\n"
+                f"**Upcoming Races & Goals:**\n{upcoming_races_summary}\n\n"
+                f"**Latest Training Status:**\n"
+                f"{self._create_text_summary_for_history(latest_metrics[0]) if latest_metrics else 'No recent metrics available.'}\n\n"
+                f"**Last 7 Days Summary:**\n{weekly_summary_text}\n\n"
+            )
+            
+            # This is the instruction for the language model
+            prompt_instruction = (
+                "Based on the user's data below, write a short, punchy, and direct daily motivational message. "
+                "Connect the message to one of their specific goals, their current training status, or an upcoming race. "
+                "Address the runner directly as 'you'. Here is my data: "
+            )
+            
+            full_prompt = f"{prompt_instruction}\n{context_summary}"
+
+            # --- 3. GENERATE THE MESSAGE ---
+            # Use the existing language model utility. We pass an empty history so each message is fresh.
+            response_markdown = self.coach_g.generate_general_coach_g_reply(full_prompt, personality, history=[])
+            
+            # --- 4. SAVE AND RETURN ---
+            # Save the generated message to history so it's logged.
+            self._save_message(session_id, "coach", response_markdown)
+            
+            # Convert the Markdown response to HTML for rendering on the webpage
+            return markdown.markdown(response_markdown)
+
+        except Exception as e:
+            self.logger.error(f"Error in get_daily_motivational_message: {e}", exc_info=True)
+            # Return a user-friendly error in HTML format
+            return "<p>I'm having a bit of trouble finding my words right now. Please try again in a moment.</p>"

@@ -6,13 +6,16 @@ Includes: Home, Activity Details, Statistics, Query Tools, and Trophy Room.
 
 import logging
 import os
-from flask import Blueprint, render_template, request, redirect, abort
+import uuid
+import json
+from flask import Blueprint, render_template, request, redirect, abort, jsonify, url_for 
 from werkzeug.exceptions import BadRequest, NotFound
 
 from services.activity_service import ActivityService
 from services.query_service import QueryService
 from services.statistics_service import StatisticsService
 from services.trophy_service import TrophyService
+from services.motivation_service import MotivationService
 from utils import exception_utils
 from utils.db import db_utils
 
@@ -30,17 +33,23 @@ running_hub_bp = Blueprint(
     url_prefix='/hub'
 )
 
+def load_user_profile_data():
+    """Loads user profile data from the central JSON file."""
+    with open('blueprints/running_hub/data/user_profile_data.json', 'r') as f:
+        return json.load(f)
+
 def init_running_hub_blueprint(config):
     """Initialize services for RunningHub blueprint."""
     activity_service = ActivityService(config.DB_PATH)
     query_service = QueryService(config.DB_PATH)
     statistics_service = StatisticsService(config.DB_PATH)
     trophy_service = TrophyService(config.DB_PATH)
+    motivation_service = MotivationService(config)
     
-    register_routes(activity_service, query_service, statistics_service, trophy_service)
+    register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service)
     return running_hub_bp
 
-def register_routes(activity_service, query_service, statistics_service, trophy_service):
+def register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service):
     """Register all RunningHub routes."""
     
     # Home/Dashboard Routes
@@ -160,8 +169,59 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     def motivation():
         """Motivation Page"""
         try:
-            x = 1
-            return render_template("motivation.html")
+            """Renders the main motivation page with data injected."""
+            profile_data = load_user_profile_data()
+
+            if 'races' in profile_data:
+                for race in profile_data['races']:
+                    if 'image' in race:
+                        relative_image_path = race['image'].replace('static/', '', 1)
+
+                        # --- THIS IS THE CORRECTED LINE ---
+                        # We specify 'running_hub.static' to correctly point to the
+                        # static folder defined within this blueprint.
+                        race['imageUrl'] = url_for('running_hub.static', filename=relative_image_path)
+                        # --- END OF CORRECTION ---
+                        
+                    else:
+                        # Also correct the fallback URL to use the blueprint's static folder
+                        race['imageUrl'] = url_for('running_hub.static', filename='images/default_placeholder.png')
+            return render_template("motivation.html", profile_data=profile_data)
+        
         except Exception as e:
             logger.error(f"Error loading RunningHub motivation: {e}")
-            return render_template("motivation.html")
+            return render_template("motivation.html", profile_data = [])
+        
+    # Motivation Routes
+    @running_hub_bp.route('/api/daily_motivation', methods=['POST'])
+    def daily_motivation():
+        """Generate a daily motivational message."""
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+            
+            personality = data.get('personality', 'motivational')
+            # Use a transient session_id as we may not have a chat session cookie
+            session_id = request.cookies.get('session_id', f"motivation-{uuid.uuid4()}")
+            
+            profile_data = load_user_profile_data()
+
+            message = motivation_service.get_daily_motivational_message(session_id, personality, profile_data)
+            
+            return jsonify({'response': message})
+        except Exception as e:
+            logger.error(f"Error generating daily motivation: {e}", exc_info=True)
+            return jsonify({'error': 'Failed to generate message due to a server error.'}), 500
+
+    # Skill Tree Routes
+    @running_hub_bp.route('/skill_tree/')
+    def skill_tree():
+        """Display personal records and achievements."""
+        
+        try:
+            return render_template("skill_tree.html")
+        
+        except Exception as e:
+            logger.error(f"Error loading skill tree: {e}")
+            return render_template("skill_tree.html")

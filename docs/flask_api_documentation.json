@@ -1,0 +1,1101 @@
+{
+  "blueprints": {
+    "coach_g": {
+      "name": "coach_g",
+      "directory": "blueprints\\coach_g",
+      "url_prefix": "/coach",
+      "blueprint_variable": "coach_g_bp",
+      "routes": [
+        {
+          "function_name": "coach_g",
+          "endpoint": "/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Render Coach G chat interface.",
+          "parameters": [],
+          "line_number": 38,
+          "blueprint": "coach_g",
+          "full_url": "/coach/"
+        },
+        {
+          "function_name": "coach_g_chat",
+          "endpoint": "/api/chat/",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Handle Coach G chat interactions.",
+          "parameters": [],
+          "line_number": 43,
+          "blueprint": "coach_g",
+          "full_url": "/coach/api/chat/"
+        }
+      ],
+      "imports": [
+        "logging",
+        "os",
+        "uuid",
+        "flask.Blueprint",
+        "flask.render_template",
+        "flask.request",
+        "flask.jsonify",
+        "services.coach_g_service.CoachGService"
+      ],
+      "services_used": [
+        "CoachGService",
+        "coach_g_service"
+      ]
+    },
+    "runner_vision": {
+      "name": "runner_vision",
+      "directory": "blueprints\\runner_vision",
+      "url_prefix": "/vision",
+      "blueprint_variable": "runner_vision_bp",
+      "routes": [
+        {
+          "function_name": "runnervision",
+          "endpoint": "/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display RunnerVision analysis results.",
+          "parameters": [],
+          "line_number": 37,
+          "blueprint": "runner_vision",
+          "full_url": "/vision/"
+        },
+        {
+          "function_name": "serve_report",
+          "endpoint": "/reports/<path:filename>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Serve RunnerVision report files.",
+          "parameters": [
+            "filename"
+          ],
+          "line_number": 47,
+          "blueprint": "runner_vision",
+          "full_url": "/vision/reports/<path:filename>"
+        },
+        {
+          "function_name": "serve_video",
+          "endpoint": "/videos/<path:filename>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Serve RunnerVision video files.",
+          "parameters": [
+            "filename"
+          ],
+          "line_number": 52,
+          "blueprint": "runner_vision",
+          "full_url": "/vision/videos/<path:filename>"
+        },
+        {
+          "function_name": "upload_files",
+          "endpoint": "/upload",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Handle video file uploads.",
+          "parameters": [],
+          "line_number": 57,
+          "blueprint": "runner_vision",
+          "full_url": "/vision/upload"
+        },
+        {
+          "function_name": "run_analysis",
+          "endpoint": "/run_biomechanic_analysis",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Execute biomechanics analysis.",
+          "parameters": [],
+          "line_number": 71,
+          "blueprint": "runner_vision",
+          "full_url": "/vision/run_biomechanic_analysis"
+        }
+      ],
+      "imports": [
+        "logging",
+        "os",
+        "flask.Blueprint",
+        "flask.render_template",
+        "flask.request",
+        "flask.jsonify",
+        "services.runnervision_service.RunnerVisionService"
+      ],
+      "services_used": [
+        "runnervision_service",
+        "RunnerVisionService"
+      ]
+    },
+    "running_hub": {
+      "name": "running_hub",
+      "directory": "blueprints\\running_hub",
+      "url_prefix": "/hub",
+      "blueprint_variable": "running_hub_bp",
+      "routes": [
+        {
+          "function_name": "home",
+          "endpoint": "/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "RunningHub home page with latest activity.",
+          "parameters": [],
+          "line_number": 58,
+          "blueprint": "running_hub",
+          "full_url": "/hub/"
+        },
+        {
+          "function_name": "activity",
+          "endpoint": "/activity/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display detailed activity information.",
+          "parameters": [],
+          "line_number": 69,
+          "blueprint": "running_hub",
+          "full_url": "/hub/activity/"
+        },
+        {
+          "function_name": "query",
+          "endpoint": "/query/",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "docstring": "Handle database queries.",
+          "parameters": [],
+          "line_number": 90,
+          "blueprint": "running_hub",
+          "full_url": "/hub/query/"
+        },
+        {
+          "function_name": "ai_query",
+          "endpoint": "/ai_query",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "AI-powered natural language query interface.",
+          "parameters": [],
+          "line_number": 108,
+          "blueprint": "running_hub",
+          "full_url": "/hub/ai_query"
+        },
+        {
+          "function_name": "statistics",
+          "endpoint": "/statistics/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display running statistics.",
+          "parameters": [],
+          "line_number": 138,
+          "blueprint": "running_hub",
+          "full_url": "/hub/statistics/"
+        },
+        {
+          "function_name": "trophy_room",
+          "endpoint": "/trophy_room/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display personal records and achievements.",
+          "parameters": [],
+          "line_number": 154,
+          "blueprint": "running_hub",
+          "full_url": "/hub/trophy_room/"
+        },
+        {
+          "function_name": "motivation",
+          "endpoint": "/motivation",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Motivation Page",
+          "parameters": [],
+          "line_number": 169,
+          "blueprint": "running_hub",
+          "full_url": "/hub/motivation"
+        },
+        {
+          "function_name": "daily_motivation",
+          "endpoint": "/api/daily_motivation",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Generate a daily motivational message.",
+          "parameters": [],
+          "line_number": 197,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/daily_motivation"
+        },
+        {
+          "function_name": "skill_tree",
+          "endpoint": "/skill_tree/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display personal records and achievements.",
+          "parameters": [],
+          "line_number": 219,
+          "blueprint": "running_hub",
+          "full_url": "/hub/skill_tree/"
+        }
+      ],
+      "imports": [
+        "logging",
+        "os",
+        "uuid",
+        "json",
+        "flask.Blueprint",
+        "flask.render_template",
+        "flask.request",
+        "flask.redirect",
+        "flask.abort",
+        "flask.jsonify",
+        "flask.url_for",
+        "werkzeug.exceptions.BadRequest",
+        "werkzeug.exceptions.NotFound",
+        "services.activity_service.ActivityService",
+        "services.query_service.QueryService",
+        "services.statistics_service.StatisticsService",
+        "services.trophy_service.TrophyService",
+        "services.motivation_service.MotivationService",
+        "utils.exception_utils",
+        "utils.db.db_utils",
+        "utils.lm_utils",
+        "config.Config"
+      ],
+      "services_used": [
+        "activity_service",
+        "trophy_service",
+        "statistics_service",
+        "TrophyService",
+        "StatisticsService",
+        "ActivityService",
+        "MotivationService",
+        "QueryService",
+        "query_service",
+        "motivation_service"
+      ]
+    },
+    "run_strong": {
+      "name": "run_strong",
+      "directory": "blueprints\\run_strong",
+      "url_prefix": "/strong",
+      "blueprint_variable": "run_strong_bp",
+      "routes": [
+        {
+          "function_name": "runstrong",
+          "endpoint": "/",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display RunStrong home page.",
+          "parameters": [],
+          "line_number": 41,
+          "blueprint": "run_strong",
+          "full_url": "/strong/"
+        },
+        {
+          "function_name": "exercise_library",
+          "endpoint": "/exercise-library",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display exercise library.",
+          "parameters": [],
+          "line_number": 46,
+          "blueprint": "run_strong",
+          "full_url": "/strong/exercise-library"
+        },
+        {
+          "function_name": "planner",
+          "endpoint": "/planner",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display workout planner.",
+          "parameters": [],
+          "line_number": 51,
+          "blueprint": "run_strong",
+          "full_url": "/strong/planner"
+        },
+        {
+          "function_name": "journal",
+          "endpoint": "/journal",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display workout journal.",
+          "parameters": [],
+          "line_number": 56,
+          "blueprint": "run_strong",
+          "full_url": "/strong/journal"
+        },
+        {
+          "function_name": "progress_dashboard",
+          "endpoint": "/progress-dashboard",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display progress and fatigure dashboard.",
+          "parameters": [],
+          "line_number": 61,
+          "blueprint": "run_strong",
+          "full_url": "/strong/progress-dashboard"
+        },
+        {
+          "function_name": "exercises",
+          "endpoint": "/exercises",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint for exercise data.",
+          "parameters": [],
+          "line_number": 68,
+          "blueprint": "run_strong",
+          "full_url": "/strong/exercises"
+        },
+        {
+          "function_name": "add_exercise",
+          "endpoint": "/exercises/add",
+          "methods": [
+            "GET",
+            "POST"
+          ],
+          "docstring": "Add new exercise.",
+          "parameters": [],
+          "line_number": 78,
+          "blueprint": "run_strong",
+          "full_url": "/strong/exercises/add"
+        },
+        {
+          "function_name": "save_routine",
+          "endpoint": "/save-routine",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Save workout routine.",
+          "parameters": [],
+          "line_number": 92,
+          "blueprint": "run_strong",
+          "full_url": "/strong/save-routine"
+        },
+        {
+          "function_name": "load_routines",
+          "endpoint": "/load-routines",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Load all workout routines.",
+          "parameters": [],
+          "line_number": 106,
+          "blueprint": "run_strong",
+          "full_url": "/strong/load-routines"
+        },
+        {
+          "function_name": "load_routine",
+          "endpoint": "/load-routine/<int:routine_id>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Load specific workout routine.",
+          "parameters": [
+            "routine_id"
+          ],
+          "line_number": 116,
+          "blueprint": "run_strong",
+          "full_url": "/strong/load-routine/<int:routine_id>"
+        },
+        {
+          "function_name": "get_exercises",
+          "endpoint": "/api/exercises",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Get all exercises for the planner.",
+          "parameters": [],
+          "line_number": 127,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/exercises"
+        },
+        {
+          "function_name": "get_routines",
+          "endpoint": "/api/routines",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Get all workout routines.",
+          "parameters": [],
+          "line_number": 136,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/routines"
+        },
+        {
+          "function_name": "create_routine",
+          "endpoint": "/api/routines",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Create a new workout routine with exercises.",
+          "parameters": [],
+          "line_number": 145,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/routines"
+        },
+        {
+          "function_name": "get_routine_exercises_api",
+          "endpoint": "/api/routines/<int:routine_id>/exercises",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Get a specific routine with its exercises.",
+          "parameters": [
+            "routine_id"
+          ],
+          "line_number": 175,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/routines/<int:routine_id>/exercises"
+        },
+        {
+          "function_name": "save_workout_performance",
+          "endpoint": "/api/workout-performance",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "Save workout performance data for an entire session.",
+          "parameters": [],
+          "line_number": 193,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/workout-performance"
+        },
+        {
+          "function_name": "get_workout_history",
+          "endpoint": "/api/workout-performance/<int:routine_id>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Get workout history for a specific routine.",
+          "parameters": [
+            "routine_id"
+          ],
+          "line_number": 222,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/workout-performance/<int:routine_id>"
+        },
+        {
+          "function_name": "update_routine",
+          "endpoint": "/api/routines/<int:routine_id>",
+          "methods": [
+            "PUT"
+          ],
+          "docstring": "Update an existing workout routine.",
+          "parameters": [
+            "routine_id"
+          ],
+          "line_number": 230,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/routines/<int:routine_id>"
+        },
+        {
+          "function_name": "get_exercise_max_loads",
+          "endpoint": "/api/exercise-max-loads",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Get maximum load for each exercise from workout history.",
+          "parameters": [],
+          "line_number": 263,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/exercise-max-loads"
+        },
+        {
+          "function_name": "delete_routine",
+          "endpoint": "/api/routines/<int:routine_id>",
+          "methods": [
+            "DELETE"
+          ],
+          "docstring": "Delete a workout routine.",
+          "parameters": [
+            "routine_id"
+          ],
+          "line_number": 272,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/routines/<int:routine_id>"
+        },
+        {
+          "function_name": "get_fatigue_data",
+          "endpoint": "/api/fatigue-data",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint to get current fatigue data with optional filtering",
+          "parameters": [],
+          "line_number": 281,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/fatigue-data"
+        },
+        {
+          "function_name": "get_available_muscle_groups",
+          "endpoint": "/api/muscle-groups",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint to get available muscle group filters",
+          "parameters": [],
+          "line_number": 302,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/muscle-groups"
+        },
+        {
+          "function_name": "update_fatigue",
+          "endpoint": "/api/update-fatigue",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint to trigger fatigue update",
+          "parameters": [],
+          "line_number": 314,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/update-fatigue"
+        },
+        {
+          "function_name": "save_freestyle_workout",
+          "endpoint": "/api/workout-performance/freestyle",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "API endpoint to save an ad-hoc/freestyle workout session.",
+          "parameters": [],
+          "line_number": 324,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/workout-performance/freestyle"
+        }
+      ],
+      "imports": [
+        "logging",
+        "os",
+        "flask.Blueprint",
+        "flask.render_template",
+        "flask.request",
+        "flask.jsonify",
+        "flask.render_template_string",
+        "werkzeug.exceptions.BadRequest",
+        "services.runstrong_service.RunStrongService",
+        "utils.db.runstrong_db_utils"
+      ],
+      "services_used": [
+        "runstrong_service",
+        "RunStrongService"
+      ]
+    }
+  },
+  "routes": [
+    {
+      "function_name": "coach_g",
+      "endpoint": "/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Render Coach G chat interface.",
+      "parameters": [],
+      "line_number": 38,
+      "blueprint": "coach_g",
+      "full_url": "/coach/"
+    },
+    {
+      "function_name": "coach_g_chat",
+      "endpoint": "/api/chat/",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Handle Coach G chat interactions.",
+      "parameters": [],
+      "line_number": 43,
+      "blueprint": "coach_g",
+      "full_url": "/coach/api/chat/"
+    },
+    {
+      "function_name": "runnervision",
+      "endpoint": "/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display RunnerVision analysis results.",
+      "parameters": [],
+      "line_number": 37,
+      "blueprint": "runner_vision",
+      "full_url": "/vision/"
+    },
+    {
+      "function_name": "serve_report",
+      "endpoint": "/reports/<path:filename>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Serve RunnerVision report files.",
+      "parameters": [
+        "filename"
+      ],
+      "line_number": 47,
+      "blueprint": "runner_vision",
+      "full_url": "/vision/reports/<path:filename>"
+    },
+    {
+      "function_name": "serve_video",
+      "endpoint": "/videos/<path:filename>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Serve RunnerVision video files.",
+      "parameters": [
+        "filename"
+      ],
+      "line_number": 52,
+      "blueprint": "runner_vision",
+      "full_url": "/vision/videos/<path:filename>"
+    },
+    {
+      "function_name": "upload_files",
+      "endpoint": "/upload",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Handle video file uploads.",
+      "parameters": [],
+      "line_number": 57,
+      "blueprint": "runner_vision",
+      "full_url": "/vision/upload"
+    },
+    {
+      "function_name": "run_analysis",
+      "endpoint": "/run_biomechanic_analysis",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Execute biomechanics analysis.",
+      "parameters": [],
+      "line_number": 71,
+      "blueprint": "runner_vision",
+      "full_url": "/vision/run_biomechanic_analysis"
+    },
+    {
+      "function_name": "home",
+      "endpoint": "/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "RunningHub home page with latest activity.",
+      "parameters": [],
+      "line_number": 58,
+      "blueprint": "running_hub",
+      "full_url": "/hub/"
+    },
+    {
+      "function_name": "activity",
+      "endpoint": "/activity/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display detailed activity information.",
+      "parameters": [],
+      "line_number": 69,
+      "blueprint": "running_hub",
+      "full_url": "/hub/activity/"
+    },
+    {
+      "function_name": "query",
+      "endpoint": "/query/",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "docstring": "Handle database queries.",
+      "parameters": [],
+      "line_number": 90,
+      "blueprint": "running_hub",
+      "full_url": "/hub/query/"
+    },
+    {
+      "function_name": "ai_query",
+      "endpoint": "/ai_query",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "AI-powered natural language query interface.",
+      "parameters": [],
+      "line_number": 108,
+      "blueprint": "running_hub",
+      "full_url": "/hub/ai_query"
+    },
+    {
+      "function_name": "statistics",
+      "endpoint": "/statistics/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display running statistics.",
+      "parameters": [],
+      "line_number": 138,
+      "blueprint": "running_hub",
+      "full_url": "/hub/statistics/"
+    },
+    {
+      "function_name": "trophy_room",
+      "endpoint": "/trophy_room/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display personal records and achievements.",
+      "parameters": [],
+      "line_number": 154,
+      "blueprint": "running_hub",
+      "full_url": "/hub/trophy_room/"
+    },
+    {
+      "function_name": "motivation",
+      "endpoint": "/motivation",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Motivation Page",
+      "parameters": [],
+      "line_number": 169,
+      "blueprint": "running_hub",
+      "full_url": "/hub/motivation"
+    },
+    {
+      "function_name": "daily_motivation",
+      "endpoint": "/api/daily_motivation",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Generate a daily motivational message.",
+      "parameters": [],
+      "line_number": 197,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/daily_motivation"
+    },
+    {
+      "function_name": "skill_tree",
+      "endpoint": "/skill_tree/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display personal records and achievements.",
+      "parameters": [],
+      "line_number": 219,
+      "blueprint": "running_hub",
+      "full_url": "/hub/skill_tree/"
+    },
+    {
+      "function_name": "runstrong",
+      "endpoint": "/",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display RunStrong home page.",
+      "parameters": [],
+      "line_number": 41,
+      "blueprint": "run_strong",
+      "full_url": "/strong/"
+    },
+    {
+      "function_name": "exercise_library",
+      "endpoint": "/exercise-library",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display exercise library.",
+      "parameters": [],
+      "line_number": 46,
+      "blueprint": "run_strong",
+      "full_url": "/strong/exercise-library"
+    },
+    {
+      "function_name": "planner",
+      "endpoint": "/planner",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display workout planner.",
+      "parameters": [],
+      "line_number": 51,
+      "blueprint": "run_strong",
+      "full_url": "/strong/planner"
+    },
+    {
+      "function_name": "journal",
+      "endpoint": "/journal",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display workout journal.",
+      "parameters": [],
+      "line_number": 56,
+      "blueprint": "run_strong",
+      "full_url": "/strong/journal"
+    },
+    {
+      "function_name": "progress_dashboard",
+      "endpoint": "/progress-dashboard",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display progress and fatigure dashboard.",
+      "parameters": [],
+      "line_number": 61,
+      "blueprint": "run_strong",
+      "full_url": "/strong/progress-dashboard"
+    },
+    {
+      "function_name": "exercises",
+      "endpoint": "/exercises",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint for exercise data.",
+      "parameters": [],
+      "line_number": 68,
+      "blueprint": "run_strong",
+      "full_url": "/strong/exercises"
+    },
+    {
+      "function_name": "add_exercise",
+      "endpoint": "/exercises/add",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "docstring": "Add new exercise.",
+      "parameters": [],
+      "line_number": 78,
+      "blueprint": "run_strong",
+      "full_url": "/strong/exercises/add"
+    },
+    {
+      "function_name": "save_routine",
+      "endpoint": "/save-routine",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Save workout routine.",
+      "parameters": [],
+      "line_number": 92,
+      "blueprint": "run_strong",
+      "full_url": "/strong/save-routine"
+    },
+    {
+      "function_name": "load_routines",
+      "endpoint": "/load-routines",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Load all workout routines.",
+      "parameters": [],
+      "line_number": 106,
+      "blueprint": "run_strong",
+      "full_url": "/strong/load-routines"
+    },
+    {
+      "function_name": "load_routine",
+      "endpoint": "/load-routine/<int:routine_id>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Load specific workout routine.",
+      "parameters": [
+        "routine_id"
+      ],
+      "line_number": 116,
+      "blueprint": "run_strong",
+      "full_url": "/strong/load-routine/<int:routine_id>"
+    },
+    {
+      "function_name": "get_exercises",
+      "endpoint": "/api/exercises",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Get all exercises for the planner.",
+      "parameters": [],
+      "line_number": 127,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/exercises"
+    },
+    {
+      "function_name": "get_routines",
+      "endpoint": "/api/routines",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Get all workout routines.",
+      "parameters": [],
+      "line_number": 136,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/routines"
+    },
+    {
+      "function_name": "create_routine",
+      "endpoint": "/api/routines",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Create a new workout routine with exercises.",
+      "parameters": [],
+      "line_number": 145,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/routines"
+    },
+    {
+      "function_name": "get_routine_exercises_api",
+      "endpoint": "/api/routines/<int:routine_id>/exercises",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Get a specific routine with its exercises.",
+      "parameters": [
+        "routine_id"
+      ],
+      "line_number": 175,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/routines/<int:routine_id>/exercises"
+    },
+    {
+      "function_name": "save_workout_performance",
+      "endpoint": "/api/workout-performance",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "Save workout performance data for an entire session.",
+      "parameters": [],
+      "line_number": 193,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/workout-performance"
+    },
+    {
+      "function_name": "get_workout_history",
+      "endpoint": "/api/workout-performance/<int:routine_id>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Get workout history for a specific routine.",
+      "parameters": [
+        "routine_id"
+      ],
+      "line_number": 222,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/workout-performance/<int:routine_id>"
+    },
+    {
+      "function_name": "update_routine",
+      "endpoint": "/api/routines/<int:routine_id>",
+      "methods": [
+        "PUT"
+      ],
+      "docstring": "Update an existing workout routine.",
+      "parameters": [
+        "routine_id"
+      ],
+      "line_number": 230,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/routines/<int:routine_id>"
+    },
+    {
+      "function_name": "get_exercise_max_loads",
+      "endpoint": "/api/exercise-max-loads",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Get maximum load for each exercise from workout history.",
+      "parameters": [],
+      "line_number": 263,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/exercise-max-loads"
+    },
+    {
+      "function_name": "delete_routine",
+      "endpoint": "/api/routines/<int:routine_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "docstring": "Delete a workout routine.",
+      "parameters": [
+        "routine_id"
+      ],
+      "line_number": 272,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/routines/<int:routine_id>"
+    },
+    {
+      "function_name": "get_fatigue_data",
+      "endpoint": "/api/fatigue-data",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint to get current fatigue data with optional filtering",
+      "parameters": [],
+      "line_number": 281,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/fatigue-data"
+    },
+    {
+      "function_name": "get_available_muscle_groups",
+      "endpoint": "/api/muscle-groups",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint to get available muscle group filters",
+      "parameters": [],
+      "line_number": 302,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/muscle-groups"
+    },
+    {
+      "function_name": "update_fatigue",
+      "endpoint": "/api/update-fatigue",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint to trigger fatigue update",
+      "parameters": [],
+      "line_number": 314,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/update-fatigue"
+    },
+    {
+      "function_name": "save_freestyle_workout",
+      "endpoint": "/api/workout-performance/freestyle",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "API endpoint to save an ad-hoc/freestyle workout session.",
+      "parameters": [],
+      "line_number": 324,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/workout-performance/freestyle"
+    }
+  ],
+  "summary": {
+    "total_blueprints": 4,
+    "total_routes": 39,
+    "methods_distribution": {
+      "GET": 28,
+      "POST": 11,
+      "PUT": 1,
+      "DELETE": 1
+    },
+    "blueprints_list": [
+      "coach_g",
+      "runner_vision",
+      "running_hub",
+      "run_strong"
+    ]
+  }
+}

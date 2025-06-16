@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunningHub Skill Tree</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .skill-tree {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .category {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .category:hover {
+            transform: translateY(-5px);
+        }
+
+        .category-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #FFD700;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,215,0,0.3);
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .category-icon {
+            width: 24px;
+            height: 24px;
+            background: rgba(255,215,0,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .subcategory {
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .subcategory-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #87CEEB;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progression-line {
+            position: absolute;
+            left: 20px;
+            top: 35px;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(to bottom, #4CAF50, #2196F3, #666);
+            opacity: 0.3;
+        }
+
+        .achievement {
+            display: flex;
+            align-items: center;
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .achievement:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
+        }
+
+        .achievement.completed {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            border-color: #4CAF50;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .achievement.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .achievement.milestone {
+            border: 2px solid #FFD700;
+            background: linear-gradient(45deg, rgba(255,215,0,0.2), rgba(255,215,0,0.1));
+        }
+
+        .achievement.milestone.completed {
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            color: #000;
+        }
+
+        .achievement-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .achievement-icon.uncompleted {
+            background: #666;
+            border: 2px solid #999;
+        }
+
+        .achievement-icon.completed {
+            background: #4CAF50;
+            border: 2px solid #45a049;
+            color: white;
+        }
+
+        .achievement-icon.locked {
+            background: #333;
+            border: 2px solid #555;
+        }
+
+        .achievement-icon.milestone {
+            background: #FFD700;
+            border: 2px solid #FFA500;
+            color: #000;
+        }
+
+        .custom-icon {
+            background-size: cover;
+            background-position: center;
+            border: none !important;
+        }
+
+        .achievement-text {
+            flex-grow: 1;
+            font-size: 0.9rem;
+            line-height: 1.3;
+        }
+
+        .achievement-points {
+            font-size: 0.8rem;
+            color: #FFD700;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .achievement-progress {
+            font-size: 0.75rem;
+            color: #ccc;
+            margin-top: 2px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .connection-line {
+            position: absolute;
+            width: 20px;
+            height: 2px;
+            background: #666;
+            left: -10px;
+            top: 50%;
+            opacity: 0.5;
+        }
+
+        .connection-line.active {
+            background: #4CAF50;
+            opacity: 1;
+        }
+
+        .reset-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            background: #cc3333;
+        }
+
+        .auto-track-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #2196F3;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .skill-tree {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏃‍♂️ Advanced Runner Skill Tree</h1>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalAchievements">0</div>
+                <div>Achievements Unlocked</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="totalPoints">0</div>
+                <div>Total Points</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="completionRate">0%</div>
+                <div>Completion Rate</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="milestones">0</div>
+                <div>Major Milestones</div>
+            </div>
+        </div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="overallProgress"></div>
+        </div>
+    </div>
+
+    <div class="skill-tree" id="skillTree"></div>
+
+    <button class="reset-btn" onclick="resetProgress()">Reset Progress</button>
+
+    <script>
+        const skillTreeData = {
+            "Distance Records": {
+                icon: "🏃",
+                "5K": [
+                    { name: "Sub 25 Minutes", points: 5, prerequisite: null, autoTrack: true },
+                    { name: "Sub 22 Minutes", points: 10, prerequisite: "Sub 25 Minutes", autoTrack: true },
+                    { name: "Sub 20 Minutes", points: 15, prerequisite: "Sub 22 Minutes", autoTrack: true },
+                    { name: "Sub 19 Minutes", points: 20, prerequisite: "Sub 20 Minutes", autoTrack: true },
+                    { name: "Sub 18 Minutes", points: 25, prerequisite: "Sub 19 Minutes", autoTrack: true },
+                    { name: "Sub 17:30", points: 30, prerequisite: "Sub 18 Minutes", autoTrack: true },
+                    { name: "Sub 17 Minutes", points: 35, prerequisite: "Sub 17:30", autoTrack: true },
+                    { name: "Sub 16:30", points: 40, prerequisite: "Sub 17 Minutes", autoTrack: true, milestone: true }
+                ],
+                "10K": [
+                    { name: "Sub 50 Minutes", points: 5, prerequisite: null, autoTrack: true },
+                    { name: "Sub 45 Minutes", points: 10, prerequisite: "Sub 50 Minutes", autoTrack: true },
+                    { name: "Sub 40 Minutes", points: 15, prerequisite: "Sub 45 Minutes", autoTrack: true },
+                    { name: "Sub 39 Minutes", points: 20, prerequisite: "Sub 40 Minutes", autoTrack: true },
+                    { name: "Sub 38 Minutes", points: 25, prerequisite: "Sub 39 Minutes", autoTrack: true },
+                    { name: "Sub 37 Minutes", points: 30, prerequisite: "Sub 38 Minutes", autoTrack: true },
+                    { name: "Sub 36 Minutes", points: 35, prerequisite: "Sub 37 Minutes", autoTrack: true },
+                    { name: "Sub 35 Minutes", points: 40, prerequisite: "Sub 36 Minutes", autoTrack: true },
+                    { name: "Sub 34 Minutes", points: 50, prerequisite: "Sub 35 Minutes", autoTrack: true, milestone: true }
+                ],
+                "Half Marathon": [
+                    { name: "Sub 1:45", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "Sub 1:30", points: 20, prerequisite: "Sub 1:45", autoTrack: true },
+                    { name: "Sub 1:25", points: 25, prerequisite: "Sub 1:30", autoTrack: true },
+                    { name: "Sub 1:20", points: 30, prerequisite: "Sub 1:25", autoTrack: true },
+                    { name: "Sub 1:18", points: 35, prerequisite: "Sub 1:20", autoTrack: true },
+                    { name: "Sub 1:15", points: 40, prerequisite: "Sub 1:18", autoTrack: true },
+                    { name: "Sub 1:12", points: 50, prerequisite: "Sub 1:15", autoTrack: true, milestone: true }
+                ],
+                "Marathon": [
+                    { name: "Sub 3:30", points: 25, prerequisite: null, autoTrack: true },
+                    { name: "Sub 3:00", points: 30, prerequisite: "Sub 3:30", autoTrack: true },
+                    { name: "Sub 2:55", points: 35, prerequisite: "Sub 3:00", autoTrack: true },
+                    { name: "Sub 2:50", points: 40, prerequisite: "Sub 2:55", autoTrack: true },
+                    { name: "Sub 2:45", points: 45, prerequisite: "Sub 2:50", autoTrack: true },
+                    { name: "Sub 2:40", points: 50, prerequisite: "Sub 2:45", autoTrack: true },
+                    { name: "Sub 2:35", points: 60, prerequisite: "Sub 2:40", autoTrack: true, milestone: true }
+                ]
+            },
+            "Events & Races": {
+                icon: "🏆",
+                "Community Events": [
+                    { name: "Complete a Parkrun", points: 10, prerequisite: null },
+                    { name: "Complete 10 Parkruns", points: 15, prerequisite: "Complete a Parkrun", autoTrack: true },
+                    { name: "Complete 50 Parkruns", points: 25, prerequisite: "Complete 10 Parkruns", autoTrack: true },
+                    { name: "Complete 100 Parkruns", points: 40, prerequisite: "Complete 50 Parkruns", autoTrack: true, milestone: true },
+                    { name: "Turkey Trot Thanksgiving", points: 15, prerequisite: null },
+                    { name: "New Year's Day Race", points: 15, prerequisite: null }
+                ],
+                "Local Races": [
+                    { name: "First 5K Race", points: 10, prerequisite: null },
+                    { name: "First 10K Race", points: 15, prerequisite: "First 5K Race" },
+                    { name: "Twin Cities 10 Mile", points: 20, prerequisite: "First 10K Race" },
+                    { name: "First Half Marathon", points: 25, prerequisite: "Twin Cities 10 Mile" },
+                    { name: "Twin Cities Marathon", points: 35, prerequisite: "First Half Marathon" },
+                    { name: "La Crosse Marathon", points: 30, prerequisite: "Twin Cities Marathon" },
+                    { name: "Grandmas Marathon", points: 30, prerequisite: "Twin Cities Marathon" }
+                ],
+                "World Majors": [
+                    { name: "Chicago Marathon", points: 50, prerequisite: "Twin Cities Marathon" },
+                    { name: "New York Marathon", points: 50, prerequisite: "Chicago Marathon" },
+                    { name: "Boston Marathon", points: 60, prerequisite: "Sub 3:00", milestone: true },
+                    { name: "London Marathon", points: 50, prerequisite: "New York Marathon" },
+                    { name: "Berlin Marathon", points: 50, prerequisite: "London Marathon" },
+                    { name: "Tokyo Marathon", points: 50, prerequisite: "Berlin Marathon" },
+                    { name: "Six Star Finisher", points: 100, prerequisite: "Tokyo Marathon", milestone: true }
+                ]
+            },
+            "Ultra Distance": {
+                icon: "🌄",
+                "Beyond Marathon": [
+                    { name: "50K Finish", points: 40, prerequisite: "Sub 3:30" },
+                    { name: "50K Sub 4:00", points: 50, prerequisite: "50K Finish", autoTrack: true },
+                    { name: "50K Sub 3:30", points: 60, prerequisite: "50K Sub 4:00", autoTrack: true },
+                    { name: "50 Mile Finish", points: 60, prerequisite: "50K Sub 4:00" },
+                    { name: "50 Mile Sub 8:00", points: 70, prerequisite: "50 Mile Finish", autoTrack: true },
+                    { name: "100K Finish", points: 80, prerequisite: "50 Mile Finish" },
+                    { name: "100K Sub 10:00", points: 90, prerequisite: "100K Finish", autoTrack: true },
+                    { name: "100 Mile Finish", points: 100, prerequisite: "100K Finish", milestone: true },
+                    { name: "100 Mile Sub 24:00", points: 120, prerequisite: "100 Mile Finish", autoTrack: true, milestone: true }
+                ]
+            },
+            "Elevation Challenges": {
+                icon: "⛰️",
+                "Vertical Achievements": [
+                    { name: "Climb 1,000m in a run", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "Climb 5,000m in a week", points: 20, prerequisite: "Climb 1,000m in a run", autoTrack: true },
+                    { name: "Climb Height of Mt. Everest (8,848m)", points: 30, prerequisite: "Climb 5,000m in a week", autoTrack: true },
+                    { name: "Climb 2x Mt. Everest (17,696m)", points: 40, prerequisite: "Climb Height of Mt. Everest (8,848m)", autoTrack: true },
+                    { name: "Climb 3x Mt. Everest (26,544m)", points: 50, prerequisite: "Climb 2x Mt. Everest (17,696m)", autoTrack: true },
+                    { name: "Climb 6x Mt. Everest (53,088m)", points: 75, prerequisite: "Climb 3x Mt. Everest (26,544m)", autoTrack: true, milestone: true },
+                    { name: "Climb 10x Mt. Everest (88,480m)", points: 100, prerequisite: "Climb 6x Mt. Everest (53,088m)", autoTrack: true, milestone: true }
+                ]
+            },
+            "Training Volume": {
+                icon: "📊",
+                "Weekly Mileage": [
+                    { name: "50 Mile Week", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "70 Mile Week", points: 20, prerequisite: "50 Mile Week", autoTrack: true },
+                    { name: "100 Mile Week", points: 30, prerequisite: "70 Mile Week", autoTrack: true },
+                    { name: "120 Mile Week", points: 40, prerequisite: "100 Mile Week", autoTrack: true },
+                    { name: "150 Mile Week", points: 50, prerequisite: "120 Mile Week", autoTrack: true, milestone: true }
+                ],
+                "Annual Mileage": [
+                    { name: "1,000 Miles in a Year", points: 25, prerequisite: null, autoTrack: true },
+                    { name: "2,000 Miles in a Year", points: 35, prerequisite: "1,000 Miles in a Year", autoTrack: true },
+                    { name: "3,000 Miles in a Year", points: 50, prerequisite: "2,000 Miles in a Year", autoTrack: true },
+                    { name: "4,000 Miles in a Year", points: 75, prerequisite: "3,000 Miles in a Year", autoTrack: true, milestone: true }
+                ],
+                "Speed Training": [
+                    { name: "First Track Workout", points: 10, prerequisite: null },
+                    { name: "5x1K @ 5K Pace", points: 15, prerequisite: "First Track Workout" },
+                    { name: "10x400m @ Mile Pace", points: 20, prerequisite: "5x1K @ 5K Pace" },
+                    { name: "Tempo Run 8+ Miles", points: 25, prerequisite: "10x400m @ Mile Pace" },
+                    { name: "12x400m @ Mile Pace", points: 30, prerequisite: "Tempo Run 8+ Miles" },
+                    { name: "20x400m Workout", points: 40, prerequisite: "12x400m @ Mile Pace", milestone: true }
+                ]
+            },
+            "Consistency": {
+                icon: "🔥",
+                "Running Streaks": [
+                    { name: "30 Day Streak", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "100 Day Streak", points: 25, prerequisite: "30 Day Streak", autoTrack: true },
+                    { name: "365 Day Streak", points: 50, prerequisite: "100 Day Streak", autoTrack: true },
+                    { name: "500 Day Streak", points: 65, prerequisite: "365 Day Streak", autoTrack: true },
+                    { name: "1000 Day Streak", points: 100, prerequisite: "500 Day Streak", autoTrack: true, milestone: true }
+                ],
+                "Monthly Goals": [
+                    { name: "100 Miles in a Month", points: 20, prerequisite: null, autoTrack: true },
+                    { name: "200 Miles in a Month", points: 30, prerequisite: "100 Miles in a Month", autoTrack: true },
+                    { name: "300 Miles in a Month", points: 40, prerequisite: "200 Miles in a Month", autoTrack: true },
+                    { name: "400 Miles in a Month", points: 60, prerequisite: "300 Miles in a Month", autoTrack: true, milestone: true }
+                ]
+            },
+            "Gear & Equipment": {
+                icon: "👟",
+                "Shoe Milestones": [
+                    { name: "Run 100 miles on a pair", points: 10, prerequisite: null, autoTrack: true },
+                    { name: "Run 300 miles on a pair", points: 15, prerequisite: "Run 100 miles on a pair", autoTrack: true },
+                    { name: "Run 500 miles on a pair", points: 20, prerequisite: "Run 300 miles on a pair", autoTrack: true },
+                    { name: "Run 700 miles on a pair", points: 25, prerequisite: "Run 500 miles on a pair", autoTrack: true },
+                    { name: "Run 1000 miles on a pair", points: 35, prerequisite: "Run 700 miles on a pair", autoTrack: true, milestone: true }
+                ],
+                "Equipment Mastery": [
+                    { name: "Run with GPS Watch 100 times", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "Run with Heart Rate Monitor 50 times", points: 20, prerequisite: null, autoTrack: true },
+                    { name: "Complete 10 runs with power meter", points: 25, prerequisite: "Run with Heart Rate Monitor 50 times", autoTrack: true }
+                ]
+            },
+            "Strength & Cross Training": {
+                icon: "💪",
+                "Lower Body Strength": [
+                    { name: "Squat Bodyweight (150 lbs)", points: 15, prerequisite: null, autoTrack: true },
+                    { name: "Squat 200 lbs", points: 20, prerequisite: "Squat Bodyweight (150 lbs)", autoTrack: true },
+                    { name: "Squat 1.5x Bodyweight (225 lbs)", points: 25, prerequisite: "Squat 200 lbs", autoTrack: true },
+                    { name: "Squat 2x Bodyweight (300 lbs)", points: 35, prerequisite: "Squat 1.5x Bodyweight (225 lbs)", autoTrack: true, milestone: true },
+                    { name: "Deadlift 2x Bodyweight (300 lbs)", points: 30, prerequisite: "Squat 1.5x Bodyweight (225 lbs)", autoTrack: true },
+                    { name: "Deadlift 2.5x Bodyweight (375 lbs)", points: 40, prerequisite: "Deadlift 2x Bodyweight (300 lbs)", autoTrack: true, milestone: true }
+                ],
+                "Core & Stability": [
+                    { name: "Plank 2 Minutes", points: 10, prerequisite: null, autoTrack: true },
+                    { name: "Plank 5 Minutes", points: 15, prerequisite: "Plank 2 Minutes", autoTrack: true },
+                    { name: "Plank 10 Minutes", points: 25, prerequisite: "Plank 5 Minutes", autoTrack: true, milestone: true },
+                    { name: "Single Leg Balance 1 Min", points: 15, prerequisite: "Plank 2 Minutes", autoTrack: true },
+                    { name: "Single Leg Balance 3 Min", points: 25, prerequisite: "Single Leg Balance 1 Min", autoTrack: true }
+                ],
+                "Cross Training": [
+                    { name: "Bike 100 Miles", points: 20, prerequisite: null, autoTrack: true },
+                    { name: "Swim 5K", points: 25, prerequisite: null, autoTrack: true },
+                    { name: "Complete a Triathlon", points: 40, prerequisite: "Swim 5K" },
+                    { name: "Complete an Ironman", points: 100, prerequisite: "Complete a Triathlon", milestone: true }
+                ]
+            },
+            "Special Challenges": {
+                icon: "⭐",
+                "Seasonal Goals": [
+                    { name: "Run in 4 Seasons", points: 20, prerequisite: null },
+                    { name: "Run in Snow", points: 15, prerequisite: null },
+                    { name: "Run in 100°F+ Heat", points: 20, prerequisite: null },
+                    { name: "Run at Sunrise", points: 10, prerequisite: null },
+                    { name: "Run at Midnight", points: 15, prerequisite: null }
+                ],
+                "Adventure Running": [
+                    { name: "Trail Run 10+ Miles", points: 20, prerequisite: null },
+                    { name: "Run at 8,000+ ft Elevation", points: 25, prerequisite: null },
+                    { name: "Beach/Sand Run 5+ Miles", points: 20, prerequisite: null },
+                    { name: "Desert Run", points: 25, prerequisite: null },
+                    { name: "Run in 10 Different States", points: 40, prerequisite: null },
+                    { name: "Run in 5 Different Countries", points: 60, prerequisite: null, milestone: true }
+                ],
+                "Mental Toughness": [
+                    { name: "Run Solo Marathon", points: 40, prerequisite: "Sub 3:30" },
+                    { name: "Run Double Marathon (52.4 miles)", points: 80, prerequisite: "Run Solo Marathon", milestone: true },
+                    { name: "Negative Split Marathon", points: 30, prerequisite: "Sub 3:00", autoTrack: true },
+                    { name: "Run Through Sickness", points: 15, prerequisite: null },
+                    { name: "Run After No Sleep", points: 20, prerequisite: null }
+                ]
+            }
+        };
+
+        let completedAchievements = JSON.parse(localStorage.getItem('completedAchievements') || '[]');
+
+        function isPrerequisiteMet(achievement) {
+            if (!achievement.prerequisite) return true;
+            return completedAchievements.includes(achievement.prerequisite);
+        }
+
+        function toggleAchievement(achievementName) {
+            const index = completedAchievements.indexOf(achievementName);
+            if (index > -1) {
+                completedAchievements.splice(index, 1);
+            } else {
+                completedAchievements.push(achievementName);
+            }
+            localStorage.setItem('completedAchievements', JSON.stringify(completedAchievements));
+            renderSkillTree();
+            updateStats();
+        }
+
+        function renderSkillTree() {
+            const skillTreeEl = document.getElementById('skillTree');
+            skillTreeEl.innerHTML = '';
+
+            Object.entries(skillTreeData).forEach(([categoryName, categoryData]) => {
+                const categoryEl = document.createElement('div');
+                categoryEl.className = 'category';
+                
+                const titleEl = document.createElement('div');
+                titleEl.className = 'category-title';
+                titleEl.innerHTML = `
+                    <span class="category-icon">${categoryData.icon}</span>
+                    ${categoryName}
+                `;
+                categoryEl.appendChild(titleEl);
+
+                const subcategories = Object.entries(categoryData).filter(([key]) => key !== 'icon');
+                
+                subcategories.forEach(([subcategoryName, achievements]) => {
+                    const subcategoryEl = document.createElement('div');
+                    subcategoryEl.className = 'subcategory';
+                    
+                    const subtitleEl = document.createElement('div');
+                    subtitleEl.className = 'subcategory-title';
+                    subtitleEl.textContent = subcategoryName;
+                    subcategoryEl.appendChild(subtitleEl);
+
+                    const progressionEl = document.createElement('div');
+                    progressionEl.className = 'progression-line';
+                    subcategoryEl.appendChild(progressionEl);
+
+                    achievements.forEach((achievement, index) => {
+                        const achievementEl = document.createElement('div');
+                        const isCompleted = completedAchievements.includes(achievement.name);
+                        const isLocked = !isPrerequisiteMet(achievement);
+                        const isMilestone = achievement.milestone;
+                        
+                        let className = 'achievement';
+                        if (isCompleted) className += ' completed';
+                        if (isLocked) className += ' locked';
+                        if (isMilestone) className += ' milestone';
+                        
+                        achievementEl.className = className;
+                        
+                        if (!isLocked) {
+                            achievementEl.onclick = () => toggleAchievement(achievement.name);
+                        }
+
+                        let iconClass = isCompleted ? 'completed' : (isLocked ? 'locked' : 'uncompleted');
+                        if (isMilestone && isCompleted) iconClass = 'milestone';
+                        
+                        const autoTrackBadge = achievement.autoTrack ? '<div class="auto-track-badge">AUTO</div>' : '';
+                        
+                        achievementEl.innerHTML = `
+                            <span class="achievement-icon ${iconClass}">${isMilestone ? '★' : (isCompleted ? '✓' : '')}</span>
+                            <div class="achievement-text">
+                                ${achievement.name}
+                                ${achievement.autoTrack ? '<div class="achievement-progress">Auto-trackable via data connection</div>' : ''}
+                            </div>
+                            <span class="achievement-points">${achievement.points}pts</span>
+                            ${autoTrackBadge}
+                        `;
+                        
+                        subcategoryEl.appendChild(achievementEl);
+                    });
+
+                    categoryEl.appendChild(subcategoryEl);
+                });
+
+                skillTreeEl.appendChild(categoryEl);
+            });
+        }
+
+        function updateStats() {
+            let totalAchievements = 0;
+            let completedCount = 0;
+            let totalPoints = 0;
+            let milestoneCount = 0;
+
+            Object.values(skillTreeData).forEach(categoryData => {
+                const subcategories = Object.entries(categoryData).filter(([key]) => key !== 'icon');
+                subcategories.forEach(([, achievements]) => {
+                    achievements.forEach(achievement => {
+                        totalAchievements++;
+                        if (completedAchievements.includes(achievement.name)) {
+                            completedCount++;
+                            totalPoints += achievement.points;
+                            if (achievement.milestone) milestoneCount++;
+                        }
+                    });
+                });
+            });
+
+            const completionRate = Math.round((completedCount / totalAchievements) * 100);
+
+            document.getElementById('totalAchievements').textContent = completedCount;
+            document.getElementById('totalPoints').textContent = totalPoints;
+            document.getElementById('completionRate').textContent = `${completionRate}%`;
+            document.getElementById('milestones').textContent = milestoneCount;
+            document.getElementById('overallProgress').style.width = `${completionRate}%`;
+        }
+
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all progress?')) {
+                completedAchievements = [];
+                localStorage.removeItem('completedAchievements');
+                renderSkillTree();
+                updateStats();
+            }
+        }
+
+        // Initialize
+        renderSkillTree();
+        updateStats();
+    </script>
+</body>
+</html> 

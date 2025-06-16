@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Motivation | RunningHub</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Roboto:wght@400;700&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
+  <style>
+    :root {
+      --primary-navy: #1D2C5E;
+      --accent-red: #D94535;
+      --off-white: #F5F5F0;
+      --dark-text: #222222;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    .motivator-card,
+    .goal-card,
+    .progress-panel {
+      background-color: var(--primary-navy);
+      border-left: 6px solid var(--accent-red);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 12px var(--shadow);
+      border-radius: 12px;
+      color: white;
+    }
+
+    /* This class is special for the daily message, so we separate it */
+    .inspiration-box {
+      background-color: var(--primary-navy);
+      padding: 1rem;
+      color: white;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .motivator-body {
+      font-family: 'Roboto', sans-serif;
+      line-height: 1.6;
+      color: var(--dark-text);
+      background-color: var(--off-white);
+      min-height: 100vh;
+    }
+
+
+    .motivator-logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3rem;
+      font-weight: 400;
+      letter-spacing: 4px;
+    }
+
+    .motivator-logo span {
+      color: var(--accent-red);
+    }
+
+    .motivator-section {
+      padding: 4rem 1rem;
+      text-align: center;
+    }
+
+    .motivator-section h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.5rem;
+      letter-spacing: 2px;
+      color: var(--primary-navy);
+      margin-bottom: 1.5rem;
+      /* --- THIS IS THE FIX --- */
+      /* `position` must be `relative` for the `::after` pseudo-element to be positioned correctly. */
+      position: relative;
+      display: inline-block;
+    }
+
+    .motivator-section h2::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--accent-red);
+    }
+
+    .motivator-section ul {
+      list-style: none;
+      display: inline-block;
+      text-align: left;
+      margin-top: 1.5rem;
+    }
+
+    .motivator-section li {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .carousel-wrapper {
+      position: relative;
+      padding: 3rem 0;
+      margin: 0;
+    }
+
+    .carousel {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .race-poster {
+      flex: 0 0 90%;
+      max-width: 450px;
+      scroll-snap-align: center;
+      margin: 0 15px;
+      background-color: var(--off-white);
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+
+    .race-poster:hover {
+      transform: translateY(-5px);
+    }
+
+    .poster-image-container {
+      width: 100%;
+      height: 280px;
+      overflow: hidden;
+    }
+
+    .race-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .poster-text-container {
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      background-color: var(--primary-navy);
+      color: var(--off-white);
+    }
+
+    .poster-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3.5rem;
+      line-height: 1;
+      letter-spacing: 2px;
+      color: var(--off-white);
+      margin-bottom: 1rem;
+      font-weight: 400;
+    }
+
+    .poster-goal {
+      font-size: 1.1rem;
+      font-weight: 400;
+      margin-bottom: 1.5rem;
+      flex-grow: 1;
+    }
+
+    .countdown {
+      font-family: 'Roboto Mono', monospace, sans-serif;
+      font-size: 1.5rem;
+      background-color: var(--accent-red);
+      color: var(--off-white);
+      padding: 0.75rem;
+      text-align: center;
+      letter-spacing: 1px;
+    }
+
+    .message-controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1.5rem;
+    }
+
+    .personality-dropdown,
+    .action-button {
+      font-family: 'Roboto', sans-serif;
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 2px solid var(--primary-navy);
+      margin: 0 0.5rem;
+      background-color: var(--off-white);
+    }
+
+    .action-button {
+      background-color: var(--accent-red);
+      color: var(--off-white);
+      cursor: pointer;
+      border-color: var(--accent-red);
+      transition: background-color 0.3s;
+    }
+
+    .action-button:hover {
+      background-color: #A53327;
+    }
+
+    .motivator-card .inspiration-box {
+      color: var(--off-white);
+      background-color: transparent;
+      border-left: none;
+      padding: 0;
+      margin-bottom: 0;
+      font-size: 1.2rem;
+      min-height: 70px;
+      text-align: center;
+    }
+
+    .carousel-controls {
+      display: none;
+    }
+
+    @media (min-width: 768px) {
+      .carousel-wrapper {
+        padding: 3rem 60px;
+      }
+
+      .carousel {
+        overflow: hidden;
+      }
+
+      .carousel-controls {
+        display: block;
+      }
+
+      .control-button {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background-color: var(--primary-navy);
+        color: var(--off-white);
+        border: none;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        font-size: 2rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .control-button:hover {
+        background-color: var(--accent-red);
+      }
+
+      #prevBtn {
+        left: 0;
+      }
+
+      #nextBtn {
+        right: 0;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .race-poster {
+        flex-basis: 95%;
+        margin: 0 10px;
+      }
+
+      .poster-title {
+        font-size: 2.8rem;
+      }
+    }
+  </style>
+
+</head>
+
+<body class="motivator-body">
+  <header class="site-header">
+    <div class="container">
+      <a href="{{ url_for('running_hub.home') }}">
+        <h1 class="motivator-logo">RUNNING<span>HUB</span></h1>
+      </a>
+    </div>
+  </header>
+
+  <main>
+    <section class="motivator-section">
+      <h2>Why I'm Running</h2>
+      <ul>
+        {% for motivation in profile_data.motivations %}
+        <li>{{ motivation }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="motivator-section">
+      <h2>Your Daily Kickstart</h2>
+      <div class="motivator-card">
+        <div id="dailyMessage" class="inspiration-box">
+          Click the button to get your daily motivational message!
+        </div>
+        <div class="message-controls">
+          <select id="messagePersonality" class="personality-dropdown">
+            <option value="motivational">Motivational</option>
+            <option value="analytical">Analytical</option>
+            <option value="supportive">Supportive</option>
+            <option value="challenging">Challenging</option>
+            <option value="scientific">Scientific</option>
+            <option value="toxic">Toxic</option>
+          </select>
+          <button id="newMessageBtn" class="action-button">New Message</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="carousel-wrapper">
+      <div class="carousel" id="raceCarousel">
+      </div>
+      <div class="carousel-controls">
+        <button id="prevBtn" class="control-button">‹</button>
+        <button id="nextBtn" class="control-button">›</button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const profileData = JSON.parse('{{ profile_data | tojson | safe }}');
+    const races = profileData.races;
+
+    function createRaceCard(race, index) {
+      const imageUrl = race.imageUrl;
+
+      return `<div class="race-poster" data-index="${index}">
+                <div class="poster-image-container">
+                    <img src="${imageUrl}" alt="${race.name}" class="race-image" />
+                </div>
+                <div class="poster-text-container">
+                    <a href="${race.link}" target="_blank" rel="noopener noreferrer">
+                    <h2 class="poster-title">${race.name}</h2>
+                    </a>
+                    <p class="poster-goal">${race.goal}</p>
+                    <div class="countdown" id="countdown-${index}">Loading...</div>
+                </div>
+            </div>`;
+    }
+
+    function renderCarousel() {
+      const carousel = document.getElementById('raceCarousel');
+      if (races && carousel) {
+        carousel.innerHTML = races.map(createRaceCard).join('');
+        races.forEach((race, i) => startCountdown(race.date, `countdown-${i}`));
+      }
+    }
+
+    function startCountdown(raceDate, elementId) {
+      const countdownElement = document.getElementById(elementId);
+      if (!countdownElement) return;
+
+      const intervalId = setInterval(() => {
+        const now = new Date();
+        const raceTime = new Date(raceDate);
+        const totalSeconds = (raceTime - now) / 1000;
+
+        if (totalSeconds <= 0) {
+          countdownElement.innerText = "RACE DAY!";
+          clearInterval(intervalId);
+          return;
+        }
+
+        const days = Math.floor(totalSeconds / 3600 / 24);
+        const hours = Math.floor(totalSeconds / 3600) % 24;
+        const minutes = Math.floor(totalSeconds / 60) % 60;
+        const seconds = Math.floor(((raceTime - now) / 1000) % 60);
+
+        countdownElement.innerText = `${days}D : ${String(hours).padStart(2, '0')}H : ${String(minutes).padStart(2, '0')}M : ${String(seconds).padStart(2, '0')}S`;
+      }, 1000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      renderCarousel();
+
+      const carousel = document.getElementById('raceCarousel');
+      const nextBtn = document.getElementById('nextBtn');
+      const prevBtn = document.getElementById('prevBtn');
+
+      const scrollCarousel = (direction) => {
+        const poster = carousel.querySelector('.race-poster');
+        if (poster) {
+          const scrollAmount = poster.offsetWidth + 30; // 30px for left/right margins
+          carousel.scrollBy({ left: scrollAmount * direction, behavior: 'smooth' });
+        }
+      };
+
+      nextBtn.addEventListener('click', () => scrollCarousel(1));
+      prevBtn.addEventListener('click', () => scrollCarousel(-1));
+
+      const newMessageBtn = document.getElementById('newMessageBtn');
+      const messagePersonality = document.getElementById('messagePersonality');
+      const dailyMessageContainer = document.getElementById('dailyMessage');
+
+      async function fetchDailyMessage() {
+        const personality = messagePersonality.value;
+        dailyMessageContainer.innerHTML = '<p>Generating your message...</p>';
+
+        try {
+          // The URL includes the '/hub' prefix from your blueprint
+          const response = await fetch('/hub/api/daily_motivation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ personality: personality })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data.error) {
+            dailyMessageContainer.innerHTML = `<p>${data.error}</p>`;
+          } else {
+            dailyMessageContainer.innerHTML = data.response;
+          }
+
+        } catch (error) {
+          console.error('Error fetching daily message:', error);
+          dailyMessageContainer.innerHTML = '<p>Could not generate a message. Please try again later.</p>';
+        }
+      }
+
+      newMessageBtn.addEventListener('click', fetchDailyMessage);
+      fetchDailyMessage();
+    });
+  </script>
+</body>
+
+</html>

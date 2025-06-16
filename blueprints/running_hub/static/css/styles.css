@@ -809,23 +809,6 @@ textarea {
   min-width: 70px;
 }
 
-/* .flip-number {
-  font-size: 2.5rem;
-  font-family: 'Courier New', Courier, monospace;
-  background-color: var(--primary-light);
-  color: var(--accent);
-  border-radius: 6px;
-  padding: 10px 14px;
-  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
-  letter-spacing: 2px;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.flip-number.flip {
-  transform: rotateX(360deg);
-  opacity: 0.85;
-} */
-
 .flip-unit-label {
   font-size: 0.9rem;
   color: var(--text-light);
