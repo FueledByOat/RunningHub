@@ -5,6 +5,7 @@ Service layer for running Coach G Language Model.
 import logging
 import re
 from typing import List, Dict
+import sqlite3
 
 import markdown  # Import the markdown library
 from services.base_service import BaseService
@@ -42,7 +43,8 @@ class CoachGService(BaseService):
         Handles the user's quick query by routing to the appropriate function.
         """
         if topic == 'running_status':
-            response_for_user = self._get_daily_training_summary()
+            with self._get_connection() as conn: 
+                response_for_user = self._get_daily_training_summary(conn=conn)
             
             # If a summary was successfully generated, create and save a text version for history
             if "<p>" in response_for_user: # A simple check to see if we have data
@@ -87,13 +89,15 @@ class CoachGService(BaseService):
             is_data_query = any(keyword in sanitized_query.lower() for keyword in daily_metric_keywords)
 
             if is_data_query:
-                # Get the HTML response for the user
-                response_for_user = self._get_daily_training_summary()
+                with self._get_connection() as conn:
+                    latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+
+                    # Get the HTML response for the user
+                    response_for_user = self._get_daily_training_summary(conn=conn)
                 
                 # If a summary was successfully generated, create and save a text version for history
                 if "<p>" in response_for_user: # A simple check to see if we have data
-                    with self._get_connection() as conn:
-                        latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+
                     if latest_metrics:
                         text_for_history = self._create_text_summary_for_history(latest_metrics[0])
                         self._save_message(session_id, "coach", text_for_history)
@@ -111,12 +115,12 @@ class CoachGService(BaseService):
 
     def _create_text_summary_for_history(self, metrics: Dict) -> str:
         """Creates a simple, text-only summary for the LLM's context history."""
-        tsb = metrics.get('tsb', 0)
+
         return (
             f"Here is the user's training status for {metrics['date']}: "
             f"CTL (Fitness) is {metrics.get('ctl', 0):.1f}, "
             f"ATL (Fatigue) is {metrics.get('atl', 0):.1f}, "
-            f"and TSB (Freshness) is {tsb:.1f}."
+            f"and TSB (Freshness) is {metrics.get('tsb', 0):.1f}."
         )
     def _create_summary_for_strength_history(self, strength_metrics: Dict) -> tuple:
         """Creates a simple, text-only summary for the LLM's context history on strength training fatigue."""
@@ -162,13 +166,13 @@ class CoachGService(BaseService):
         )
         return text_summary, markdown_summary
     
-    def _get_daily_training_summary(self) -> str:
+    def _get_daily_training_summary(self, conn: sqlite3.Connection) -> str:
         """
         Fetches, formats, and converts the latest daily training metrics to HTML.
         """
         try:
-            with self._get_connection() as conn:
-                latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+
+            latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
             
             if not latest_metrics:
                 return "<p>I couldn't find any recent training data to give you a summary.</p>"
