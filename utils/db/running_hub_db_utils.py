@@ -76,21 +76,17 @@ def get_latest_activity_id(conn, activity_types: List[str] = None) -> Optional[i
     Raises:
         DatabaseError: If database query fails
     """
-    if activity_types is None:
-        activity_types = ["Run", "Ride"]
-    
-    # Using dynamic placeholders here as the number of parameters is variable
-    placeholders = ",".join("?" * len(activity_types))
+
     query = f"""
         SELECT id FROM activities
-        WHERE type IN ({placeholders})
+        WHERE type IN ('Run')
         ORDER BY start_date DESC 
         LIMIT 1
     """
     
     try:
         cur = conn.cursor()
-        cur.execute(query, activity_types)
+        cur.execute(query)
         row = cur.fetchone()
         
         if row:

@@ -48,7 +48,7 @@ def generate_rear_view_summary_from_llm(summary_data, lm_model):
     # 3. **[Placeholder]** Call your local language model
     try:
         # generated_text = language_model._generate_response(prompt, "", False)
-        generated_text = lm_model._generate_report_summary_response(prompt)
+        generated_text = lm_model.generate_report_summary_response(prompt)
     except Exception as e:
         logger.warning(f"Language Model Failed to Generate Report Text. Using Fake Data: {e}")
         generated_text = (
@@ -106,7 +106,7 @@ def generate_side_view_summary_from_llm(summary_data, lm_model):
     """
 
     # 3. **[Placeholder]** Call your local language model's dedicated report function
-    generated_text_markdown = lm_model._generate_report_summary_response(prompt)
+    generated_text_markdown = lm_model.generate_report_summary_response(prompt)
     #
     # For this example, we'll use a hardcoded response that uses markdown.
     # generated_text_markdown = (

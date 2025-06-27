@@ -10,13 +10,14 @@ class Config:
     DB_PATH: Optional[str] = os.getenv('DATABASE', 'strava_data.db')
     DB_PATH_RUNSTRONG: Optional[str] = os.getenv('RUNSTRONG_DATABASE', 'runstrong.db')
     CACHE_TTL = int(os.getenv('CACHE_TTL', '300'))
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
     VIDEO_FOLDER = os.getenv('VIDEO_FOLDER', 'videos')
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS', 'mp4')
     FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', "broken_key")
     # Huggingface token
     HF_TOKEN = os.getenv('HF_TOKEN', "broken_hf_key")
+    TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
     
     # Strava API credentials
     CLIENT_ID: Optional[str] = os.getenv("CLIENT_ID")
@@ -55,7 +56,7 @@ class LanguageModelConfig:
     LANGUAGE_MODEL_ACTIVE = True
 
     # Generation parameters
-    MAX_NEW_TOKENS = 250
+    MAX_NEW_TOKENS = 512
     TEMPERATURE = 0.7
     TOP_P = 0.9
     REPETITION_PENALTY = 1.1
@@ -76,8 +77,8 @@ class LanguageModelConfig:
     # LOCAL_MODEL_NAME = "microsoft/Phi-4-mini-instruct"
     LOCAL_MODEL_NAME = "google/gemma-3-1b-it"
     USE_CONVERSATIONAL_MODEL = False  # Toggle to True for models like llama-3-chat or mistral-chat
-    USE_REMOTE_MODEL = False  # Set to False to run locally
-    REMOTE_MODEL_NAME = "mistralai/Mistral-7B-Instruct-v0.2"
+    USE_REMOTE_MODEL = True  # Set to False to run locally
+    REMOTE_MODEL_NAME = "together_ai/meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
 
     
     # Stop sequences to prevent overgeneration
@@ -111,4 +112,4 @@ logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     filename='logs/running_hub.log', 
-    filemode='w')
+    filemode='a')

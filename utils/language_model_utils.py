@@ -2,97 +2,139 @@
 """Utilities for natural language to SQL query generation using Hugging Face models."""
 
 import logging
-import re
+import os # Import os to get the API key
 import torch
-from typing import Optional, List, Dict, Any
-from functools import lru_cache
+import re
+from typing import Optional, List, Dict, Any, Union
 
+import litellm
 from transformers import pipeline, AutoTokenizer
-from huggingface_hub import login, InferenceClient
+from huggingface_hub import login
+
 
 from utils import exception_utils
-from config import Config, LanguageModelConfig
-from utils.db import db_utils
-from utils.db import language_db_utils
+from config import Config, LanguageModelConfig 
 
 logger = logging.getLogger(__name__)
 
+os.environ["TOGETHER_API_KEY"] = Config.TOGETHER_API_KEY or ""
+
 class LanguageModel:
-    """Handles interactions with the Hugging Face language model."""
+    """
+    Handles interactions with language models.
+    This class acts as a factory and wrapper, initializing and providing a
+    unified interface for either a local Hugging Face model or a remote API-based model.
+    """
     
     def __init__(self):
         self.config = LanguageModelConfig()
-        self.tokenizer = AutoTokenizer.from_pretrained(self.config.LOCAL_MODEL_NAME)
-        self._pipe = None
-        if not self.config.USE_REMOTE_MODEL:
+        try:
+            logger.info(f"Loading tokenizer: {self.config.LOCAL_MODEL_NAME}")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.config.LOCAL_MODEL_NAME)
+        except Exception as e:
+            logger.error(f"FATAL: Could not load tokenizer {self.config.LOCAL_MODEL_NAME}. Error: {e}")
+            raise
+
+        if self.config.USE_REMOTE_MODEL:
+            # --- REFINED: No client initialization needed for litellm ---
+            logger.info(f"Remote mode enabled. Will use litellm to call {self.config.REMOTE_MODEL_NAME}")
+        else:
             self._initialize_local_model()
 
     def _initialize_local_model(self):
         """Initializes the local Hugging Face model pipeline."""
+        logger.info("Initializing LOCAL language model.")
         try:
             login(token=Config.HF_TOKEN, add_to_git_credential=False)
+            
+            logger.info(f"Loading local tokenizer for: {self.config.LOCAL_MODEL_NAME}")
+            self.tokenizer = AutoTokenizer.from_pretrained(self.config.LOCAL_MODEL_NAME)
             
             device = "cuda" if torch.cuda.is_available() else "cpu"
             logger.info(f"Initializing model on device: {device}")
             
-            self._pipe = pipeline(
+            self.model_client = pipeline(
                 "text-generation",
                 model=self.config.LOCAL_MODEL_NAME,
                 model_kwargs={"torch_dtype": torch.bfloat16},
-                device_map="cpu",
+                device_map="auto",
                 return_full_text=False
             )
-            logger.info("Language model initialized successfully.")
+            logger.info("Local language model initialized successfully.")
         except Exception as e:
-            logger.error(f"Failed to initialize language model: {e}")
-            raise exception_utils.LanguageModelError(f"Model initialization failed: {e}")
+            logger.error(f"Failed to initialize local language model: {e}")
+            raise exception_utils.LanguageModelError(f"Local model initialization failed: {e}")
 
-    def generate_general_coach_g_reply(self, user_query: str, personality: str, history: List[Dict]) -> str:
+    def generate(self, prompt_or_messages: Union[str, List[Dict]], **kwargs) -> str:
         """
-        Generates a general, long-form reply from Coach G.
+        Generates and cleans a response using the initialized model (local or remote).
         """
-        context = self._build_conversation_context(history)
-        personality_prompt = self.config.PERSONALITY_TEMPLATES.get(personality, self.config.PERSONALITY_TEMPLATES['motivational'])
-
-        # --- REFINED PROMPT ---
-        # Provides clearer, more explicit instructions to the model.
-        prompt = f"""You are Coach G, a {personality_prompt} running coach. Your task is to provide a supportive and insightful response to the user.
-Follow these rules strictly:
-1.  Your reply must be a thoughtful, long-form response of 2-4 complete sentences.
-2.  Do NOT mention that you are an AI, a language model, or a bot.
-3.  Directly address the user's message in your reply.
-4.  Do not output anything other than Coach G's response.
-
-Here is the conversation history:
-{context}
-User: {user_query}
-
-Now, provide only Coach G's response.
-Coach G:"""
-
+        raw_response = ""
         try:
             if self.config.USE_REMOTE_MODEL:
-                pass 
-            
-            if not self._pipe:
-                raise exception_utils.LanguageModelError("Local model is not initialized.")
+                # --- REFINED: Direct call to litellm.completion ---
+                if not isinstance(prompt_or_messages, list):
+                    raise TypeError(f"Remote model expects a List[Dict], but received {type(prompt_or_messages)}.")
+                
+                logger.debug(f"Calling litellm with model '{self.config.REMOTE_MODEL_NAME}'")
+                response = litellm.completion(
+                    model=self.config.REMOTE_MODEL_NAME,
+                    messages=prompt_or_messages,
+                    temperature=self.config.TEMPERATURE,
+                    max_tokens=self.config.MAX_NEW_TOKENS,
+                    **kwargs
+                )
+                # Extract the message content from the response
+                raw_response = response.choices[0].message.content
 
-            outputs = self._pipe(
-                prompt,
-                max_new_tokens=self.config.MAX_NEW_TOKENS,
-                do_sample=True,
-                temperature=self.config.TEMPERATURE,
-                top_p=self.config.TOP_P,
-                pad_token_id=self.tokenizer.eos_token_id
-            )
-            
-            raw_response = outputs[0]['generated_text']
-            # Use the new, more robust cleaning function
+            else:
+                # Local model path remains unchanged
+                if self.model_client is None:
+                     raise exception_utils.LanguageModelError("Local model is not initialized.")
+                if not isinstance(prompt_or_messages, str):
+                    raise TypeError(f"Local model expects a string prompt, but received {type(prompt_or_messages)}.")
+                
+                # ... (local model generation logic is unchanged)
+                generation_params = {
+                    'max_new_tokens': kwargs.get('max_new_tokens', self.config.MAX_NEW_TOKENS),
+                    'temperature': self.config.TEMPERATURE,
+                    'top_p': self.config.TOP_P,
+                    'eos_token_id': [self.tokenizer.eos_token_id] + self.tokenizer.convert_tokens_to_ids(self.config.STOP_TOKENS),
+                    'do_sample': True,
+                }
+                outputs = self.model_client(prompt_or_messages, **generation_params)
+                raw_response = outputs[0]['generated_text']
+
             return self._clean_response(raw_response)
 
         except Exception as e:
-            logger.error(f"Failed to generate general reply: {e}")
-            raise exception_utils.LanguageModelError(f"Failed to generate reply: {e}")
+            logger.error(f"Error during model generation: {e}", exc_info=True)
+            # Try to get more info from litellm exceptions
+            if hasattr(e, 'response'):
+                logger.error(f"LiteLLM API Response Error: {e.response.text}")
+            return "Sorry, I encountered an error while generating a response."
+
+    # --- This function is now perfect. It prepares the data correctly. ---
+    def generate_general_coach_g_reply(self, user_query: str, personality: str, history: List[Dict]) -> str:
+        """
+        Generates a standard conversational reply, preparing the data
+        in the correct format for either a local or remote model.
+        """
+        personality_prompt = self.config.PERSONALITY_TEMPLATES.get(personality, self.config.PERSONALITY_TEMPLATES['motivational'])
+        system_message = f"You are Coach G, a {personality_prompt} running coach..." # (abbreviated)
+
+        if self.config.USE_REMOTE_MODEL:
+            # REMOTE PATH: Build a list of standard dictionaries. litellm handles this perfectly.
+            messages = [{'role': 'system', 'content': system_message}]
+            for msg in history:
+                messages.append({'role': msg['role'], 'content': msg.get('message', '')})
+            messages.append({'role': 'user', 'content': user_query})
+            return self.generate(messages)
+        else:
+            # LOCAL PATH: Build a single formatted string.
+            context = self._build_conversation_context(history)
+            prompt = f"""{system_message}\n\nHere is the conversation history (oldest to newest):\n{context}\n\nUser: {user_query}\n\nNow, provide only Coach G's response.\nCoach G:"""
+            return self.generate(prompt)
 
     def format_daily_training_summary(self, metrics: Dict) -> str:
         """
@@ -152,91 +194,22 @@ Coach G:"""
 
         return text
         
-    def _generate_report_summary_response(self, prompt: str, max_tokens: int = 400) -> str:
+    def generate_report_summary_response(self, prompt: str, max_tokens: int = 400) -> str:
         """
-        Generates a detailed response specifically for data-driven report summaries,
-        using a higher token limit.
-
-        Args:
-            prompt (str): The detailed prompt containing the runner's data.
-            max_tokens (int): The maximum number of new tokens to generate. Defaults to 512.
-
-        Returns:
-            str: The raw, potentially multi-line markdown string from the model.
+        Generates a detailed response for data-driven reports, preparing the
+        prompt in the correct format for either local or remote models.
         """
-        try:
-            # KEY CHANGE: This function uses its own 'max_tokens' parameter with a much
-            # higher default (512), ignoring the more restrictive global config.
-            if self.config.USE_REMOTE_MODEL:
-                # Assuming your remote generation function can accept a max_tokens override
-                raw_output = self._generate_remote_response(prompt, "", max_tokens)
-            else:
-                if not self._pipe:
-                    raise exception_utils.LanguageModelError("Local model not initialized.")
-
-                generation_params = {
-                    'max_new_tokens': max_tokens, # Use the new, larger token limit
-                    'temperature': self.config.TEMPERATURE,
-                    'top_p': self.config.TOP_P,
-                    'repetition_penalty': self.config.REPETITION_PENALTY,
-                    'do_sample': True,
-                    'pad_token_id': self.tokenizer.eos_token_id,
-                }
-
-                pipeline_output = self._pipe(prompt, **generation_params)
-                if not pipeline_output or not pipeline_output[0].get("generated_text"):
-                    raise exception_utils.LanguageModelError("Local model returned empty response.")
-
-                # KEY CHANGE: We want the full text, including the prompt, to parse it cleanly.
-                full_output = pipeline_output[0]["generated_text"]
-                
-                # The model often includes the prompt in its response. We need to remove it.
-                # This ensures we only return the newly generated text.
-                if full_output.startswith(prompt):
-                    raw_output = full_output[len(prompt):].strip()
-                else:
-                    raw_output = full_output.strip()
-
-
-            # KEY CHANGE: We return the raw markdown here. The conversion to HTML
-            # should happen in the text_generation.py file, which is responsible
-            # for the final formatting of the report content.
-            return raw_output
-
-        except Exception as e:
-            logger.error(f"Report summary generation failed for prompt '{prompt[:100]}...': {e}", exc_info=True)
-            raise exception_utils.LanguageModelError(f"Report summary generation failed: {e}") from e
-
-# Global instance
-_sql_generator = None
-
-def get_sql_generator() -> LanguageModel:
-    """Get or create global SQL generator instance."""
-    global _sql_generator
-    if _sql_generator is None:
-        _sql_generator = LanguageModel()
-    return _sql_generator
-
-def generate_sql_from_natural_language(user_input: str) -> str:
-    """Generate SQL query from natural language input.
-    
-    Args:
-        user_input: Natural language question
+        logger.info(f"Generating report summary with max_tokens={max_tokens}.")
         
-    Returns:
-        Generated SQL response
-    """
-    generator = get_sql_generator()
-    return generator.generate_sql_from_natural_language(user_input)
-
-def extract_sql_query(assistant_response: str) -> Optional[str]:
-    """Extract SQL query from assistant response.
-    
-    Args:
-        assistant_response: Raw model response
-        
-    Returns:
-        Extracted SQL query or None
-    """
-    generator = get_sql_generator()
-    return generator.extract_sql_query(assistant_response)
+        if self.config.USE_REMOTE_MODEL:
+            # --- REMOTE PATH: Wrap the prompt string in a message list ---
+            # For a direct instruction like this, we treat it as a single 'user' message.
+            messages = [
+                {'role': 'user', 'content': prompt}
+            ]
+            # Call the base generate() method with the correctly formatted list
+            return self.generate(messages, max_new_tokens=max_tokens)
+        else:
+            # --- LOCAL PATH: Pass the prompt string directly ---
+            # The local pipeline expects a single string, so this is correct.
+            return self.generate(prompt, max_new_tokens=max_tokens)

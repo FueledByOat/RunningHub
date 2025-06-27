@@ -25,7 +25,7 @@ class CoachGService(BaseService):
 
     def _initialize_language_model(self):
         """Initialize the language model."""
-        if self.lm_config.LANGUAGE_MODEL_ACTIVE:
+        if self.lm_config.LANGUAGE_MODEL_ACTIVE:            
             try:
                 self.coach_g = language_model_utils.LanguageModel()
                 self.tokenizer = self.coach_g.tokenizer
@@ -51,7 +51,7 @@ class CoachGService(BaseService):
                 with self._get_connection() as conn:
                     latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
                 if latest_metrics:
-                    text_for_history = self._create_text_summary_for_history(latest_metrics[0])
+                    text_for_history = self._create_text_summary_for_history(latest_metrics)
                     self._save_message(session_id, "coach", text_for_history)
             
             return response_for_user
@@ -78,35 +78,49 @@ class CoachGService(BaseService):
 
     def handle_user_query(self, session_id: str, user_query: str, personality: str) -> str:
         """
-        Handles the user's query by routing to the appropriate function.
+        Handles the user's query by routing to the appropriate function based on keywords.
         """
         sanitized_query = self._sanitize_user_input(user_query)
-        self._save_message(session_id, "user", sanitized_query)
-
-        daily_metric_keywords = ['atl', 'ctl', 'fatigue', 'freshness', 'training status']
+        
+        # --- LOGIC RESTORED: Define keywords to identify data-specific queries ---
+        daily_metric_keywords = ['atl', 'ctl', 'fatigue', 'freshness', 'training status', 'tsb', 'fitness']
 
         try:
             is_data_query = any(keyword in sanitized_query.lower() for keyword in daily_metric_keywords)
 
+            # --- LOGIC RESTORED: The main routing if/else block ---
             if is_data_query:
+                # This branch handles specific requests for the daily training summary.
+                self.logger.info(f"Handling as a data query for session {session_id}.")
+                
+                # First, save the user's query to history.
+                self._save_message(session_id, "user", sanitized_query)
+                
                 with self._get_connection() as conn:
-                    latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
-
-                    # Get the HTML response for the user
+                    # Get the HTML summary to display to the user.
                     response_for_user = self._get_daily_training_summary(conn=conn)
                 
-                # If a summary was successfully generated, create and save a text version for history
-                if "<p>" in response_for_user: # A simple check to see if we have data
-
-                    if latest_metrics:
-                        text_for_history = self._create_text_summary_for_history(latest_metrics[0])
+                    # Also create and save a simple text version of the data for the AI's future context.
+                    latest_metrics_list = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+                    if latest_metrics_list:
+                        text_for_history = self._create_text_summary_for_history(dict(latest_metrics_list[0]))
                         self._save_message(session_id, "coach", text_for_history)
                 
                 return response_for_user
+            
             else:
+                # --- HISTORY FIX APPLIED HERE: This branch handles general conversation ---
+                self.logger.info(f"Handling as a general conversational query for session {session_id}.")
+                
+                # 1. Get the history of the conversation so far (BEFORE saving the new message).
                 history = self._get_recent_messages(session_id, max_tokens=self.lm_config.MAX_CONTEXT_TOKENS)
+                # 2. Generate a response based on the prior history and the new query.
                 response = self.coach_g.generate_general_coach_g_reply(sanitized_query, personality, history)
+                
+                # 3. NOW, save the complete turn (user query + coach response) to the database.
+                self._save_message(session_id, "user", sanitized_query)
                 self._save_message(session_id, "coach", response)
+                
                 return response
 
         except Exception as e:
@@ -167,24 +181,29 @@ class CoachGService(BaseService):
         return text_summary, markdown_summary
     
     def _get_daily_training_summary(self, conn: sqlite3.Connection) -> str:
-        """
-        Fetches, formats, and converts the latest daily training metrics to HTML.
-        """
-        try:
-
-            latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
-            
-            if not latest_metrics:
-                return "<p>I couldn't find any recent training data to give you a summary.</p>"
-            
-            markdown_summary = self.coach_g.format_daily_training_summary(latest_metrics[0])
-            html_summary = markdown.markdown(markdown_summary)
-            
-            return html_summary
-
-        except Exception as e:
-            self.logger.error(f"Error getting daily training summary: {e}")
-            return "<p>I was unable to retrieve your latest training summary.</p>"
+            """Fetches, formats, and converts the latest daily training metrics to HTML."""
+            try:
+                latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
+                if not latest_metrics:
+                    return "<p>I couldn't find any recent training data to give you a summary.</p>"
+                print(latest_metrics)
+                # This function doesn't use the LLM, it just formats data. This is correct.
+                prompt = (
+                    f"### Your Training Status for {latest_metrics['date']}\n\n"
+                    f"**CTL (Fitness):** {latest_metrics.get('ctl', 0):.1f}\n"
+                    f"**ATL (Fatigue):** {latest_metrics.get('atl', 0):.1f}\n"
+                    f"**TSB (Freshness):** {latest_metrics.get('tsb', 0):.1f}"
+                )
+                # Example of calling the LLM for interpretation instead of hardcoded rules:
+                # interpretation_prompt = f"Given this data: {prompt}. Write a one-sentence interpretation for the runner."
+                # interpretation = self.coach_g.generate(interpretation_prompt) # This is how you would call it
+                
+                # For now, using the existing formatting function:
+                markdown_summary = self.coach_g.format_daily_training_summary(latest_metrics)
+                return markdown.markdown(markdown_summary)
+            except Exception as e:
+                self.logger.error(f"Error getting daily training summary: {e}", exc_info=True)
+                return "<p>I was unable to retrieve your latest training summary.</p>"
         
     def _get_strength_training_summary(self) -> tuple:
         """
@@ -364,52 +383,35 @@ class CoachGService(BaseService):
     def get_daily_motivational_message(self, session_id: str, personality: str, profile_data: dict) -> str:
         self.logger.info(f"Generating daily motivation for session {session_id} with personality '{personality}'.")
         try:
-            # --- 1. GATHER CONTEXTUAL DATA (NOW CENTRALIZED) ---
-            profile_data = profile_data
-            
             with self._get_connection() as conn:
                 latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
                 weekly_summary_text, _ = self._get_weekly_running_summary()
 
-            # Format motivations and races from the loaded JSON data
-            upcoming_races_summary = "\n".join(
-                [f"- {race['name']}: Goal is {race['goal']}" for race in profile_data.get('races', [])]
-            )
-            reasons_for_running = "\n".join(
-                [f"- {m}" for m in profile_data.get('motivations', [])]
-            )
-
-            # --- 2. CONSTRUCT A DETAILED PROMPT ---
+            upcoming_races_summary = "\n".join([f"- {race['name']}: Goal is {race['goal']}" for race in profile_data.get('races', [])])
+            reasons_for_running = "\n".join([f"- {m}" for m in profile_data.get('motivations', [])])
+            personality_prompt = LanguageModelConfig.PERSONALITY_TEMPLATES.get(personality, LanguageModelConfig.PERSONALITY_TEMPLATES['motivational'])
             context_summary = (
-                f"Here is a snapshot of the user's current running journey:\n\n"
-                f"**Stated Motivations:**\n{reasons_for_running}\n\n"
-                f"**Upcoming Races & Goals:**\n{upcoming_races_summary}\n\n"
-                f"**Latest Training Status:**\n"
-                f"{self._create_text_summary_for_history(latest_metrics[0]) if latest_metrics else 'No recent metrics available.'}\n\n"
-                f"**Last 7 Days Summary:**\n{weekly_summary_text}\n\n"
+                f"Here is a snapshot of the user's current running journey:\n"
+                f"Stated Motivations:\n{reasons_for_running}\n"
+                f"Upcoming Races & Goals:\n{upcoming_races_summary}\n"
+                f"Latest Training Status:\n{self._create_text_summary_for_history(latest_metrics) if latest_metrics else 'No recent metrics available.'}\n"
+                f"Last 7 Days Summary:\n{weekly_summary_text}"
             )
             
-            # This is the instruction for the language model
             prompt_instruction = (
-                "Based on the user's data below, write a short, punchy, and direct daily motivational message. "
+                "Based on the user's data below, write a short, punchy, and direct daily motivational message (2-3 sentences). "
                 "Connect the message to one of their specific goals, their current training status, or an upcoming race. "
-                "Address the runner directly as 'you'. Here is my data: "
+                f"Address the runner directly as 'you' and adopt {personality_prompt} personality. Here is the data:"
             )
             
-            full_prompt = f"{prompt_instruction}\n{context_summary}"
+            full_prompt = f"{prompt_instruction}\n\n{context_summary}. Now provide a reponse: "
 
-            # --- 3. GENERATE THE MESSAGE ---
-            # Use the existing language model utility. We pass an empty history so each message is fresh.
-            response_markdown = self.coach_g.generate_general_coach_g_reply(full_prompt, personality, history=[])
+            # Trying to re-use the report summary response that runnervision uses
+            response_markdown = self.coach_g.generate_report_summary_response(full_prompt)
             
-            # --- 4. SAVE AND RETURN ---
-            # Save the generated message to history so it's logged.
             self._save_message(session_id, "coach", response_markdown)
-            
-            # Convert the Markdown response to HTML for rendering on the webpage
             return markdown.markdown(response_markdown)
-
+        
         except Exception as e:
             self.logger.error(f"Error in get_daily_motivational_message: {e}", exc_info=True)
-            # Return a user-friendly error in HTML format
             return "<p>I'm having a bit of trouble finding my words right now. Please try again in a moment.</p>"

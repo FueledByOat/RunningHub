@@ -55,23 +55,26 @@ def update_daily_training_metrics(conn: sqlite3.Connection, df, user_id=1):
 
     conn.commit()
 
-def get_latest_daily_training_metrics(conn: sqlite3.Connection):
-    """
-    Retreives latest day's data from the daily_training_metrics table.
-
-    Args:
-        conn
-    """
-    c = conn.cursor()
-    query = """
-        SELECT date, total_tss, ctl, atl, tsb
-        FROM daily_training_metrics
-        ORDER BY date DESC
-        LIMIT 1;
-    """
-    result = c.execute(query).fetchall()
-
-    return result
+def get_latest_daily_training_metrics(conn: sqlite3.Connection) -> Optional[Dict]:
+    """Retrieves the latest day's data as a single dictionary."""
+    original_row_factory = conn.row_factory  # Store original factory
+    try:
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        query = """
+            SELECT date, total_tss, ctl, atl, tsb
+            FROM daily_training_metrics
+            ORDER BY date DESC
+            LIMIT 1;
+        """
+        row = cursor.execute(query).fetchone()
+        
+        # Convert the sqlite3.Row to a standard dict before returning
+        return dict(row) if row else None
+        
+    finally:
+        # Guarantee that the row_factory is reset, even if an error occurs.
+        conn.row_factory = original_row_factory
 
 def initialize_conversation_database(conn: sqlite3.Connection):
     """
@@ -94,54 +97,64 @@ def initialize_conversation_database(conn: sqlite3.Connection):
 def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
     """Retrieve the most recent conversation history within a token limit."""
     try:
-        rows = conn.execute("""
+        # --- FIX 1: Explicitly set the row_factory for this function ---
+        # This guarantees we get dict-like rows, regardless of the connection's prior state.
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute("""
             SELECT role, message, timestamp FROM conversations
             WHERE session_id = ?
             ORDER BY timestamp DESC
             LIMIT 50
-        """, (session_id,)).fetchall()
+        """, (session_id,))
+        rows = cursor.fetchall()
         
+        # --- FIX 2: Reset row_factory immediately after use ---
+        # This prevents this function from affecting other parts of the application.
+        conn.row_factory = None
+
         if not rows:
-            logger.debug(f"No conversation history found for session {session_id}")
             return []
         
         history = []
         total_tokens = 0
         
         for row in rows:
-            role, message, timestamp = row
+            # --- FIX 3 (The Critical One): Convert the Row object to a true dict ---
+            # This creates a completely independent copy of the data.
+            row_dict = dict(row)
+
+            role = row_dict['role']
+            message = str(row_dict.get('message', '')) # Safer access
             
-            # Ensure message is a string
-            if not isinstance(message, str):
-                message = str(message) if message else ''
-            
-            message = message.strip()
             if not message:
                 continue
             
-            # Format message for token counting
             formatted = f"User: {message}\n" if role == 'user' else f"Coach G: {message}\n"
             
-            # Safe token counting
             try:
                 token_count = len(tokenizer.encode(formatted))
             except Exception as e:
                 logger.warning(f"Tokenizer failed, using fallback: {e}")
-                token_count = len(formatted.split()) * 1.3
+                token_count = len(formatted.split()) * 1.3 # Simple approximation
             
             if total_tokens + token_count > max_tokens:
-                logger.debug(f"Token limit reached. Retrieved {len(history)} messages")
                 break
             
-            history.insert(0, {
-                "role": role,
-                "message": message,  # Store clean string
-                "timestamp": timestamp
-            })
+            # Now we append the independent dictionary copy.
+            history.insert(0, row_dict)
             total_tokens += token_count
         
         logger.debug(f"Retrieved {len(history)} messages ({total_tokens} tokens) for session {session_id}")
         return history
+    
+    except sqlite3.Error as e:
+        logger.error(f"Database error retrieving messages: {e}", exc_info=True)
+        # In case of error, ensure row_factory is reset
+        if conn:
+            conn.row_factory = None
+        raise exception_utils.DatabaseError(f"Failed to retrieve messages: {e}") from e
         
     except sqlite3.Error as e:
         logger.error(f"Database error retrieving messages: {e}")
@@ -165,24 +178,25 @@ def save_message(conn: sqlite3.Connection, session_id: str, role: str, message: 
         conn.rollback()
         raise exception_utils.DatabaseError(f"Failed to save message: {e}") from e
 
-def execute_generated_query(conn: sqlite3.Connection, sql_query: str):
-    """Executes a validated SELECT query generated by the LLM."""
-    # Potentially add more validation/parsing here if needed (e.g., allowed tables)
-    # For now, the SELECT check is a primary safeguard.
-
+def execute_generated_query(conn: sqlite3.Connection, sql_query: str) -> Tuple[List[Dict], List[str]]:
+    """Executes a validated SELECT query and returns standard dicts."""
+    original_row_factory = conn.row_factory
     try:
-            cursor = conn.cursor()
-            cursor.execute(sql_query) # Parameterization is tricky with fully dynamic SQL. Be cautious.
-                                    # If LLM needs params, it must generate placeholders, and you must extract them.
-                                    # Simpler: LLM generates SQL with literal values based on user query.
-
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            rows = cursor.fetchall() # Will be list of dicts due to dict_factory
-
-            return rows, columns
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(sql_query)
+        
+        columns = [desc[0] for desc in cursor.description] if cursor.description else []
+        rows = cursor.fetchall()
+        
+        # Convert list of Row objects to a list of standard dicts
+        return [dict(row) for row in rows], columns
+        
     except sqlite3.Error as e:
         logger.error(f"Error executing generated SQL query '{sql_query}': {e}")
         raise exception_utils.DatabaseError(f"Failed to execute query: {e}") from e
+    finally:
+        conn.row_factory = original_row_factory
 
 def get_running_summary_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -> dict:
     """

@@ -177,7 +177,7 @@ def create_app(config: Config = None) -> Flask:
 if __name__ == '__main__':
     app = create_app()
     app.run(
-        debug=True,
+        debug=False,
         port=5555,
         host='0.0.0.0'  # Allow external connections in development
     )
