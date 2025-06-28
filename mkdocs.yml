@@ -16,6 +16,8 @@ nav:
   - RunStrong: runstrong.md
   - Coach G: coachg.md
   - API Documentation: flask_api_documentation.md
+  - Services: flask_services_documentation.md
+  - Runnervision Biomechanic Functions: runnervision_biomechanic_documentation.md
 markdown_extensions:
   - admonition
   - codehilite

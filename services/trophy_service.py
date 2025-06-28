@@ -23,6 +23,7 @@ class TrophyService(BaseService):
         
         # Define race distances with their search ranges (in meters)
         race_distances = [
+            ('1 Mile', 1500, 1700),            
             ('5K', 4500, 5500),
             ('8K', 7600, 8400),
             ('10K', 9500, 10500),

@@ -24,7 +24,7 @@ class ConnectionPool:
     def _create_connection(self):
         """Create a new database connection."""
         conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        conn.row_factory = dict_factory
+        conn.row_factory = sqlite3.Row 
         return conn
     
     @contextmanager
@@ -81,13 +81,10 @@ def dict_factory(cursor: sqlite3.Cursor, row: sqlite3.Row) -> Dict[str, Any]:
     """
     return {col[0]: row[idx] for idx, col in enumerate(cursor.description)}
 
-def dict_from_row(row) -> Dict:
-    """Convert sqlite3.Row to dictionary"""
+def dict_from_row(row: Optional[sqlite3.Row]) -> Dict:
+    """Convert a single sqlite3.Row to a dictionary."""
     return dict(row) if row else {}
 
-def dicts_from_rows(rows) -> List[Dict]:
-    """Convert list of sqlite3.Row to list of dictionaries"""
+def dicts_from_rows(rows: List[sqlite3.Row]) -> List[Dict]:
+    """Convert a list of sqlite3.Row to a list of dictionaries."""
     return [dict(row) for row in rows] if rows else []
-
-
-

@@ -4,6 +4,7 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 import sqlite3
 import pandas as pd
+
 import utils.db.db_utils as db_utils
 import utils.db.dash_db_utils as dash_db_utils
 import plotly.io as pio
@@ -401,7 +402,7 @@ def create_dash_dashboard_app(server, db_path):
             reference_line=0.30 # Reference line at the optimal threshold
         )
     
-    def create_training_shape_chart():
+    def create_training_shape_chart(conn: sqlite3.Connection):
         """
         Create a Plotly Dash chart showing training shape over time
         """
@@ -409,7 +410,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = dash_db_utils.get_enhanced_training_shape_data(db_path)
+        df = dash_db_utils.get_enhanced_training_shape_data(conn)
 
         if df.empty:
             # Return empty figure if no data
@@ -584,7 +585,7 @@ def create_dash_dashboard_app(server, db_path):
         
         return fig
     
-    def create_cumulative_training_shape_chart():
+    def create_cumulative_training_shape_chart(conn: sqlite3.Connection):
         """
         Create a Plotly Dash chart showing training shape over time
         """
@@ -592,7 +593,7 @@ def create_dash_dashboard_app(server, db_path):
         from plotly.subplots import make_subplots
         
         # Get the data
-        df = dash_db_utils.get_cumulative_training_shape_data(db_path)
+        df = dash_db_utils.get_cumulative_training_shape_data(conn)
 
         if df.empty:
             # Return empty figure if no data
@@ -624,34 +625,40 @@ def create_dash_dashboard_app(server, db_path):
         return fig
     
     def build_fitness_chart():
+        with db_utils.get_db_connection(db_path) as conn:
+            training_shape_figure = create_training_shape_chart(conn)
+        
         return dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Training Shape - Fitness Trajectory"),
-                dbc.CardBody([
-                    dcc.Graph(
-                        id='training-shape-chart',
-                        figure=create_training_shape_chart()
-                    )
-                            ])
-                        ])
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Training Shape - Fitness Trajectory"),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id='training-shape-chart',
+                            figure=training_shape_figure
+                        )
                     ])
+                ])
             ])
-    
+        ])
+
     def build_cumulative_fitness_chart():
+        with db_utils.get_db_connection(db_path) as conn:
+            cumulative_figure = create_cumulative_training_shape_chart(conn)
+
         return dbc.Row([
-        dbc.Col([
-            dbc.Card([
-                dbc.CardHeader("Training Shape - Fitness Trajectory"),
-                dbc.CardBody([
-                    dcc.Graph(
-                        id='cumulative-shape-chart',
-                        figure=create_cumulative_training_shape_chart()
-                    )
-                            ])
-                        ])
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader("Cumulative Fitness Bank"),
+                    dbc.CardBody([
+                        dcc.Graph(
+                            id='cumulative-shape-chart',
+                            figure=cumulative_figure
+                        )
                     ])
+                ])
             ])
+        ])
 
     def build_dashboard_cards(acwr_value, acwr_trend, hrd_value, hrd_trend, cv_value, cv_trend, ctl_value, ctl_trend, atl_value, atl_trend, tsb_value, tsb_trend, tss_value, tss_trend):
         """Build the complete dashboard row with all metric cards"""
@@ -675,13 +682,17 @@ def create_dash_dashboard_app(server, db_path):
  
     # --- Load and Process Data ---
 
-    def load_dashboard_data(db_path=db_path):
+    def load_dashboard_data(db_path):
         """Load all required data for the dashboard"""
         # Load data
-        df_acwr = dash_db_utils.get_acwr_data(db_path)
-        df_hr_drift = dash_db_utils.get_hr_drift_data(db_path)
-        df_cadence = dash_db_utils.get_cadence_stability_data(db_path)
-        df_ctl_atl_tsb_tss = dash_db_utils.get_ctl_atl_tsb_tss_data(db_path)
+        with db_utils.get_db_connection(db_path) as conn:
+            # Pass the connection object to each db utility function
+            df_acwr = dash_db_utils.get_acwr_data(conn)
+            df_hr_drift = dash_db_utils.get_hr_drift_data(conn)
+            df_cadence = dash_db_utils.get_cadence_stability_data(conn)
+            
+            # This function now BOTH calculates and SAVES the data to the database
+            df_ctl_atl_tsb_tss = dash_db_utils.get_ctl_atl_tsb_tss_data(conn)
         
         # Process ACWR data
         latest_acwr = df_acwr['acwr'].iloc[0] if not df_acwr.empty and 'acwr' in df_acwr.columns else None
@@ -749,9 +760,10 @@ def create_dash_dashboard_app(server, db_path):
             }
         }
         
-    def load_dashboard_efficiency_data(db_path=db_path):
+    def load_dashboard_efficiency_data(db_path):
         """Load all required data for the efficiency metrics"""
-        efficiency = dash_db_utils.get_efficiency_index(db_path)
+        with db_utils.get_db_connection(db_path) as conn:
+            efficiency = dash_db_utils.get_efficiency_index(conn)
 
         # Process  data
         latest_efficiency_index = efficiency['flat_efficiency_factor'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
@@ -790,7 +802,7 @@ def create_dash_dashboard_app(server, db_path):
     def build_dashboard_layout():
         """Create the complete dashboard layout"""
         # Load data
-        dashboard_data = load_dashboard_data()
+        dashboard_data = load_dashboard_data(db_path)
         
         # Extract data for cards
         acwr_value = dashboard_data['acwr']['latest'] or 0
@@ -822,7 +834,7 @@ def create_dash_dashboard_app(server, db_path):
     def build_dashboard_efficiency_layout():
         """Create the complete dashboard layout"""
         # Load data
-        dashboard_data = load_dashboard_efficiency_data()
+        dashboard_data = load_dashboard_efficiency_data(db_path)
         
         # Extract data for cards
         efficiency_index_value = dashboard_data['efficiency_index']['latest'] or 0

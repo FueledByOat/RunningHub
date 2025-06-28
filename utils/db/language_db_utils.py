@@ -6,6 +6,7 @@ import sqlite3
 from typing import Optional, Dict, Any, List, Tuple
 import datetime
 
+import utils.db.db_utils as db_utils
 from utils import exception_utils
 
 logger = logging.getLogger(__name__)
@@ -57,9 +58,8 @@ def update_daily_training_metrics(conn: sqlite3.Connection, df, user_id=1):
 
 def get_latest_daily_training_metrics(conn: sqlite3.Connection) -> Optional[Dict]:
     """Retrieves the latest day's data as a single dictionary."""
-    original_row_factory = conn.row_factory  # Store original factory
+
     try:
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         query = """
             SELECT date, total_tss, ctl, atl, tsb
@@ -67,14 +67,14 @@ def get_latest_daily_training_metrics(conn: sqlite3.Connection) -> Optional[Dict
             ORDER BY date DESC
             LIMIT 1;
         """
-        row = cursor.execute(query).fetchone()
+        result = cursor.execute(query).fetchone()
         
         # Convert the sqlite3.Row to a standard dict before returning
-        return dict(row) if row else None
-        
-    finally:
-        # Guarantee that the row_factory is reset, even if an error occurs.
-        conn.row_factory = original_row_factory
+        return db_utils.dict_from_row(result) if result else None
+    
+    except sqlite3.Error as e:
+        logger.error(f"Error retreiving latest daily training metrics': {e}")
+        raise exception_utils.DatabaseError(f"Failed to execute query: {e}") from e
 
 def initialize_conversation_database(conn: sqlite3.Connection):
     """
@@ -97,9 +97,6 @@ def initialize_conversation_database(conn: sqlite3.Connection):
 def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: int, tokenizer) -> List[Dict[str, str]]:
     """Retrieve the most recent conversation history within a token limit."""
     try:
-        # --- FIX 1: Explicitly set the row_factory for this function ---
-        # This guarantees we get dict-like rows, regardless of the connection's prior state.
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
         cursor.execute("""
@@ -110,10 +107,6 @@ def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: i
         """, (session_id,))
         rows = cursor.fetchall()
         
-        # --- FIX 2: Reset row_factory immediately after use ---
-        # This prevents this function from affecting other parts of the application.
-        conn.row_factory = None
-
         if not rows:
             return []
         
@@ -151,9 +144,6 @@ def get_recent_messages(conn: sqlite3.Connection, session_id: str, max_tokens: i
     
     except sqlite3.Error as e:
         logger.error(f"Database error retrieving messages: {e}", exc_info=True)
-        # In case of error, ensure row_factory is reset
-        if conn:
-            conn.row_factory = None
         raise exception_utils.DatabaseError(f"Failed to retrieve messages: {e}") from e
         
     except sqlite3.Error as e:
@@ -180,9 +170,8 @@ def save_message(conn: sqlite3.Connection, session_id: str, role: str, message: 
 
 def execute_generated_query(conn: sqlite3.Connection, sql_query: str) -> Tuple[List[Dict], List[str]]:
     """Executes a validated SELECT query and returns standard dicts."""
-    original_row_factory = conn.row_factory
+
     try:
-        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         cursor.execute(sql_query)
         
@@ -195,16 +184,12 @@ def execute_generated_query(conn: sqlite3.Connection, sql_query: str) -> Tuple[L
     except sqlite3.Error as e:
         logger.error(f"Error executing generated SQL query '{sql_query}': {e}")
         raise exception_utils.DatabaseError(f"Failed to execute query: {e}") from e
-    finally:
-        conn.row_factory = original_row_factory
 
 def get_running_summary_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -> dict:
     """
     Fetches a summary of running activities from the last N days.
     (Corrected and Robust Version)
     """
-    # Set the row_factory to sqlite3.Row to get dict-like rows
-    conn.row_factory = sqlite3.Row
 
     start_date = datetime.datetime.now() - datetime.timedelta(days=days)
     start_date_str = start_date.strftime('%Y-%m-%d')
@@ -223,12 +208,9 @@ def get_running_summary_for_last_n_days(conn: sqlite3.Connection, days: int = 7)
     params = (start_date_str,)
     cursor = conn.execute(query, params)
     summary_data = cursor.fetchone()
-    
-    # Reset row_factory if other parts of your app expect tuples (optional but good practice)
-    conn.row_factory = None
 
     # Convert the sqlite3.Row object to a standard dict before returning
-    return dict(summary_data) if summary_data and summary_data['num_runs'] is not None else {}
+    return db_utils.dict_from_row(summary_data) if summary_data and summary_data['num_runs'] is not None else {}
 
 
 def get_daily_metrics_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -> list[dict]:
@@ -236,8 +218,6 @@ def get_daily_metrics_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -
     Fetches the daily training metrics (CTL, ATL, TSB) for the last N days.
     (Corrected and Robust Version)
     """
-    # Set the row_factory to sqlite3.Row to get dict-like rows
-    conn.row_factory = sqlite3.Row
 
     start_date = datetime.datetime.now() - datetime.timedelta(days=days)
     start_date_str = start_date.strftime('%Y-%m-%d')
@@ -251,9 +231,6 @@ def get_daily_metrics_for_last_n_days(conn: sqlite3.Connection, days: int = 7) -
     params = (start_date_str,)
     cursor = conn.execute(query, params)
     rows = cursor.fetchall()
-    
-    # Reset row_factory if other parts of your app expect tuples
-    conn.row_factory = None
 
     # Convert the list of sqlite3.Row objects to a list of standard dicts
-    return [dict(row) for row in rows]
+    return db_utils.dicts_from_rows(rows)

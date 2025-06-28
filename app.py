@@ -19,6 +19,7 @@ from dash_dashboard_app.layout import create_dash_dashboard_app
 from dash_app import create_dash_app
 from density_dash import create_density_dash
 from utils import exception_utils
+from utils import documentation_scanner
 
 # Blueprints
 from blueprints.running_hub.routes import init_running_hub_blueprint
@@ -36,6 +37,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Refresh Documentation
+documentation_scanner.main()
 
 class FlaskAppFactory:
     """Factory class for creating and configuring Flask application."""
@@ -69,7 +72,7 @@ class FlaskAppFactory:
     def _initialize_dash_apps(app: Flask, config: Config) -> None:
         """Initialize all Dash applications."""
         try:
-            create_dash_app(app)
+            create_dash_app(app, db_path=config.DB_PATH)
             create_density_dash(app, db_path=config.DB_PATH)
             create_dash_dashboard_app(app, db_path=config.DB_PATH)
             logger.info("Dash applications initialized successfully")
