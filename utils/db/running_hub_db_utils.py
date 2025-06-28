@@ -7,6 +7,7 @@ from typing import Optional, Dict, Any, List
 
 from config import Config
 from utils import exception_utils
+import utils.db.db_utils as db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ def get_activity_details_by_id(conn, activity_id: int, activity_types: List[str]
     
     # Using dynamic placeholders here as the number of parameters is variable
     placeholders = ",".join("?" * len(activity_types))
-    conn.row_factory = sqlite3.Row
     query = f"""
         SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name
         FROM activities as a
@@ -76,21 +76,17 @@ def get_latest_activity_id(conn, activity_types: List[str] = None) -> Optional[i
     Raises:
         DatabaseError: If database query fails
     """
-    if activity_types is None:
-        activity_types = ["Run", "Ride"]
-    
-    # Using dynamic placeholders here as the number of parameters is variable
-    placeholders = ",".join("?" * len(activity_types))
+
     query = f"""
         SELECT id FROM activities
-        WHERE type IN ({placeholders})
+        WHERE type IN ('Run')
         ORDER BY start_date DESC 
         LIMIT 1
     """
     
     try:
         cur = conn.cursor()
-        cur.execute(query, activity_types)
+        cur.execute(query)
         row = cur.fetchone()
         
         if row:
@@ -107,7 +103,7 @@ def get_latest_activity_id(conn, activity_types: List[str] = None) -> Optional[i
     
 
 
-def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = Config.DB_PATH) -> List[Dict[str, Any]]:
+def get_activities_by_type(activity_type: str, limit: int = 10, db_path: str = Config.DB_PATH) -> list[dict]:
     """Retrieve activities by type. May not be used and can be purged. 
     
     Args:
@@ -153,9 +149,9 @@ def get_summary_stats(conn: sqlite3.Connection, start_date: str) -> Dict[str, An
         WHERE start_date >= ? AND type = 'Run'
     """
     result = conn.execute(query, (start_date,)).fetchone()
-    return dict(result) if result else {}
+    return db_utils.dict_from_row(result) if result else {}
 
-def get_weekly_distances(conn: sqlite3.Connection, seven_days_ago: str) -> int:
+def get_weekly_distances(conn: sqlite3.Connection, seven_days_ago: str) -> list[dict]:
     """Get distance data for the last 7 days."""
     result = conn.execute(
             """SELECT start_date_local, distance 
@@ -164,9 +160,9 @@ def get_weekly_distances(conn: sqlite3.Connection, seven_days_ago: str) -> int:
                ORDER BY start_date_local""",
             (seven_days_ago.strftime('%Y-%m-%d'),)
         ).fetchall()
-    return result
+    return db_utils.dicts_from_rows(result) if result else {}
 
-def get_pace_trends(conn: sqlite3.Connection) -> int:
+def get_pace_trends(conn: sqlite3.Connection) -> list[dict]:
     """Get pace trends for the last 10 activities."""
     result = conn.execute(
             """SELECT start_date_local, distance, moving_time 
@@ -175,9 +171,9 @@ def get_pace_trends(conn: sqlite3.Connection) -> int:
                ORDER BY start_date_local DESC 
                LIMIT 10"""
         ).fetchall()
-    return result
+    return db_utils.dicts_from_rows(result) if result else {}
 
-def get_shoe_usage(conn: sqlite3.Connection, start_date: str) -> int:
+def get_shoe_usage(conn: sqlite3.Connection, start_date: str) -> list[dict]:
     """Get shoe usage data."""
     result = conn.execute(
             """SELECT COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_id, 
@@ -192,9 +188,9 @@ def get_shoe_usage(conn: sqlite3.Connection, start_date: str) -> int:
                ORDER BY last_used DESC""",
             (start_date,)
         ).fetchall()
-    return result
+    return db_utils.dicts_from_rows(result) if result else {}
 
-def get_recent_activities(conn: sqlite3.Connection) -> int:
+def get_recent_activities(conn: sqlite3.Connection) -> list[dict]:
     """Get the most recent 5 activities data."""
     result = conn.execute(
             """SELECT id, name, distance, moving_time, start_date_local
@@ -203,7 +199,7 @@ def get_recent_activities(conn: sqlite3.Connection) -> int:
                ORDER BY start_date_local DESC
                LIMIT 5"""
         ).fetchall()
-    return result
+    return db_utils.dicts_from_rows(result) if result else {}
 
 # -------------------------------------
 # Statistics Page SQL Logic END
@@ -224,7 +220,7 @@ def get_distance_record(conn: sqlite3.Connection, distance_name: str,
             LIMIT 1""",
         (min_distance, max_distance)
     ).fetchone()
-    return result or None
+    return db_utils.dict_from_row(result) if result else {} or None
 
 def get_longest_run(conn: sqlite3.Connection, units: str) -> Optional[Dict[str, Any]]:
     """Get longest run record."""
@@ -235,7 +231,7 @@ def get_longest_run(conn: sqlite3.Connection, units: str) -> Optional[Dict[str, 
             ORDER BY distance DESC
             LIMIT 1"""
         ).fetchone()
-    return result or None
+    return db_utils.dict_from_row(result) if result else {} or None
 
 
 # -------------------------------------

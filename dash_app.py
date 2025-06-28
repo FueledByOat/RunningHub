@@ -13,7 +13,7 @@ import utils.db.dash_db_utils as dash_db_utils
 
 external_stylesheets = ["/static/css/styles.css"]
 
-def create_dash_app(flask_app):
+def create_dash_app(flask_app, db_path):
     """satisfying pylint for now"""
     dash_app = dash.Dash(__name__, server=flask_app, url_base_pathname='/map/', suppress_callback_exceptions=True, external_stylesheets=external_stylesheets)
 
@@ -38,11 +38,13 @@ def create_dash_app(flask_app):
             return html.Div("No activity ID provided."), html.Div()
 
         # Fetch data
-        polyline_str = dash_db_utils.get_activity_polyline(activity_id)
+        with db_utils.get_db_connection(db_path) as conn:
+            polyline_str = dash_db_utils.get_activity_polyline(activity_id, conn)
         decoded = dash_db_utils.decode_polyline(polyline_str)
         lat_lng = [{'lat': lat, 'lon': lon} for lat, lon in decoded]
 
-        distance, heartrate, altitude, power, time = dash_db_utils.get_streams_data(activity_id)
+        with db_utils.get_db_connection(db_path) as conn:
+            distance, heartrate, altitude, power, time = dash_db_utils.get_streams_data(activity_id, conn)
         distance = [i / 1609 for i in distance] # now in units of second to parts of a mile
         x_ref = np.linspace(0, max(distance) if distance else 1, num=500)
         hr_interp = dash_db_utils.interpolate_to_common_x(x_ref, heartrate, distance)

@@ -1,5 +1,8 @@
-# dash_db_utils.py
-"""Database utilities for dash analytics, maps, charts, and dashboards."""
+# dash_db_utils.py (REFACTORED)
+"""
+Database utilities for dash analytics, maps, charts, and dashboards.
+REFACTORED to accept a connection object for all functions to work with the connection pool.
+"""
 
 import json
 import logging
@@ -18,61 +21,46 @@ import utils.db.db_utils as db_utils
 
 logger = logging.getLogger(__name__)
 
-def get_acwr_data(db_path=Config.DB_PATH):
-    """
-    Calculate Acute:Chronic Workload Ratio (ACWR)
-    
-    ACWR represents the ratio of 7-day (acute) to 28-day (chronic) workload.
-    Research suggests maintaining this ratio between 0.8-1.3 to minimize injury risk.
-    """
+def get_acwr_data(conn: sqlite3.Connection):
+    """Calculate Acute:Chronic Workload Ratio (ACWR) from a given connection."""
     try:
-        conn = sqlite3.connect(db_path)
+        # Pass the provided connection object to pandas
         df = pd.read_sql_query("""
- WITH daily_load AS (
-                    SELECT 
-                        date(datetime(start_date)) as date,
-                        SUM(average_speed * moving_time / 1000.0) as daily_km
-                    FROM activities
-                    WHERE type = 'Run'
-                    GROUP BY date
-                ),
-                rolling_loads AS (
-                    SELECT
-                        date,
-                        daily_km,
-                        SUM(daily_km) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / 7.0 AS acute_load,
-                        SUM(daily_km) OVER (ORDER BY date ROWS BETWEEN 27 PRECEDING AND CURRENT ROW) / 28.0 AS chronic_load
-                    FROM daily_load
-                )
+            WITH daily_load AS (
+                SELECT 
+                    date(datetime(start_date)) as date,
+                    SUM(average_speed * moving_time / 1000.0) as daily_km
+                FROM activities
+                WHERE type = 'Run'
+                GROUP BY date
+            ),
+            rolling_loads AS (
                 SELECT
                     date,
                     daily_km,
-                    acute_load,
-                    chronic_load,
-                    ROUND(CAST(acute_load AS REAL) / NULLIF(chronic_load, 0), 2) AS acwr
-                FROM rolling_loads
-                WHERE chronic_load > 0
-                ORDER BY date DESC
-                LIMIT 90;
+                    SUM(daily_km) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) / 7.0 AS acute_load,
+                    SUM(daily_km) OVER (ORDER BY date ROWS BETWEEN 27 PRECEDING AND CURRENT ROW) / 28.0 AS chronic_load
+                FROM daily_load
+            )
+            SELECT
+                date,
+                daily_km,
+                acute_load,
+                chronic_load,
+                ROUND(CAST(acute_load AS REAL) / NULLIF(chronic_load, 0), 2) AS acwr
+            FROM rolling_loads
+            WHERE chronic_load > 0
+            ORDER BY date DESC
+            LIMIT 90;
         """, conn)
-        conn.close()
         return df
     except sqlite3.Error as e:
-        print(f"Database error in get_acwr_data: {e}")
+        logger.error(f"Database error in get_acwr_data: {e}")
         return pd.DataFrame(columns=['date', 'acute_load', 'chronic_load', 'acwr'])
-
-def get_hr_drift_data(db_path=Config.DB_PATH):
-    """
-    Calculate Heart Rate Drift
     
-    HR drift measures the percentage increase in heart rate during a workout at constant intensity.
-    It indicates cardiovascular efficiency and aerobic development.
-    Lower values (<5%) suggest better aerobic fitness.
-    """
+def get_hr_drift_data(conn: sqlite3.Connection):
+    """Calculate Heart Rate Drift from a given connection."""
     try:
-        conn = sqlite3.connect(db_path)
-        
-        # Get activities and streams data
         activities_df = pd.read_sql_query("""
             SELECT id, start_date, moving_time, average_speed
             FROM activities 
@@ -86,8 +74,6 @@ def get_hr_drift_data(db_path=Config.DB_PATH):
             FROM streams
             WHERE activity_id IN (SELECT id FROM activities WHERE type = 'Run' AND moving_time >= 1200)
         """, conn)
-        
-        conn.close()
         
         def calculate_hr_drift(row):
             """
@@ -170,6 +156,7 @@ def get_hr_drift_data(db_path=Config.DB_PATH):
         result_df = result_df.rename(columns={'id': 'activity_id'})
         
         return result_df
+    
         
     except sqlite3.Error as e:
         print(f"Database error in get_hr_drift_data: {e}")
@@ -178,7 +165,7 @@ def get_hr_drift_data(db_path=Config.DB_PATH):
         print(f"Error in get_hr_drift_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date', 'hr_drift_pct'])
 
-def get_cadence_stability_data(db_path=Config.DB_PATH):
+def get_cadence_stability_data(conn: sqlite3.Connection):
     """
     Calculate Cadence Stability (using coefficient of variation)
     
@@ -186,9 +173,7 @@ def get_cadence_stability_data(db_path=Config.DB_PATH):
     Lower values indicate better running economy and neuromuscular control.
     Values under 4% suggest excellent running form consistency.
     """
-    try:
-        conn = sqlite3.connect(db_path)
-        
+    try:        
         # Get activities and streams data
         activities_df = pd.read_sql_query("""
             SELECT id, average_speed, start_date, moving_time
@@ -203,8 +188,6 @@ def get_cadence_stability_data(db_path=Config.DB_PATH):
             FROM streams
             WHERE activity_id IN (SELECT id FROM activities WHERE type = 'Run' AND moving_time >= 600)
         """, conn)
-        
-        conn.close()
         
         def calculate_cadence_stability(row):
             """
@@ -285,7 +268,7 @@ def get_cadence_stability_data(db_path=Config.DB_PATH):
         print(f"Error in get_cadence_stability_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
 
-def get_efficiency_index(db_path=Config.DB_PATH):
+def get_efficiency_index(conn: sqlite3.Connection):
     """
     Efficiency Factor (EF) Calculation and Usage
 
@@ -317,8 +300,6 @@ def get_efficiency_index(db_path=Config.DB_PATH):
     The provided code calculates basic EF and rolling averages. The commented section shows how
     to implement terrain-specific (flat segments only) EF calculations for more precise comparisons.
     """
-
-    conn = sqlite3.connect(db_path)
     
     # Retrieve activities with distance, time and heart rate data
     query = """
@@ -343,7 +324,6 @@ def get_efficiency_index(db_path=Config.DB_PATH):
     """
     
     df = pd.read_sql_query(query, conn)
-    conn.close()
     
     # Convert start_date to datetime
     df['start_date'] = pd.to_datetime(df['start_date'])
@@ -357,7 +337,6 @@ def get_efficiency_index(db_path=Config.DB_PATH):
     # Calculate efficiency factor for flat segments only (advanced version)
     # This requires accessing the grade_smooth_data from the streams table
 
-    conn = sqlite3.connect(db_path)
     flat_ef_values = []
     
     for idx, row in df.iterrows():
@@ -405,8 +384,6 @@ def get_efficiency_index(db_path=Config.DB_PATH):
             flat_ef_values.append(None)
     
     df['flat_efficiency_factor'] = flat_ef_values
-    conn.close()
-
     
     # Calculate rolling averages (7-day, 30-day, 90-day)
     df.set_index('start_date', inplace=True)
@@ -455,44 +432,23 @@ def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=No
     
     return tss
 
-def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athlete_threshold_hr=172):
+def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, athlete_threshold_hr=172):
     """
-    Calculate CTL (Chronic Training Load), ATL (Acute Training Load), and TSB (Training Stress Balance)
-    using proper time-based exponential decay.
-    
-    Args:
-        db_path: Path to SQLite database
-        days_to_retrieve: Number of days of history to include (recommended minimum 120 days)
-        athlete_threshold_hr: Athlete's threshold heart rate for TSS calculations
-        
-    Returns:
-        DataFrame with daily CTL, ATL, and TSB values
+    Calculate CTL, ATL, TSB, and then PERSIST the results to the database.
+    This function is now the single source of truth for these metrics.
     """
     try:
-        conn = sqlite3.connect(db_path)
+        activities_df = pd.read_sql_query(f"""
+            SELECT id, moving_time, average_heartrate, max_heartrate, start_date_local
+            FROM activities
+            WHERE type = 'Run' AND start_date >= date('now', '-{days_to_retrieve} days')
+            ORDER BY start_date ASC
+        """, conn)
+
+        if activities_df.empty:
+            return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
         
-        # Get activities with relevant metrics
-        activities_df = pd.read_sql_query("""
-        SELECT
-            id,
-            moving_time,
-            weighted_average_watts,
-            kilojoules,
-            average_heartrate,
-            max_heartrate,
-            start_date_local
-        FROM activities
-        WHERE type = 'Run'
-        AND start_date >= date('now', '-{} days')
-        ORDER BY start_date ASC
-        """.format(days_to_retrieve), conn)
-        
-        conn.close()
-        
-        # Convert start_date to datetime and set as index
         activities_df['start_date'] = pd.to_datetime(activities_df['start_date_local'])
-        
-        # Calculate TSS for each activity
         activities_df['tss'] = activities_df.apply(
             lambda row: calculate_running_tss(
                 row['moving_time'], 
@@ -503,74 +459,78 @@ def get_ctl_atl_tsb_tss_data(db_path=Config.DB_PATH, days_to_retrieve=180, athle
             axis=1
         )
         
-        # Get date range covering all activities plus buffer days
-        if not activities_df.empty:
-            # Remove timezone and floor to day
-            activities_df['date'] = activities_df['start_date'].dt.tz_localize(None).dt.floor('D')
+        activities_df['date'] = activities_df['start_date'].dt.tz_localize(None).dt.floor('D')
+        daily_tss = activities_df.groupby('date')['tss'].sum()
+        
+        start_date = daily_tss.index.min() - datetime.timedelta(days=42)
+        end_date = datetime.date.today()
+        date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+        
+        daily_df = pd.DataFrame(index=date_range)
+        daily_df.index.name = 'date'
+        daily_df = daily_df.merge(daily_tss, left_index=True, right_index=True, how='left')
+        daily_df['tss'].fillna(0, inplace=True)
+        
+        ctl_time_constant = 42
+        atl_time_constant = 7
+        
+        # Initialize columns correctly
+        daily_df['CTL'] = 0.0
+        daily_df['ATL'] = 0.0
 
-            # Group by date
-            daily_tss = activities_df.groupby('date')['tss'].sum()
-
-            # Build full date range using Timestamp values
-            start_date = activities_df['date'].min() - datetime.timedelta(days=42)
-            end_date = activities_df['date'].max() + datetime.timedelta(days=7)
-            date_range = pd.date_range(start=start_date, end=end_date, freq='D')
-
-            # Create a daily DataFrame with datetime index
-            daily_df = pd.DataFrame(index=date_range)
-            daily_df.index.name = 'date'
-
-            # Merge on aligned datetime indices
-            daily_df = daily_df.merge(daily_tss, left_index=True, right_index=True, how='left')
-            daily_df['tss'].fillna(0, inplace=True)
-
-            # Time constants (in days)
-            ctl_time_constant = 42
-            atl_time_constant = 7
+        for i in range(1, len(daily_df)):
+            yesterday = daily_df.index[i-1]
+            today = daily_df.index[i]
             
-            # Calculate CTL and ATL using proper exponential decay
-            # CTL formula: Today's CTL = Yesterday's CTL + (Today's TSS - Yesterday's CTL) / CTL time constant
-            # ATL formula: Today's ATL = Yesterday's ATL + (Today's TSS - Yesterday's ATL) / ATL time constant
+            daily_df.loc[today, 'CTL'] = daily_df.loc[yesterday, 'CTL'] + (daily_df.loc[today, 'tss'] - daily_df.loc[yesterday, 'CTL']) / ctl_time_constant
+            daily_df.loc[today, 'ATL'] = daily_df.loc[yesterday, 'ATL'] + (daily_df.loc[today, 'tss'] - daily_df.loc[yesterday, 'ATL']) / atl_time_constant
+            
+        daily_df['TSB'] = daily_df['CTL'] - daily_df['ATL']
 
-            daily_df['CTL'] = daily_tss.iloc[-1]
-            daily_df['ATL'] = daily_tss.iloc[-1]
-            
-            for i in range(1, len(daily_df)):
-                yesterday = daily_df.index[i-1]
-                today = daily_df.index[i]
-                
-                # Calculate CTL with proper exponential decay
-                daily_df.at[today, 'CTL'] = (
-                    daily_df.at[yesterday, 'CTL'] + 
-                    (daily_df.at[today, 'tss'] - daily_df.at[yesterday, 'CTL']) / ctl_time_constant
-                )
-                
-                # Calculate ATL with proper exponential decay
-                daily_df.at[today, 'ATL'] = (
-                    daily_df.at[yesterday, 'ATL'] + 
-                    (daily_df.at[today, 'tss'] - daily_df.at[yesterday, 'ATL']) / atl_time_constant
-                )
-            
-            # Calculate TSB (Form) = CTL - ATL
-            daily_df['TSB'] = daily_df['CTL'] - daily_df['ATL']
-            
-            today = pd.Timestamp.today().normalize()
-            start_date = today - datetime.timedelta(days=90)
+        # --- NEW: PERSISTENCE LOGIC ---
+        # After calculating the data, save it to the daily_training_metrics table.
+        cursor = conn.cursor()
+        # The ON CONFLICT clause makes this an "upsert" operation.
+        update_query = """
+            INSERT INTO daily_training_metrics (date, user_id, total_tss, ctl, atl, tsb)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+                total_tss = excluded.total_tss,
+                ctl = excluded.ctl,
+                atl = excluded.atl,
+                tsb = excluded.tsb;
+        """
+        
+        # Prepare data for bulk insertion for efficiency
+        # Using a default user_id of 1 as seen in other files
+        user_id = 1
+        data_to_insert = [
+            (
+                idx.strftime('%Y-%m-%d'), 
+                user_id, 
+                row['tss'], 
+                row['CTL'], 
+                row['ATL'], 
+                row['TSB']
+            ) 
+            for idx, row in daily_df.iterrows()
+        ]
 
-            # Filter from start_date up to and including today
-            last_90_days = daily_df.loc[start_date:today]
+        if data_to_insert:
+            cursor.executemany(update_query, data_to_insert)
+            conn.commit()
+            logger.info(f"Successfully updated/inserted {len(data_to_insert)} records in daily_training_metrics.")
+        # --- END OF PERSISTENCE LOGIC ---
 
-            # Return only the most recent N days to keep the result set manageable
-            return last_90_days.reset_index()
-        else:
-            return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
-            
+        # Return only the last 90 days for the dashboard display
+        return daily_df.last('90D').reset_index()
+
     except sqlite3.Error as e:
-        print(f"Database error in get_ctl_atl_tsb_data: {e}")
+        logger.error(f"Database error in get_ctl_atl_tsb_data: {e}")
         return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
 
 def get_enhanced_training_shape_data(
-    db_path: str = Config.DB_PATH,
+    conn: sqlite3.Connection,
     threshold_hr: float = RunnerConfig.THRESHOLD_HR,  # More precise than estimating
     hr_max: float = RunnerConfig.MAX_HR,
     training_shape_weights: dict = RunnerConfig.TRAINING_SHAPE_WEIGHTS  # e.g., {'fitness': 0.4, 'speed': 0.25, 'efficiency': 0.2, 'freshness': 0.15}
@@ -590,7 +550,6 @@ def get_enhanced_training_shape_data(
             - weekly_distance_km, acute_chronic_ratio, training_monotony
     """
 
-    conn = sqlite3.connect(db_path)
     query = """
     SELECT 
         id, distance, moving_time, average_heartrate, max_heartrate,
@@ -601,7 +560,6 @@ def get_enhanced_training_shape_data(
     ORDER BY start_date ASC;
     """
     activities_df = pd.read_sql_query(query, conn)
-    conn.close()
 
     if activities_df.empty:
         return pd.DataFrame()
@@ -757,7 +715,7 @@ def get_dashboard_summary(weekly_df: pd.DataFrame) -> dict:
         'current_vs_peak': round((latest['training_shape'] / weekly_df['training_shape'].max()) * 100, 1)
     }
 
-def get_cumulative_training_shape_data(db_path: str = Config.DB_PATH) -> pd.DataFrame:
+def get_cumulative_training_shape_data(conn: sqlite3.Connection) -> pd.DataFrame:
     """
     Calculate cumulative Training Shape metrics representing lifetime fitness gains.
     
@@ -776,9 +734,7 @@ def get_cumulative_training_shape_data(db_path: str = Config.DB_PATH) -> pd.Data
             - fitness_bank (float): Composite cumulative score 0-100
             - experience_factor (float): Training maturity multiplier
     """
-    
-    conn = sqlite3.connect(db_path)
-    
+
     query = """
     SELECT 
         id, distance, moving_time, average_heartrate, max_heartrate,
@@ -789,7 +745,6 @@ def get_cumulative_training_shape_data(db_path: str = Config.DB_PATH) -> pd.Data
     """
     
     activities_df = pd.read_sql_query(query, conn)
-    conn.close()
     
     if activities_df.empty:
         return pd.DataFrame()
@@ -945,7 +900,7 @@ def get_lifetime_achievements(weekly_df: pd.DataFrame) -> dict:
 
 
 
-def get_activity_polyline(activity_id: int, db_path: str = Config.DB_PATH) -> Optional[str]:
+def get_activity_polyline(activity_id: int, conn: sqlite3.Connection) -> Optional[str]:
     """Retrieve polyline for specified activity.
     
     Args:
@@ -961,16 +916,15 @@ def get_activity_polyline(activity_id: int, db_path: str = Config.DB_PATH) -> Op
     query = "SELECT map_summary_polyline FROM activities WHERE id = ?"
     
     try:
-        with db_utils.get_db_connection(db_path) as conn:
-            cur = conn.cursor()
-            cur.execute(query, (activity_id,))
-            row = cur.fetchone()
+        cur = conn.cursor()
+        cur.execute(query, (activity_id,))
+        row = cur.fetchone()
             
-            if row:
-                return row['map_summary_polyline']
-            else:
-                logger.warning(f"No polyline found for activity {activity_id}")
-                return None
+        if row:
+            return row['map_summary_polyline']
+        else:
+            logger.warning(f"No polyline found for activity {activity_id}")
+            return None
                 
     except exception_utils.DatabaseError:
         raise
@@ -999,7 +953,7 @@ def decode_polyline(polyline_str: str) -> List[Tuple[float, float]]:
         logger.error(f"Failed to decode polyline: {e}")
         raise exception_utils.DataProcessingError(f"Polyline decode failed: {e}") from e
 
-def get_streams_data(activity_id: int, db_path: str = Config.DB_PATH) -> Tuple[List[float], ...]:
+def get_streams_data(activity_id: int, conn: sqlite3.Connection) -> Tuple[List[float], ...]:
     """Retrieve activity stream data from database.
     
     Args:
@@ -1019,10 +973,9 @@ def get_streams_data(activity_id: int, db_path: str = Config.DB_PATH) -> Tuple[L
     """
     
     try:
-        with db_utils.get_db_connection(db_path) as conn:
-            cur = conn.cursor()
-            cur.execute(query, (activity_id,))
-            row = cur.fetchone()
+        cur = conn.cursor()
+        cur.execute(query, (activity_id,))
+        row = cur.fetchone()
             
         if not row:
             logger.warning(f"No stream data found for activity {activity_id}")

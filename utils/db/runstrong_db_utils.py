@@ -643,7 +643,6 @@ def update_muscle_group_fatigue(conn: sqlite3.Connection):
     """(DEBUGGING VERSION) Updates muscle group fatigue."""
     logger.info("--- STARTING FATIGUE UPDATE (DEBUG MODE) ---")
     cursor = conn.cursor()
-    cursor.row_factory = sqlite3.Row
     cursor.execute("SELECT name, primary_muscles, secondary_muscles, muscle_groups FROM exercises")
     results = cursor.fetchall()
     
@@ -721,7 +720,6 @@ def update_muscle_group_fatigue(conn: sqlite3.Connection):
 def get_daily_training_data(conn: sqlite3.Connection, muscle_group_filter: str = None, days: int = 7) -> List[Dict]:
     """Get daily training intensity with optional muscle group filtering"""
     cursor = conn.cursor()
-    cursor.row_factory = sqlite3.Row
     
     today = datetime.datetime.now().date()
     days_ago = today - timedelta(days=days)
@@ -810,7 +808,6 @@ def get_fatigue_dashboard_data(conn: sqlite3.Connection, muscle_group_filter: st
     """
     logger.info(f"Fetching dashboard data with filter: '{muscle_group_filter}'")
     cursor = conn.cursor()
-    cursor.row_factory = sqlite3.Row
 
     # Get the canonical mapping of standard muscle names to broad groups
     muscle_to_broad_group_map = get_muscle_group_mapping()

@@ -205,6 +205,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
                 return jsonify({'error': 'No data provided'}), 400
             
             personality = data.get('personality', 'motivational')
+
             # Use a transient session_id as we may not have a chat session cookie
             session_id = request.cookies.get('session_id', f"motivation-{uuid.uuid4()}")
             
