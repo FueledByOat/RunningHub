@@ -1,0 +1,524 @@
+[
+    {
+        "id": 101,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 8,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 5760.0,
+        "volume_7day": 2160.0
+    },
+    {
+        "id": 102,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 10,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 2700.0,
+        "volume_7day": 2160.0
+    },
+    {
+        "id": 110,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 19,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 120,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 29,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 121,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 30,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 122,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 31,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 124,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 33,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 125,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 34,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 3600.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 126,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 35,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 130,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 54,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 630.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 131,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 55,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 133,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 57,
+        "recovery_score": 1.0,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 2160.0,
+        "volume_7day": 2160.0
+    },
+    {
+        "id": 138,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 64,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 139,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 65,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 141,
+        "last_trained_date": "2025-06-27",
+        "muscle_group_id": 70,
+        "recovery_score": 0.8,
+        "updated_at": "2025-06-30 00:15:04",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 192,
+        "last_trained_date": "2025-06-30",
+        "muscle_group_id": 23,
+        "recovery_score": 0.2,
+        "updated_at": "2025-06-30 00:40:32",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 294,
+        "last_trained_date": null,
+        "muscle_group_id": 36,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 295,
+        "last_trained_date": null,
+        "muscle_group_id": 47,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 296,
+        "last_trained_date": null,
+        "muscle_group_id": 56,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 297,
+        "last_trained_date": null,
+        "muscle_group_id": 22,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 298,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 16,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1920.0,
+        "volume_7day": 1920.0
+    },
+    {
+        "id": 299,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 51,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 480.0,
+        "volume_7day": 480.0
+    },
+    {
+        "id": 300,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 52,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 480.0,
+        "volume_7day": 480.0
+    },
+    {
+        "id": 301,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 4,
+        "recovery_score": 50.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 11340.0,
+        "volume_7day": 3840.0
+    },
+    {
+        "id": 302,
+        "last_trained_date": null,
+        "muscle_group_id": 43,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 303,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 5,
+        "recovery_score": 40.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 16380.0,
+        "volume_7day": 8340.0
+    },
+    {
+        "id": 304,
+        "last_trained_date": null,
+        "muscle_group_id": 20,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 305,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 53,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 630.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 306,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 9,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 4980.0,
+        "volume_7day": 4980.0
+    },
+    {
+        "id": 307,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 13,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 5670.0,
+        "volume_7day": 4500.0
+    },
+    {
+        "id": 308,
+        "last_trained_date": null,
+        "muscle_group_id": 66,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 309,
+        "last_trained_date": null,
+        "muscle_group_id": 24,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 310,
+        "last_trained_date": null,
+        "muscle_group_id": 25,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 311,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 2,
+        "recovery_score": 40.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 17010.0,
+        "volume_7day": 8340.0
+    },
+    {
+        "id": 312,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 3,
+        "recovery_score": 40.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 15840.0,
+        "volume_7day": 8340.0
+    },
+    {
+        "id": 313,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 26,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 540.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 314,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 28,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 630.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 315,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 14,
+        "recovery_score": 30.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 316,
+        "last_trained_date": null,
+        "muscle_group_id": 41,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 317,
+        "last_trained_date": null,
+        "muscle_group_id": 27,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 318,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 6,
+        "recovery_score": 50.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 11340.0,
+        "volume_7day": 3840.0
+    },
+    {
+        "id": 319,
+        "last_trained_date": null,
+        "muscle_group_id": 49,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 320,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 7,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 4500.0,
+        "volume_7day": 4500.0
+    },
+    {
+        "id": 321,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 32,
+        "recovery_score": 30.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 322,
+        "last_trained_date": null,
+        "muscle_group_id": 61,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 323,
+        "last_trained_date": null,
+        "muscle_group_id": 67,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 324,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 1,
+        "recovery_score": 40.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 15840.0,
+        "volume_7day": 8340.0
+    },
+    {
+        "id": 325,
+        "last_trained_date": null,
+        "muscle_group_id": 17,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 326,
+        "last_trained_date": null,
+        "muscle_group_id": 63,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 327,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 15,
+        "recovery_score": 30.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1440.0,
+        "volume_7day": 1440.0
+    },
+    {
+        "id": 328,
+        "last_trained_date": null,
+        "muscle_group_id": 69,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 329,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 21,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1170.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 330,
+        "last_trained_date": "2025-06-23",
+        "muscle_group_id": 58,
+        "recovery_score": 30.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 2160.0,
+        "volume_7day": 2160.0
+    },
+    {
+        "id": 331,
+        "last_trained_date": null,
+        "muscle_group_id": 62,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 332,
+        "last_trained_date": "2025-06-19",
+        "muscle_group_id": 37,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1170.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 333,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 18,
+        "recovery_score": 0.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 1920.0,
+        "volume_7day": 1920.0
+    },
+    {
+        "id": 334,
+        "last_trained_date": null,
+        "muscle_group_id": 40,
+        "recovery_score": 100.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 0.0,
+        "volume_7day": 0.0
+    },
+    {
+        "id": 335,
+        "last_trained_date": "2025-06-28",
+        "muscle_group_id": 12,
+        "recovery_score": 40.0,
+        "updated_at": "2025-06-30 00:00:00",
+        "volume_14day": 8640.0,
+        "volume_7day": 4500.0
+    }
+]

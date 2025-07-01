@@ -1,108 +1,148 @@
 <!DOCTYPE html>
 <html lang="en" class="runstrong">
-
 <head>
     <meta charset="UTF-8" />
-    <title>RUNSTRONG | Workout Journal</title>
+    <title>Workout Journal | RUNSTRONG</title>
     <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
-    <script src="{{ url_for('run_strong.static', filename='js/runstrong_journal.js') }}" defer></script>
+    <style>
+        .set-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .form-container { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
 </head>
-
 <body class="runstrong">
-
     <div class="runstrong-navbar">
         <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
-        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
-        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
-        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
-        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
-        <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
-    </div>
-
-    <div class="runstrong-header">
-        <a href="{{ url_for('running_hub.home') }}">
-            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}"
-                alt="RunStrong Logo" class="runstrong-logo" />
-        </a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}" class="active">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
     </div>
     <div class="runstrong-container">
-        <h1 style="text-align: center; color: var(--rs-white); margin-bottom: 2rem;">Workout Journal</h1>
+        <h1>Workout Journal 📓</h1>
 
-        <div class="journal-section" id="routine-selection">
-            <h2>Select an Option</h2>
-
-            <div class="routine-card" onclick="startFreestyleWorkout()">
-                <h3>Log a Freestyle Workout</h3>
-                <p>Log exercises without a pre-built routine.</p>
-            </div>
-            <div class="routine-list" id="routine-list">
-            </div>
-        </div>
-
-        <div id="freestyle-form" style="display: none;">
-            <div class="workout-header">
-                <h2 id="freestyle-title">Log Freestyle Workout</h2>
-                <div class="date-selector">
-                    <label for="freestyle-workout-date">Date:</label>
-                    <input type="date" id="freestyle-workout-date" required>
-                    <button type="button" class="btn-secondary" onclick="cancelFreestyleWorkout()">Back to
-                        Options</button>
-                </div>
-            </div>
-
-            <div class="add-exercise-section">
-                <h3>Add an Exercise</h3>
+        <div class="form-container">
+            <h2>Log New Workout</h2>
+            <form id="workout-form">
                 <div class="form-group">
-                    <label for="freestyle-exercise-select">Select Exercise:</label>
-                    <select id="freestyle-exercise-select" class="form-control"></select>
+                    <label for="session_date">Session Date:</label>
+                    <input type="date" id="session_date" name="session_date" required>
                 </div>
-                <div class="performance-grid">
-                    <div class="form-group">
-                        <label for="freestyle-sets">Sets:</label>
-                        <input type="number" id="freestyle-sets" value="3" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="freestyle-reps">Reps:</label>
-                        <input type="number" id="freestyle-reps" value="10" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="freestyle-load">Load (lbs):</label>
-                        <input type="number" id="freestyle-load" value="0" step="0.5" min="0">
-                    </div>
+                <div class="form-group">
+                    <label for="notes">Session Notes:</label>
+                    <textarea id="notes" name="notes" rows="3"></textarea>
                 </div>
-                <button onclick="addFreestyleExercise()" class="btn-primary">Add Exercise to Session</button>
-            </div>
 
-            <div class="session-summary">
-                <h3>Today's Freestyle Session</h3>
-                <div id="freestyle-exercises-container">
-                    <p>No exercises added yet.</p>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 2rem;">
-                <button onclick="saveFreestyleSession()" class="btn-primary">Save Session</button>
-            </div>
+                <h3>Sets</h3>
+                <div id="sets-container">
+                    </div>
+                <button type="button" id="add-set-btn">Add Set</button>
+                <button type="submit">Submit Workout</button>
+            </form>
+            <p id="form-status" style="margin-top: 1rem;"></p>
         </div>
-        <div class="workout-form" id="workout-form" style="display: none;">
-            <div class="workout-header">
-                <h2 id="routine-title">Workout Session</h2>
-                <div class="date-selector">
-                    <label for="workout-date">Date:</label>
-                    <input type="date" id="workout-date" required>
-                    <button type="button" class="btn-secondary" onclick="goBack()">Back to Routines</button>
-                </div>
-            </div>
-
-            <div id="exercises-container">
-            </div>
-
-            <div style="text-align: center; margin-top: 2rem;">
-                <button type="button" class="btn-primary" onclick="saveWorkout()">Save Workout</button>
-            </div>
+        
         </div>
-    </div>
+
+    <template id="set-row-template">
+        <div class="set-row">
+            <select name="exercise_id" required>
+                <option value="" disabled selected>-- Select Exercise --</option>
+                {% for exercise in exercises %}
+                <option value="{{ exercise.id }}">{{ exercise.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="number" name="weight" placeholder="Weight (lbs)" step="0.5" required>
+            <input type="number" name="reps" placeholder="Reps" required>
+            <input type="number" name="rpe" placeholder="RPE (1-10)" step="0.5" min="1" max="10">
+            <button type="button" class="remove-set-btn">Remove</button>
+        </div>
+    </template>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const setsContainer = document.getElementById('sets-container');
+    const addSetBtn = document.getElementById('add-set-btn');
+    const workoutForm = document.getElementById('workout-form');
+    const setRowTemplate = document.getElementById('set-row-template');
+    const formStatus = document.getElementById('form-status');
+
+    // Function to add a new set row from the template
+    const addSetRow = () => {
+        const newRow = setRowTemplate.content.cloneNode(true);
+        setsContainer.appendChild(newRow);
+    };
+
+    // Add one set row to start with
+    addSetRow();
+
+    // Event listener for the "Add Set" button
+    addSetBtn.addEventListener('click', addSetRow);
+
+    // Event listener for "Remove" buttons (using event delegation)
+    setsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('remove-set-btn')) {
+            e.target.closest('.set-row').remove();
+        }
+    });
+
+    // Handle form submission
+    workoutForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formStatus.textContent = 'Saving...';
+        
+        const setRows = setsContainer.querySelectorAll('.set-row');
+        const setsData = [];
+
+        setRows.forEach(row => {
+            const exerciseId = row.querySelector('select[name="exercise_id"]').value;
+            const weight = row.querySelector('input[name="weight"]').value;
+            const reps = row.querySelector('input[name="reps"]').value;
+            const rpe = row.querySelector('input[name="rpe"]').value;
+
+            if (exerciseId && weight && reps) { // Ensure required fields are filled
+                setsData.push({
+                    exercise_id: parseInt(exerciseId),
+                    weight: parseFloat(weight),
+                    reps: parseInt(reps),
+                    rpe: rpe ? parseFloat(rpe) : null
+                });
+            }
+        });
+
+        if (setsData.length === 0) {
+            formStatus.textContent = 'Error: Please add at least one complete set.';
+            formStatus.style.color = 'red';
+            return;
+        }
+
+        const workoutPayload = {
+            session_date: document.getElementById('session_date').value,
+            notes: document.getElementById('notes').value,
+            sets: setsData
+        };
+
+        try {
+            const response = await fetch("{{ url_for('run_strong.log_workout_entry') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(workoutPayload)
+            });
+
+            if (response.ok) {
+                formStatus.textContent = 'Workout saved successfully!';
+                formStatus.style.color = 'green';
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to save workout.');
+            }
+        } catch (error) {
+            formStatus.textContent = `Error: ${error.message}`;
+            formStatus.style.color = 'red';
+        }
+    });
+});
+</script>
 
 </body>
-
 </html>

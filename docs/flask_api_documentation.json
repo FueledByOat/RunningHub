@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -272,16 +272,16 @@
         "config.Config"
       ],
       "services_used": [
-        "trophy_service",
-        "QueryService",
-        "TrophyService",
-        "StatisticsService",
-        "ActivityService",
-        "MotivationService",
-        "activity_service",
-        "statistics_service",
         "motivation_service",
-        "query_service"
+        "statistics_service",
+        "trophy_service",
+        "MotivationService",
+        "QueryService",
+        "activity_service",
+        "ActivityService",
+        "TrophyService",
+        "query_service",
+        "StatisticsService"
       ]
     },
     "run_strong": {
@@ -298,120 +298,9 @@
           ],
           "docstring": "Display RunStrong home page.",
           "parameters": [],
-          "line_number": 41,
-          "blueprint": "run_strong",
-          "full_url": "/strong/"
-        },
-        {
-          "function_name": "exercise_library",
-          "endpoint": "/exercise-library",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Display exercise library.",
-          "parameters": [],
-          "line_number": 46,
-          "blueprint": "run_strong",
-          "full_url": "/strong/exercise-library"
-        },
-        {
-          "function_name": "planner",
-          "endpoint": "/planner",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Display workout planner.",
-          "parameters": [],
           "line_number": 51,
           "blueprint": "run_strong",
-          "full_url": "/strong/planner"
-        },
-        {
-          "function_name": "journal",
-          "endpoint": "/journal",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Display workout journal.",
-          "parameters": [],
-          "line_number": 56,
-          "blueprint": "run_strong",
-          "full_url": "/strong/journal"
-        },
-        {
-          "function_name": "progress_dashboard",
-          "endpoint": "/progress-dashboard",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Display progress and fatigure dashboard.",
-          "parameters": [],
-          "line_number": 61,
-          "blueprint": "run_strong",
-          "full_url": "/strong/progress-dashboard"
-        },
-        {
-          "function_name": "exercises",
-          "endpoint": "/exercises",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "API endpoint for exercise data.",
-          "parameters": [],
-          "line_number": 68,
-          "blueprint": "run_strong",
-          "full_url": "/strong/exercises"
-        },
-        {
-          "function_name": "add_exercise",
-          "endpoint": "/exercises/add",
-          "methods": [
-            "GET",
-            "POST"
-          ],
-          "docstring": "Add new exercise.",
-          "parameters": [],
-          "line_number": 78,
-          "blueprint": "run_strong",
-          "full_url": "/strong/exercises/add"
-        },
-        {
-          "function_name": "save_routine",
-          "endpoint": "/save-routine",
-          "methods": [
-            "POST"
-          ],
-          "docstring": "Save workout routine.",
-          "parameters": [],
-          "line_number": 92,
-          "blueprint": "run_strong",
-          "full_url": "/strong/save-routine"
-        },
-        {
-          "function_name": "load_routines",
-          "endpoint": "/load-routines",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Load all workout routines.",
-          "parameters": [],
-          "line_number": 106,
-          "blueprint": "run_strong",
-          "full_url": "/strong/load-routines"
-        },
-        {
-          "function_name": "load_routine",
-          "endpoint": "/load-routine/<int:routine_id>",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Load specific workout routine.",
-          "parameters": [
-            "routine_id"
-          ],
-          "line_number": 116,
-          "blueprint": "run_strong",
-          "full_url": "/strong/load-routine/<int:routine_id>"
+          "full_url": "/strong/"
         },
         {
           "function_name": "get_exercises",
@@ -419,163 +308,71 @@
           "methods": [
             "GET"
           ],
-          "docstring": "Get all exercises for the planner.",
+          "docstring": "API: Get all exercises for the planner.",
           "parameters": [],
-          "line_number": 127,
+          "line_number": 56,
           "blueprint": "run_strong",
           "full_url": "/strong/api/exercises"
         },
         {
-          "function_name": "get_routines",
-          "endpoint": "/api/routines",
+          "function_name": "exercise_library",
+          "endpoint": "/exercise_library",
           "methods": [
             "GET"
           ],
-          "docstring": "Get all workout routines.",
+          "docstring": "Display the exercise library page.",
           "parameters": [],
-          "line_number": 136,
+          "line_number": 66,
           "blueprint": "run_strong",
-          "full_url": "/strong/api/routines"
+          "full_url": "/strong/exercise_library"
         },
         {
-          "function_name": "create_routine",
-          "endpoint": "/api/routines",
+          "function_name": "journal",
+          "endpoint": "/journal",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display the workout journal page and the form for new entries.",
+          "parameters": [],
+          "line_number": 76,
+          "blueprint": "run_strong",
+          "full_url": "/strong/journal"
+        },
+        {
+          "function_name": "log_workout_entry",
+          "endpoint": "/api/journal/log",
           "methods": [
             "POST"
           ],
-          "docstring": "Create a new workout routine with exercises.",
+          "docstring": "API endpoint to log a new workout session.",
           "parameters": [],
-          "line_number": 145,
+          "line_number": 89,
           "blueprint": "run_strong",
-          "full_url": "/strong/api/routines"
+          "full_url": "/strong/api/journal/log"
         },
         {
-          "function_name": "get_routine_exercises_api",
-          "endpoint": "/api/routines/<int:routine_id>/exercises",
+          "function_name": "fatigue_dashboard",
+          "endpoint": "/fatigue_dashboard",
           "methods": [
             "GET"
           ],
-          "docstring": "Get a specific routine with its exercises.",
-          "parameters": [
-            "routine_id"
-          ],
-          "line_number": 175,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/routines/<int:routine_id>/exercises"
-        },
-        {
-          "function_name": "save_workout_performance",
-          "endpoint": "/api/workout-performance",
-          "methods": [
-            "POST"
-          ],
-          "docstring": "Save workout performance data for an entire session.",
+          "docstring": "Display the enhanced fatigue dashboard page.",
           "parameters": [],
-          "line_number": 193,
+          "line_number": 106,
           "blueprint": "run_strong",
-          "full_url": "/strong/api/workout-performance"
+          "full_url": "/strong/fatigue_dashboard"
         },
         {
-          "function_name": "get_workout_history",
-          "endpoint": "/api/workout-performance/<int:routine_id>",
+          "function_name": "goals",
+          "endpoint": "/goals",
           "methods": [
             "GET"
           ],
-          "docstring": "Get workout history for a specific routine.",
-          "parameters": [
-            "routine_id"
-          ],
-          "line_number": 222,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/workout-performance/<int:routine_id>"
-        },
-        {
-          "function_name": "update_routine",
-          "endpoint": "/api/routines/<int:routine_id>",
-          "methods": [
-            "PUT"
-          ],
-          "docstring": "Update an existing workout routine.",
-          "parameters": [
-            "routine_id"
-          ],
-          "line_number": 230,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/routines/<int:routine_id>"
-        },
-        {
-          "function_name": "get_exercise_max_loads",
-          "endpoint": "/api/exercise-max-loads",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "Get maximum load for each exercise from workout history.",
+          "docstring": "Display the goals dashboard page.",
           "parameters": [],
-          "line_number": 263,
+          "line_number": 118,
           "blueprint": "run_strong",
-          "full_url": "/strong/api/exercise-max-loads"
-        },
-        {
-          "function_name": "delete_routine",
-          "endpoint": "/api/routines/<int:routine_id>",
-          "methods": [
-            "DELETE"
-          ],
-          "docstring": "Delete a workout routine.",
-          "parameters": [
-            "routine_id"
-          ],
-          "line_number": 272,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/routines/<int:routine_id>"
-        },
-        {
-          "function_name": "get_fatigue_data",
-          "endpoint": "/api/fatigue-data",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "API endpoint to get current fatigue data with optional filtering",
-          "parameters": [],
-          "line_number": 281,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/fatigue-data"
-        },
-        {
-          "function_name": "get_available_muscle_groups",
-          "endpoint": "/api/muscle-groups",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "API endpoint to get available muscle group filters",
-          "parameters": [],
-          "line_number": 302,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/muscle-groups"
-        },
-        {
-          "function_name": "update_fatigue",
-          "endpoint": "/api/update-fatigue",
-          "methods": [
-            "GET"
-          ],
-          "docstring": "API endpoint to trigger fatigue update",
-          "parameters": [],
-          "line_number": 314,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/update-fatigue"
-        },
-        {
-          "function_name": "save_freestyle_workout",
-          "endpoint": "/api/workout-performance/freestyle",
-          "methods": [
-            "POST"
-          ],
-          "docstring": "API endpoint to save an ad-hoc/freestyle workout session.",
-          "parameters": [],
-          "line_number": 324,
-          "blueprint": "run_strong",
-          "full_url": "/strong/api/workout-performance/freestyle"
+          "full_url": "/strong/goals"
         }
       ],
       "imports": [
@@ -585,14 +382,12 @@
         "flask.render_template",
         "flask.request",
         "flask.jsonify",
-        "flask.render_template_string",
         "werkzeug.exceptions.BadRequest",
-        "services.runstrong_service.RunStrongService",
-        "utils.db.runstrong_db_utils"
+        "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
@@ -802,120 +597,9 @@
       ],
       "docstring": "Display RunStrong home page.",
       "parameters": [],
-      "line_number": 41,
-      "blueprint": "run_strong",
-      "full_url": "/strong/"
-    },
-    {
-      "function_name": "exercise_library",
-      "endpoint": "/exercise-library",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Display exercise library.",
-      "parameters": [],
-      "line_number": 46,
-      "blueprint": "run_strong",
-      "full_url": "/strong/exercise-library"
-    },
-    {
-      "function_name": "planner",
-      "endpoint": "/planner",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Display workout planner.",
-      "parameters": [],
       "line_number": 51,
       "blueprint": "run_strong",
-      "full_url": "/strong/planner"
-    },
-    {
-      "function_name": "journal",
-      "endpoint": "/journal",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Display workout journal.",
-      "parameters": [],
-      "line_number": 56,
-      "blueprint": "run_strong",
-      "full_url": "/strong/journal"
-    },
-    {
-      "function_name": "progress_dashboard",
-      "endpoint": "/progress-dashboard",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Display progress and fatigure dashboard.",
-      "parameters": [],
-      "line_number": 61,
-      "blueprint": "run_strong",
-      "full_url": "/strong/progress-dashboard"
-    },
-    {
-      "function_name": "exercises",
-      "endpoint": "/exercises",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "API endpoint for exercise data.",
-      "parameters": [],
-      "line_number": 68,
-      "blueprint": "run_strong",
-      "full_url": "/strong/exercises"
-    },
-    {
-      "function_name": "add_exercise",
-      "endpoint": "/exercises/add",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "docstring": "Add new exercise.",
-      "parameters": [],
-      "line_number": 78,
-      "blueprint": "run_strong",
-      "full_url": "/strong/exercises/add"
-    },
-    {
-      "function_name": "save_routine",
-      "endpoint": "/save-routine",
-      "methods": [
-        "POST"
-      ],
-      "docstring": "Save workout routine.",
-      "parameters": [],
-      "line_number": 92,
-      "blueprint": "run_strong",
-      "full_url": "/strong/save-routine"
-    },
-    {
-      "function_name": "load_routines",
-      "endpoint": "/load-routines",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Load all workout routines.",
-      "parameters": [],
-      "line_number": 106,
-      "blueprint": "run_strong",
-      "full_url": "/strong/load-routines"
-    },
-    {
-      "function_name": "load_routine",
-      "endpoint": "/load-routine/<int:routine_id>",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Load specific workout routine.",
-      "parameters": [
-        "routine_id"
-      ],
-      "line_number": 116,
-      "blueprint": "run_strong",
-      "full_url": "/strong/load-routine/<int:routine_id>"
+      "full_url": "/strong/"
     },
     {
       "function_name": "get_exercises",
@@ -923,163 +607,71 @@
       "methods": [
         "GET"
       ],
-      "docstring": "Get all exercises for the planner.",
+      "docstring": "API: Get all exercises for the planner.",
       "parameters": [],
-      "line_number": 127,
+      "line_number": 56,
       "blueprint": "run_strong",
       "full_url": "/strong/api/exercises"
     },
     {
-      "function_name": "get_routines",
-      "endpoint": "/api/routines",
+      "function_name": "exercise_library",
+      "endpoint": "/exercise_library",
       "methods": [
         "GET"
       ],
-      "docstring": "Get all workout routines.",
+      "docstring": "Display the exercise library page.",
       "parameters": [],
-      "line_number": 136,
+      "line_number": 66,
       "blueprint": "run_strong",
-      "full_url": "/strong/api/routines"
+      "full_url": "/strong/exercise_library"
     },
     {
-      "function_name": "create_routine",
-      "endpoint": "/api/routines",
+      "function_name": "journal",
+      "endpoint": "/journal",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display the workout journal page and the form for new entries.",
+      "parameters": [],
+      "line_number": 76,
+      "blueprint": "run_strong",
+      "full_url": "/strong/journal"
+    },
+    {
+      "function_name": "log_workout_entry",
+      "endpoint": "/api/journal/log",
       "methods": [
         "POST"
       ],
-      "docstring": "Create a new workout routine with exercises.",
+      "docstring": "API endpoint to log a new workout session.",
       "parameters": [],
-      "line_number": 145,
+      "line_number": 89,
       "blueprint": "run_strong",
-      "full_url": "/strong/api/routines"
+      "full_url": "/strong/api/journal/log"
     },
     {
-      "function_name": "get_routine_exercises_api",
-      "endpoint": "/api/routines/<int:routine_id>/exercises",
+      "function_name": "fatigue_dashboard",
+      "endpoint": "/fatigue_dashboard",
       "methods": [
         "GET"
       ],
-      "docstring": "Get a specific routine with its exercises.",
-      "parameters": [
-        "routine_id"
-      ],
-      "line_number": 175,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/routines/<int:routine_id>/exercises"
-    },
-    {
-      "function_name": "save_workout_performance",
-      "endpoint": "/api/workout-performance",
-      "methods": [
-        "POST"
-      ],
-      "docstring": "Save workout performance data for an entire session.",
+      "docstring": "Display the enhanced fatigue dashboard page.",
       "parameters": [],
-      "line_number": 193,
+      "line_number": 106,
       "blueprint": "run_strong",
-      "full_url": "/strong/api/workout-performance"
+      "full_url": "/strong/fatigue_dashboard"
     },
     {
-      "function_name": "get_workout_history",
-      "endpoint": "/api/workout-performance/<int:routine_id>",
+      "function_name": "goals",
+      "endpoint": "/goals",
       "methods": [
         "GET"
       ],
-      "docstring": "Get workout history for a specific routine.",
-      "parameters": [
-        "routine_id"
-      ],
-      "line_number": 222,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/workout-performance/<int:routine_id>"
-    },
-    {
-      "function_name": "update_routine",
-      "endpoint": "/api/routines/<int:routine_id>",
-      "methods": [
-        "PUT"
-      ],
-      "docstring": "Update an existing workout routine.",
-      "parameters": [
-        "routine_id"
-      ],
-      "line_number": 230,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/routines/<int:routine_id>"
-    },
-    {
-      "function_name": "get_exercise_max_loads",
-      "endpoint": "/api/exercise-max-loads",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "Get maximum load for each exercise from workout history.",
+      "docstring": "Display the goals dashboard page.",
       "parameters": [],
-      "line_number": 263,
+      "line_number": 118,
       "blueprint": "run_strong",
-      "full_url": "/strong/api/exercise-max-loads"
-    },
-    {
-      "function_name": "delete_routine",
-      "endpoint": "/api/routines/<int:routine_id>",
-      "methods": [
-        "DELETE"
-      ],
-      "docstring": "Delete a workout routine.",
-      "parameters": [
-        "routine_id"
-      ],
-      "line_number": 272,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/routines/<int:routine_id>"
-    },
-    {
-      "function_name": "get_fatigue_data",
-      "endpoint": "/api/fatigue-data",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "API endpoint to get current fatigue data with optional filtering",
-      "parameters": [],
-      "line_number": 281,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/fatigue-data"
-    },
-    {
-      "function_name": "get_available_muscle_groups",
-      "endpoint": "/api/muscle-groups",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "API endpoint to get available muscle group filters",
-      "parameters": [],
-      "line_number": 302,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/muscle-groups"
-    },
-    {
-      "function_name": "update_fatigue",
-      "endpoint": "/api/update-fatigue",
-      "methods": [
-        "GET"
-      ],
-      "docstring": "API endpoint to trigger fatigue update",
-      "parameters": [],
-      "line_number": 314,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/update-fatigue"
-    },
-    {
-      "function_name": "save_freestyle_workout",
-      "endpoint": "/api/workout-performance/freestyle",
-      "methods": [
-        "POST"
-      ],
-      "docstring": "API endpoint to save an ad-hoc/freestyle workout session.",
-      "parameters": [],
-      "line_number": 324,
-      "blueprint": "run_strong",
-      "full_url": "/strong/api/workout-performance/freestyle"
+      "full_url": "/strong/goals"
     }
   ],
   "services": {
@@ -1234,7 +826,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 19,
+              "line_number": 21,
               "is_async": false,
               "decorators": []
             },
@@ -1243,7 +835,7 @@
               "docstring": "Initialize the language model.",
               "parameters": [],
               "return_type": null,
-              "line_number": 26,
+              "line_number": 28,
               "is_async": false,
               "decorators": []
             },
@@ -1269,7 +861,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 41,
+              "line_number": 43,
               "is_async": false,
               "decorators": []
             },
@@ -1291,7 +883,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 79,
+              "line_number": 86,
               "is_async": false,
               "decorators": []
             },
@@ -1305,21 +897,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 130,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "_create_summary_for_strength_history",
-              "docstring": "Creates a simple, text-only summary for the LLM's context history on strength training fatigue.",
-              "parameters": [
-                {
-                  "name": "strength_metrics",
-                  "type": "Dict"
-                }
-              ],
-              "return_type": "tuple",
-              "line_number": 139,
+              "line_number": 137,
               "is_async": false,
               "decorators": []
             },
@@ -1333,7 +911,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 183,
+              "line_number": 190,
               "is_async": false,
               "decorators": []
             },
@@ -1342,7 +920,48 @@
               "docstring": "Fetches, formats, and converts the latest strength training metrics to HTML.",
               "parameters": [],
               "return_type": "tuple",
-              "line_number": 208,
+              "line_number": 215,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "_create_summary_for_strength_history",
+              "docstring": "Creates a simple, text-only summary for the LLM's context history on strength training fatigue.",
+              "parameters": [
+                {
+                  "name": "strength_metrics",
+                  "type": "dict"
+                }
+              ],
+              "return_type": "tuple",
+              "line_number": 239,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "_get_strength_workout_recommendation",
+              "docstring": "Generates a workout recommendation by creating a prompt for an LLM.",
+              "parameters": [],
+              "return_type": "tuple",
+              "line_number": 279,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "_create_prompt_for_recommendation",
+              "docstring": "Creates a detailed, structured prompt for the LLM to generate a workout.",
+              "parameters": [
+                {
+                  "name": "fatigue_data",
+                  "type": "dict"
+                },
+                {
+                  "name": "exercise_list",
+                  "type": "list"
+                }
+              ],
+              "return_type": "str",
+              "line_number": 311,
               "is_async": false,
               "decorators": []
             },
@@ -1356,7 +975,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 228,
+              "line_number": 342,
               "is_async": false,
               "decorators": []
             },
@@ -1378,7 +997,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 232,
+              "line_number": 346,
               "is_async": false,
               "decorators": []
             },
@@ -1396,7 +1015,7 @@
                 }
               ],
               "return_type": "List[Dict]",
-              "line_number": 241,
+              "line_number": 355,
               "is_async": false,
               "decorators": []
             },
@@ -1405,7 +1024,7 @@
               "docstring": "Fetches and formats a summary of the last 7 days of running.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 250,
+              "line_number": 364,
               "is_async": false,
               "decorators": []
             },
@@ -1414,7 +1033,7 @@
               "docstring": "Fetches and formats a summary of the last 28-day training trend.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 318,
+              "line_number": 432,
               "is_async": false,
               "decorators": []
             },
@@ -1436,14 +1055,14 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 383,
+              "line_number": 497,
               "is_async": false,
               "decorators": []
             }
           ],
-          "line_number": 16,
+          "line_number": 18,
           "bases": [
-            "BaseService"
+            "RunStrongService"
           ]
         }
       ],
@@ -1454,7 +1073,9 @@
         "typing.List",
         "typing.Dict",
         "sqlite3",
+        "json",
         "markdown",
+        "services.runstrong_service.RunStrongService",
         "services.base_service.BaseService",
         "utils.language_model_utils",
         "utils.exception_utils",
@@ -1662,417 +1283,117 @@
           "docstring": "Service for RunStrong strength training operations.",
           "methods": [
             {
-              "name": "add_exercise",
-              "docstring": "Add single exercise to db.",
-              "parameters": [
-                {
-                  "name": "data",
-                  "type": "dict"
-                }
-              ],
-              "return_type": "None",
-              "line_number": 22,
+              "name": "get_exercises",
+              "docstring": "Get all available exercises.",
+              "parameters": [],
+              "return_type": "List[Dict]",
+              "line_number": 23,
               "is_async": false,
               "decorators": []
             },
             {
-              "name": "save_routine",
-              "docstring": "Save a workout routine.",
-              "parameters": [
-                {
-                  "name": "routine_name",
-                  "type": "str"
-                },
-                {
-                  "name": "routine_exercises",
-                  "type": "List[Dict[(str, Any)]]"
-                }
-              ],
-              "return_type": "None",
+              "name": "get_exercises_with_load",
+              "docstring": "Get all available exercises with load values.",
+              "parameters": [],
+              "return_type": "List[Dict]",
               "line_number": 32,
               "is_async": false,
               "decorators": []
             },
             {
-              "name": "get_routines",
-              "docstring": "Get all workout routines.",
+              "name": "get_exercise_details",
+              "docstring": "Get details for a specific exercise.",
+              "parameters": [
+                {
+                  "name": "exercise_id",
+                  "type": "int"
+                }
+              ],
+              "return_type": "Dict",
+              "line_number": 41,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_workout_journal",
+              "docstring": "Get all workout sessions for the journal.",
               "parameters": [],
-              "return_type": "List[Tuple[(int, str)]]",
+              "return_type": "List[Dict]",
+              "line_number": 50,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_fatigue_data",
+              "docstring": "Get and structure fatigue data for the dashboard.",
+              "parameters": [],
+              "return_type": "Dict[(str, List)]",
               "line_number": 59,
               "is_async": false,
               "decorators": []
             },
             {
-              "name": "get_exercises",
-              "docstring": "Get all available exercises.",
+              "name": "get_goals_with_progress",
+              "docstring": "Get active goals and calculate their progress percentage.",
               "parameters": [],
-              "return_type": "List[Tuple[(int, str)]]",
-              "line_number": 71,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_exercise_by_id",
-              "docstring": "Get exercise by ID.",
-              "parameters": [
-                {
-                  "name": "exercise_id",
-                  "type": "int"
-                }
-              ],
-              "return_type": "Optional[Tuple[(int, str)]]",
-              "line_number": 81,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_all_routines",
-              "docstring": "Get all available routines.",
-              "parameters": [],
-              "return_type": "List[Tuple[(int, str)]]",
-              "line_number": 91,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_routine_by_id",
-              "docstring": "Get routine by ID.",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                }
-              ],
-              "return_type": "Optional[Tuple[(int, str)]]",
-              "line_number": 101,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "create_routine",
-              "docstring": "Create new routine and return routine ID.",
-              "parameters": [
-                {
-                  "name": "name",
-                  "type": "str"
-                }
-              ],
-              "return_type": "Optional[int]",
-              "line_number": 111,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "add_exercise_to_routine",
-              "docstring": "Add exercise to routine.",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                },
-                {
-                  "name": "exercise_id",
-                  "type": "int"
-                },
-                {
-                  "name": "sets",
-                  "type": "int"
-                },
-                {
-                  "name": "reps",
-                  "type": "int"
-                },
-                {
-                  "name": "load_lbs",
-                  "type": "float"
-                },
-                {
-                  "name": "order_index",
-                  "type": "int"
-                },
-                {
-                  "name": "notes",
-                  "type": "str"
-                }
-              ],
-              "return_type": "bool",
-              "line_number": 121,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_routine_exercises",
-              "docstring": "Get all exercises for a specific routine",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                }
-              ],
               "return_type": "List[Dict]",
+              "line_number": 79,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "log_new_workout",
+              "docstring": "Logs a new workout session and all of its sets in a single transaction.\nExpects workout_data to have 'session_date', 'notes', and a 'sets' list.",
+              "parameters": [
+                {
+                  "name": "workout_data",
+                  "type": "Dict"
+                }
+              ],
+              "return_type": "int",
+              "line_number": 99,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "_get_fatigue_interpretation",
+              "docstring": "Provides a human-readable interpretation of a given fatigue score.",
+              "parameters": [
+                {
+                  "name": "score",
+                  "type": "float"
+                }
+              ],
+              "return_type": "str",
               "line_number": 133,
               "is_async": false,
               "decorators": []
             },
             {
-              "name": "delete_routine",
-              "docstring": "Delete a routine and all associated exercises",
+              "name": "_acwr_to_fatigue_score",
+              "docstring": "Converts an ACWR value to a 0-100 fatigue score. (No changes from before)",
               "parameters": [
                 {
-                  "name": "routine_id",
-                  "type": "int"
+                  "name": "acwr",
+                  "type": "float"
                 }
               ],
-              "return_type": "bool",
-              "line_number": 143,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "save_workout_performance_bulk",
-              "docstring": "Service layer method to save a complete workout performance log.\nHandles the database connection and calls the bulk DB utility.",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                },
-                {
-                  "name": "workout_date",
-                  "type": "str"
-                },
-                {
-                  "name": "exercises",
-                  "type": "List[Dict]"
-                }
-              ],
-              "return_type": null,
-              "line_number": 153,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_workout_history",
-              "docstring": "Get workout history for a specific routine",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                }
-              ],
-              "return_type": "List[Dict]",
-              "line_number": 169,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_workout_performance_by_date",
-              "docstring": "Get workout performance for a specific routine and date",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                },
-                {
-                  "name": "workout_date",
-                  "type": "str"
-                }
-              ],
-              "return_type": "List[Dict]",
-              "line_number": 179,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_exercise_progress",
-              "docstring": "Get progress history for a specific exercise",
-              "parameters": [
-                {
-                  "name": "exercise_id",
-                  "type": "int"
-                },
-                {
-                  "name": "limit",
-                  "type": "int"
-                }
-              ],
-              "return_type": "List[Dict]",
-              "line_number": 189,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_recent_workouts",
-              "docstring": "Get recent workout sessions",
-              "parameters": [
-                {
-                  "name": "limit",
-                  "type": "int"
-                }
-              ],
-              "return_type": "List[Dict]",
-              "line_number": 199,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_workout_stats",
-              "docstring": "Get workout statistics",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                }
-              ],
-              "return_type": "Dict",
-              "line_number": 209,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "initialize_runstrong_database",
-              "docstring": "Initialize the database with all required tables",
-              "parameters": [],
-              "return_type": "bool",
-              "line_number": 219,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "update_routine_name",
-              "docstring": "Update routine name.",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                },
-                {
-                  "name": "name",
-                  "type": "str"
-                }
-              ],
-              "return_type": null,
-              "line_number": 230,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "clear_routine_exercises",
-              "docstring": "Remove all exercises from a routine.",
-              "parameters": [
-                {
-                  "name": "routine_id",
-                  "type": "int"
-                }
-              ],
-              "return_type": null,
-              "line_number": 238,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_exercise_max_loads",
-              "docstring": "Get maximum load for each exercise from workout performance history.",
-              "parameters": [],
-              "return_type": "dict",
-              "line_number": 246,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_routine_name_datecreated",
-              "docstring": "Get all workout routines.",
-              "parameters": [],
-              "return_type": "list",
-              "line_number": 255,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "run_daily_update",
-              "docstring": null,
-              "parameters": [],
-              "return_type": null,
-              "line_number": 264,
+              "return_type": "float",
+              "line_number": 146,
               "is_async": false,
               "decorators": []
             },
             {
               "name": "get_fatigue_dashboard_data",
-              "docstring": "Get fatigue dashboard data with optional muscle group filtering",
-              "parameters": [
-                {
-                  "name": "muscle_group_filter",
-                  "type": "str"
-                }
-              ],
+              "docstring": "Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.\n\nThis on-the-fly calculation includes:\n- Exponentially decayed workload for higher accuracy.\n- Fatigue scores for individual muscles, body groups, and overall.\n- Human-readable interpretations of all scores.\n- Data structured for categorical filtering (Overall, Lower, Upper, Core).",
+              "parameters": [],
               "return_type": "Dict",
-              "line_number": 271,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "update_weekly_summary",
-              "docstring": null,
-              "parameters": [
-                {
-                  "name": "week_start",
-                  "type": "datetime.datetime"
-                }
-              ],
-              "return_type": null,
-              "line_number": 280,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_recommendation",
-              "docstring": null,
-              "parameters": [
-                {
-                  "name": "overall_fatigue"
-                }
-              ],
-              "return_type": null,
-              "line_number": 287,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "get_least_used_muscle_groups",
-              "docstring": null,
-              "parameters": [
-                {
-                  "name": "muscle_fatigue"
-                },
-                {
-                  "name": "days_threshold"
-                }
-              ],
-              "return_type": null,
-              "line_number": 295,
-              "is_async": false,
-              "decorators": []
-            },
-            {
-              "name": "save_freestyle_workout",
-              "docstring": "Saves an ad-hoc (freestyle) workout session.\nIt finds/creates a special routine and logs the exercises under it.",
-              "parameters": [
-                {
-                  "name": "workout_date",
-                  "type": "str"
-                },
-                {
-                  "name": "exercises",
-                  "type": "List[Dict]"
-                }
-              ],
-              "return_type": null,
-              "line_number": 305,
+              "line_number": 154,
               "is_async": false,
               "decorators": []
             }
           ],
-          "line_number": 18,
+          "line_number": 20,
           "bases": [
             "BaseService"
           ]
@@ -2080,17 +1401,17 @@
       ],
       "functions": [],
       "imports": [
-        "datetime",
+        "logging",
         "typing.Dict",
         "typing.List",
         "typing.Any",
-        "typing.Tuple",
         "typing.Optional",
+        "collections.defaultdict",
+        "datetime.datetime",
+        "datetime.timedelta",
+        "math",
         "services.base_service.BaseService",
-        "utils.format_utils",
         "utils.exception_utils",
-        "config.Config",
-        "utils.db.db_utils",
         "utils.db.runstrong_db_utils"
       ]
     },
@@ -5273,14 +4594,12 @@
   },
   "summary": {
     "total_blueprints": 4,
-    "total_routes": 39,
+    "total_routes": 23,
     "total_services": 9,
     "total_biomechanic_modules": 24,
     "methods_distribution": {
-      "GET": 28,
-      "POST": 11,
-      "PUT": 1,
-      "DELETE": 1
+      "GET": 17,
+      "POST": 7
     },
     "blueprints_list": [
       "coach_g",

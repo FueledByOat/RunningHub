@@ -18,13 +18,23 @@ document.addEventListener('DOMContentLoaded', function () {
 async function loadAllExercisesForFreestyle() {
     try {
         const response = await fetch('/strong/api/exercises');
-        allExercises = await response.json();
-        const select = document.getElementById('freestyle-exercise-select');
-        select.innerHTML = allExercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            // CORRECTED: Assign to the global 'allExercises' variable
+            allExercises = result.data; 
+            const select = document.getElementById('freestyle-exercise-select');
+            select.innerHTML = '<option value="" disabled selected>Select an exercise</option>';
+            // Now correctly references the global variable
+            select.innerHTML += allExercises.map(ex => `<option value="${ex.id}">${ex.name}</option>`).join('');
+        } else {
+            throw new Error(result.message);
+        }
     } catch (error) {
         console.error('Error loading exercises for freestyle logging:', error);
     }
 }
+
 
 // New function to show the freestyle form
 function startFreestyleWorkout() {
@@ -92,32 +102,42 @@ async function saveFreestyleSession() {
     }
 
     try {
+        // CORRECTED: Point to the correct freestyle endpoint
         const response = await fetch('/strong/api/workout-performance/freestyle', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            // CORRECTED: The payload for freestyle doesn't need a routine_id
+            // It only needs the date and the exercises performed.
             body: JSON.stringify({
                 workout_date: workoutDate,
-                exercises: freestyleExercises
+                exercises: freestyleExercises // The backend expects this key
             })
         });
-
-        if (response.ok) {
+        const result = await response.json();
+        if (response.ok && result.status === 'success') {
             alert('Freestyle workout saved successfully!');
-            cancelFreestyleWorkout();
+            cancelFreestyleWorkout(); // Go back to selection screen
         } else {
-            alert('Error saving workout. Please try again.');
+            alert(`Error saving workout: ${result.message || 'Please try again.'}`);
         }
     } catch (error) {
         console.error('Error saving freestyle workout:', error);
-        alert('An error occurred. Please try again.');
+        alert('Error saving workout. Please try again.');
     }
 }
 
 async function loadRoutines() {
     try {
         const response = await fetch('/strong/api/routines');
-        const routines = await response.json();
-        displayRoutines(routines);
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            const routines = result.data;
+            // CHANGE THIS LINE:
+            displayRoutines(routines); // Use the correct function name 'displayRoutines'
+        } else {
+            throw new Error(result.message);
+        }
     } catch (error) {
         console.error('Error loading routines:', error);
     }
@@ -125,34 +145,36 @@ async function loadRoutines() {
 
 function displayRoutines(routines) {
     const routineList = document.getElementById('routine-list');
-
-    if (routines.length === 0) {
-        routineList.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6);">No routines found. Create one in the Planner first.</p>';
-        return;
-    }
-
+    // ...
+    // CORRECTED: The function name was mismatched in the original file
     routineList.innerHTML = routines.map(routine => `
-                <div class="routine-card" onclick="selectRoutine(${routine.id})">
-                    <h3>${routine.name}</h3>
-                    <p>Created: ${new Date(routine.date_created).toLocaleDateString()}</p>
-                    <p>${routine.exercise_count || 0} exercises</p>
-                </div>
-            `).join('');
+        <div class="routine-card" onclick="selectRoutine(${routine.id})">
+            <h3>${routine.name}</h3>
+            <p>Created: ${new Date(routine.date_created).toLocaleDateString()}</p>
+            <p>${routine.exercise_count || 0} exercises</p>
+        </div>
+    `).join('');
 }
 
 async function selectRoutine(routineId) {
     try {
-        const response = await fetch(`/strong/api/routines/${routineId}/exercises`);
-        const data = await response.json();
+        const response = await fetch(`/strong/api/routines/${routineId}`); // Endpoint was also slightly off
+        const result = await response.json();
 
-        currentRoutine = data.routine;
-        routineExercises = data.exercises;
+        if (result.status === 'success') {
+            const payload = result.data; // The object containing routine and exercises
 
-        document.getElementById('routine-title').textContent = currentRoutine.name;
-        document.getElementById('routine-selection').style.display = 'none';
-        document.getElementById('workout-form').style.display = 'block';
+            currentRoutine = payload.routine;
+            routineExercises = payload.exercises;
 
-        displayExerciseEntries();
+            document.getElementById('routine-title').textContent = currentRoutine.name;
+            document.getElementById('routine-selection').style.display = 'none';
+            document.getElementById('workout-form').style.display = 'block';
+
+            displayExerciseEntries();
+        } else {
+            throw new Error(result.message);
+        }
     } catch (error) {
         console.error('Error loading routine exercises:', error);
     }

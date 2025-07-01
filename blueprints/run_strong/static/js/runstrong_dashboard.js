@@ -7,6 +7,68 @@ function getFatigueClass(score) {
     else return 'fatigue-high';
 }
 
+function populateGoalSelector() {
+    const selector = document.getElementById('goal-selector');
+    if (!selector) return;
+
+    // Hardcode goals for now. This could be fetched from the API in the future.
+    const goals = ['Strength', 'Hypertrophy', 'Endurance', 'Power', 'General Fitness'];
+    
+    selector.innerHTML = '<option value="" disabled selected>Select a goal...</option>';
+    goals.forEach(goal => {
+        selector.innerHTML += `<option value="${goal}">${goal}</option>`;
+    });
+}
+
+// Function to fetch the recommendation from the new API endpoint
+function fetchRecommendedWorkout() {
+    const goal = document.getElementById('goal-selector').value;
+    const container = document.getElementById('recommended-workout-container');
+    if (!goal) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = '<p>Generating your workout...</p>';
+
+    fetch(`/strong/api/recommended-workout?goal=${encodeURIComponent(goal)}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                renderRecommendedWorkout(result.data);
+            } else {
+                container.innerHTML = `<p class="error">Could not generate workout. ${result.message}</p>`;
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching recommendation:', err);
+            container.innerHTML = `<p class="error">An error occurred while fetching your workout.</p>`;
+        });
+}
+
+// Function to render the list of recommended exercises
+function renderRecommendedWorkout(exercises) {
+    const container = document.getElementById('recommended-workout-container');
+    if (!exercises || exercises.length === 0) {
+        container.innerHTML = '<p>No specific exercises found for this goal and your current fatigue state. Maybe try a different goal or rest up!</p>';
+        return;
+    }
+
+    container.innerHTML = `
+        <h4 style="margin-top: 1rem;">Today's Suggestion:</h4>
+        <div class="recommended-list">
+            ${exercises.map(ex => `
+                <div class="recommended-item">
+                    <strong class="recommended-name">${ex.name}</strong>
+                    <span class="recommended-muscles">${ex.primary_muscles.replace(/,/g, ', ')}</span>
+                    <span class="recommended-type">${ex.compound_vs_isolation || ''}</span>
+                </div>
+            `).join('')}
+        </div>
+        <small style="display: block; margin-top: 1rem;">Tip: Use the 'Planner' to build this into a full routine.</small>
+    `;
+}
+
 function getRecoveryStatus(recoveryScore) {
     if (recoveryScore > 60) return { class: 'recovery-fresh', text: 'Fresh' };
     if (recoveryScore > 30) return { class: 'recovery-ready', text: 'Ready' };
@@ -55,7 +117,7 @@ function renderOverallFatigue(score, recommendation) {
         if (recommendationEl) recommendationEl.textContent = "Not enough data to generate a recommendation.";
         return;
     }
-    
+
     // Determine status text and fatigue class
     const fatigueClass = getFatigueClass(score); // Uses your existing utility function
     let statusText = 'High';
@@ -74,15 +136,22 @@ function renderMuscleFatigueGroups(muscleData) {
     if (!container) return;
     container.innerHTML = '';
 
+    // Group muscles by the 'broad_group' field provided by the updated backend
     const grouped = muscleData.reduce((acc, muscle) => {
-        const group = muscle.broad_group || 'Other';
+        const group = muscle.broad_group || 'Other'; // Fallback to 'Other'
         if (!acc[group]) acc[group] = [];
         acc[group].push(muscle);
         return acc;
     }, {});
 
-    ['Upper body', 'Lower body', 'Core', 'Other'].forEach(groupName => {
-        if (grouped[groupName]) {
+    // Define the desired order
+    const groupOrder = ['Upper Body', 'Lower Body', 'Core', 'Other'];
+
+    groupOrder.forEach(groupName => {
+        const key = groupName.toLowerCase().replace(' ', '_'); // Match backend category name if different
+        const musclesInGroup = grouped[groupName] || grouped[key];
+
+        if (musclesInGroup) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'fatigue-group';
 
@@ -322,13 +391,21 @@ function fetchDashboardData() {
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             return response.json();
         })
-        .then(data => {
-            renderFilterButtons(data.available_filters, currentFilter);
-            updateDashboardUI(data);
+        .then(result => {
+            if (result.status === 'success') {
+                const dashboardData = result.data; // This is the actual data payload
+                // The available_filters are inside the payload now
+                // This assumes your renderFilterButtons function is still separate
+                // It might be better to pass the whole dashboardData object.
+                // For now, let's assume it only needs the filters.
+                renderFilterButtons(dashboardData.available_filters, currentFilter);
+                updateDashboardUI(dashboardData);
+            } else {
+                throw new Error(result.message);
+            }
         })
         .catch(err => {
             console.error('Error fetching dashboard data:', err);
-            // You can display an error message to the user here
             document.getElementById('muscle-fatigue-column').innerHTML =
                 `<div class="dashboard-card"><p class="error">Could not load dashboard data. Please try again later.</p></div>`;
         });
@@ -339,14 +416,15 @@ function triggerManualUpdate() {
     btn.disabled = true;
     btn.textContent = 'Updating...';
 
-    fetch('/strong/api/update-fatigue')
+    fetch('/strong/api/update-fatigue', { method: 'POST' })
         .then(response => response.json())
         .then(data => {
             if (data.status === 'success') {
                 console.log('Manual update triggered successfully.');
-                fetchDashboardData(); // Refresh the dashboard with new data
+                fetchDashboardData();
             } else {
-                throw new Error(data.error || 'Unknown update error');
+                // CORRECTED: Use `data.message` for the error
+                throw new Error(data.message || 'Unknown update error');
             }
         })
         .catch(err => {
@@ -362,6 +440,7 @@ function triggerManualUpdate() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     fetchDashboardData();
+    populateGoalSelector();
 });
 window.addEventListener('resize', () => {
     // Redraw chart with new dimensions

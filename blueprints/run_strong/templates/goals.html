@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+<head>
+    <meta charset="UTF-8" />
+    <title>Goals Dashboard | RUNSTRONG</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+</head>
+<body class="runstrong">
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}" class="active">Goals Dashboard</a>
+    </div>
+    <div class="runstrong-container">
+        <h1>Goals Dashboard 🎯</h1>
+        <div class="goals-list">
+            {% for goal in goals %}
+            <div class="goal-item">
+                <h3>{{ goal.goal_description }}: {{ goal.exercise_name }}</h3>
+                <p>
+                    Progress: {{ goal.current_value_lbs }} lbs / {{ goal.target_value_lbs }} lbs
+                </p>
+                <progress value="{{ goal.progress }}" max="100"></progress>
+                <span>{{ goal.progress }}%</span>
+            </div>
+            {% else %}
+            <p>No active goals. Go set some!</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
