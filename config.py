@@ -17,8 +17,10 @@ class Config:
     FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', "broken_key")
     # Huggingface token
     HF_TOKEN = os.getenv('HF_TOKEN', "broken_hf_key")
+    # Together API Token
     TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
-    
+    # Weather API token
+    WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
     # Strava API credentials
     CLIENT_ID: Optional[str] = os.getenv("CLIENT_ID")
     CLIENT_SECRET: Optional[str] = os.getenv("CLIENT_SECRET")

@@ -52,6 +52,7 @@ class StravaDataPipeline:
         self.refresh_token = config.Config.REFRESH_TOKEN
         self.db_path = config.Config.DB_PATH
         self.access_token = None
+        self.weather_api_key = config.Config.WEATHER_API_KEY
         
     def refresh_access_token(self) -> bool:
         """
@@ -250,8 +251,8 @@ class StravaDataPipeline:
         Args:
             activities: List of activity dictionaries
         """
-        api_key = os.getenv('WEATHER_API_KEY')
-        if not api_key:
+
+        if not self.weather_api_key:
             self.logger.warning("WEATHER_API_KEY not found in environment variables")
             return
         
@@ -262,7 +263,7 @@ class StravaDataPipeline:
         self.logger.info(f"Starting weather data fetch for {len(activities)} activities")
         
         try:
-            processed = strava_utils.fetch_weather_for_activities(activities, self.db_path, api_key)
+            processed = strava_utils.fetch_weather_for_activities(activities, self.db_path, self.weather_api_key)
             self.logger.info(f"Weather fetch complete: {processed} activities processed")
             
         except Exception as e:
