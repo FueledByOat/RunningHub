@@ -3,10 +3,10 @@
 ## Summary  
   
 - **Total Blueprints**: 4  
-- **Total Routes**: 39  
+- **Total Routes**: 23  
 - **Total Services**: 9  
 - **Total Biomechanic Modules**: 24  
-- **HTTP Methods**: GET(28), POST(11), PUT(1), DELETE(1)  
+- **HTTP Methods**: GET(17), POST(7)  
   
 ## Blueprint: coach_g  
   
@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 9  
   
-**Services Used**: trophy_service, QueryService, TrophyService, StatisticsService, ActivityService, MotivationService, activity_service, statistics_service, motivation_service, query_service  
+**Services Used**: ActivityService, StatisticsService, MotivationService, statistics_service, QueryService, TrophyService, motivation_service, query_service, trophy_service, activity_service  
   
 ### Routes  
   
@@ -79,61 +79,24 @@
   
 **URL Prefix**: `/strong`  
 **Directory**: `blueprints\run_strong`  
-**Routes Count**: 23  
+**Routes Count**: 7  
   
-**Services Used**: runstrong_service, RunStrongService  
+**Services Used**: RunStrongService, runstrong_service  
   
 ### Routes  
   
 - **GET** `/strong/` → `runstrong()`  
     - Display RunStrong home page  
-- **GET** `/strong/exercise-library` → `exercise_library()`  
-    - Display exercise library  
-- **GET** `/strong/planner` → `planner()`  
-    - Display workout planner  
-- **GET** `/strong/journal` → `journal()`  
-    - Display workout journal  
-- **GET** `/strong/progress-dashboard` → `progress_dashboard()`  
-    - Display progress and fatigure dashboard  
-- **GET** `/strong/exercises` → `exercises()`  
-    - API endpoint for exercise data  
-- **GET, POST** `/strong/exercises/add` → `add_exercise()`  
-    - Add new exercise  
-- **POST** `/strong/save-routine` → `save_routine()`  
-    - Save workout routine  
-- **GET** `/strong/load-routines` → `load_routines()`  
-    - Load all workout routines  
-- **GET** `/strong/load-routine/<int:routine_id>` → `load_routine()`  
-    - Load specific workout routine  
-    - Parameters: routine_id  
 - **GET** `/strong/api/exercises` → `get_exercises()`  
-    - Get all exercises for the planner  
-- **GET** `/strong/api/routines` → `get_routines()`  
-    - Get all workout routines  
-- **POST** `/strong/api/routines` → `create_routine()`  
-    - Create a new workout routine with exercises  
-- **GET** `/strong/api/routines/<int:routine_id>/exercises` → `get_routine_exercises_api()`  
-    - Get a specific routine with its exercises  
-    - Parameters: routine_id  
-- **POST** `/strong/api/workout-performance` → `save_workout_performance()`  
-    - Save workout performance data for an entire session  
-- **GET** `/strong/api/workout-performance/<int:routine_id>` → `get_workout_history()`  
-    - Get workout history for a specific routine  
-    - Parameters: routine_id  
-- **PUT** `/strong/api/routines/<int:routine_id>` → `update_routine()`  
-    - Update an existing workout routine  
-    - Parameters: routine_id  
-- **GET** `/strong/api/exercise-max-loads` → `get_exercise_max_loads()`  
-    - Get maximum load for each exercise from workout history  
-- **DELETE** `/strong/api/routines/<int:routine_id>` → `delete_routine()`  
-    - Delete a workout routine  
-    - Parameters: routine_id  
-- **GET** `/strong/api/fatigue-data` → `get_fatigue_data()`  
-    - API endpoint to get current fatigue data with optional filtering  
-- **GET** `/strong/api/muscle-groups` → `get_available_muscle_groups()`  
-    - API endpoint to get available muscle group filters  
-- **GET** `/strong/api/update-fatigue` → `update_fatigue()`  
-    - API endpoint to trigger fatigue update  
-- **POST** `/strong/api/workout-performance/freestyle` → `save_freestyle_workout()`  
-    - API endpoint to save an ad-hoc/freestyle workout session  
+    - API: Get all exercises for the planner  
+- **GET** `/strong/exercise_library` → `exercise_library()`  
+    - Display the exercise library page  
+- **GET** `/strong/journal` → `journal()`  
+    - Display the workout journal page and the form for new entries  
+- **POST** `/strong/api/journal/log` → `log_workout_entry()`  
+    - API endpoint to log a new workout session  
+- **GET** `/strong/fatigue_dashboard` → `fatigue_dashboard()`  
+    - Display the enhanced fatigue dashboard page  
+- **GET** `/strong/goals` → `goals()`  
+    - Display the goals dashboard page  
   

@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Fatigue Dashboard | RUNSTRONG</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+        }
+
+        .dashboard-card {
+            padding: 1.5rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .dashboard-card h2,
+        .dashboard-card h3 {
+            margin-top: 0;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 0.5rem;
+        }
+
+        .fatigue-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        #category-toggle {
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 10px;
+        }
+
+        #category-toggle button {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            background: #f7f7f7;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #category-toggle button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .circular-meter {
+            display: flex;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .circular-chart {
+            display: block;
+            max-width: 120px;
+            max-height: 120px;
+        }
+
+        .circular-chart .circle-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 3.8;
+        }
+
+        .circular-chart .circle {
+            fill: none;
+            stroke-width: 2.8;
+            stroke-linecap: round;
+            stroke: var(--rs-highlight);
+            animation: progress 1s ease-out forwards;
+        }
+
+        .circular-chart .percentage {
+            fill: #fff;
+            font-size: 0.5em;
+            text-anchor: middle;
+        }
+
+        @keyframes progress {
+            0% {
+                stroke-dasharray: 0 100;
+            }
+        }
+
+        .fatigue-score {
+            --score-color: hsl(calc(120 - var(--score) * 1.2), 80%, 60%);
+            color: var(--score-color);
+        }
+    </style>
+</head>
+
+<body class="runstrong">
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}" class="active">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
+    </div>
+
+    <div class="runstrong-header">
+        <h1>
+            <a href="{{ url_for('running_hub.home') }}">Fatigue Dashboard 🔋</a>
+        </h1>
+    </div>
+    <div id="category-toggle">
+        <button data-category="overall" class="active">Overall</button>
+        <button data-category="upper_body">Upper Body</button>
+        <button data-category="lower_body">Lower Body</button>
+        <button data-category="core">Core</button>
+    </div>
+
+    <div class="dashboard-grid">
+
+        <div class="dashboard-card">
+            <h3>Summary Score</h3>
+            {% for category, details in data.items() %}
+            <div data-category-view="{{ category }}" class="{{ 'hidden' if not loop.first }}">
+                <div class="circular-meter">
+                    <svg viewBox="0 0 36 36" class="circular-chart pink">
+                        <path class="circle-bg" d="M18 2.0845
+                                     a 15.9155 15.9155 0 0 1 0 31.831
+                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="circle" stroke-dasharray="{{ " %.1f"|format(details.summary_score) }}, 100" d="M18 2.0845
+                                     a 15.9155 15.9155 0 0 1 0 31.831
+                                     a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <text x="18" y="20.35" class="percentage">{{ "%.0f"|format(details.summary_score) }}%</text>
+                    </svg>
+                </div>
+                <p style="text-align: center;"><strong>{{ "%.0f"|format(details.summary_score) }} / 100</strong></p>
+                <p><em>{{ details.interpretation }}</em></p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="dashboard-card">
+            <h3>Recent 7-Day Workload</h3>
+            {% for category, details in data.items() %}
+            <div data-category-view="{{ category }}" class="{{ 'hidden' if not loop.first }}">
+                <canvas id="chart-{{ category }}"></canvas>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="dashboard-card">
+            <h3>Most Fatigued Muscles</h3>
+            {% for category, details in data.items() %}
+            <div data-category-view="{{ category }}" class="{{ 'hidden' if not loop.first }}">
+                <ul class="fatigue-list">
+                    {% for muscle in details.top_5_fatigued %}
+                    <li class="fatigue-score" style="--score: {{ " %.0f"|format(muscle.score) }}">
+                        <span>{{ muscle.name }}</span>
+                        <strong>{{ "%.0f"|format(muscle.score) }}</strong>
+                    </li>
+                    {% else %}<li>No data.</li>{% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="dashboard-card">
+            <h3>Least Fatigued Muscles</h3>
+            {% for category, details in data.items() %}
+            <div data-category-view="{{ category }}" class="{{ 'hidden' if not loop.first }}">
+                <ul class="fatigue-list">
+                    {% for muscle in details.least_5_fatigued %}
+                    <li class="fatigue-score" style="--score: {{ " %.0f"|format(muscle.score) }}">
+                        <span>{{ muscle.name }}</span>
+                        <strong>{{ "%.0f"|format(muscle.score) }}</strong>
+                    </li>
+                    {% else %}<li>No data.</li>{% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleContainer = document.getElementById('category-toggle');
+            const views = document.querySelectorAll('[data-category-view]');
+
+            toggleContainer.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const category = e.target.dataset.category;
+
+                    // Update active button
+                    toggleContainer.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+
+                    // Show/hide relevant views
+                    views.forEach(view => {
+                        if (view.dataset.categoryView === category) {
+                            view.classList.remove('hidden');
+                        } else {
+                            view.classList.add('hidden');
+                        }
+                    });
+                }
+            });
+
+            // Render workload charts
+            {% for category, details in data.items() %}
+            const ctx_{{ category }
+        } = document.getElementById('chart-{{ category }}');
+        if (ctx_{ { category } }) {
+            new Chart(ctx_{{ category }}, {
+            type: 'line',
+                data: {
+                labels: { { details.seven_day_workload | map(attribute = 'day') | list | tojson } },
+                datasets: [{
+                    label: 'Workload (units)',
+                    data: {{ details.seven_day_workload | map(attribute = 'workload') | list | tojson }},
+            backgroundColor: 'rgba(255, 78, 199, 0.2)',
+                borderColor: 'rgba(255, 78, 199, 1)',
+                    borderWidth: 2,
+                        pointRadius: 4,
+                            tension: 0.3
+        }]
+            },
+        options: {
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+        });
+    }
+        {% endfor %}
+});
+    </script>
+</body>
+
+</html>

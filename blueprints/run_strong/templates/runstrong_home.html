@@ -11,17 +11,16 @@
 
     <div class="runstrong-navbar">
         <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
-        <a href="{{ url_for('run_strong.exercise_library') }}">Library</a>
-        <a href="{{ url_for('run_strong.planner') }}">Routines</a>
-        <a href="{{ url_for('run_strong.add_exercise') }}">Add</a>
-        <a href="{{ url_for('run_strong.journal') }}">Journal</a>
-        <a href="{{ url_for('run_strong.progress_dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
     </div>
 
     <div class="runstrong-header">
         <a href="{{ url_for('running_hub.home') }}">
-            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}" alt="RunStrong Logo"
-                class="runstrong-logo" />
+            <img src="{{ url_for('run_strong.static', filename='images/RUN_STRONG_logo_transparent.png') }}"
+                alt="RunStrong Logo" class="runstrong-logo" />
         </a>
     </div>
 
@@ -32,25 +31,22 @@
             <a href="{{ url_for('run_strong.exercise_library') }}">
                 <button>Exercise Library</button>
             </a>
-
-            <a href="{{ url_for('run_strong.planner') }}">
-                <button>Routines</button>
-            </a>
-            <a href="{{ url_for('run_strong.add_exercise') }}">
-                <button>Add Exercise</button>
-            </a>
             <a href="{{ url_for('run_strong.journal') }}">
                 <button>Workout Journal</button>
             </a>
-            <a href="{{ url_for('run_strong.progress_dashboard') }}">
-                <button>Progress Dashboard</button>
+            <a href="{{ url_for('run_strong.fatigue_dashboard') }}">
+                <button>Fatigue Dashboard</button>
+            </a>
+            <a href="{{ url_for('run_strong.goals') }}">
+                <button>Goals Dashboard</button>
             </a>
         </div>
     </div>
 
     <div style="padding: 2%;">
         <video controls autoplay muted style="display: block; margin: auto; width: 25%; padding: 2%;">
-            <source src="{{ url_for('run_strong.static', filename='videos/coach_g_drops_bricks.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('run_strong.static', filename='videos/coach_g_drops_bricks.mp4') }}"
+                type="video/mp4">
             Your browser does not support the video tag.
         </video>
     </div>

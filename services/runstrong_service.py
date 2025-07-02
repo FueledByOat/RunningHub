@@ -1,322 +1,241 @@
-# runstrong_service.py
+# services/runstrong_service.py
+
 """
-Service layer for running data analysis application.
+Service layer for running strength data analysis application.
 
 This module contains all business logic services that handle data processing,
 database interactions, and business rules while keeping the Flask routes clean.
 """
 
-import datetime
-from typing import Dict, List, Any, Tuple, Optional
+import logging
+from typing import Dict, List, Any, Optional
+from collections import defaultdict
+from datetime import datetime, timedelta
+import math
 
 from services.base_service import BaseService
-from utils import format_utils, exception_utils
-from config import Config
-from utils.db import db_utils
+from utils import exception_utils
 from utils.db import runstrong_db_utils
 
 class RunStrongService(BaseService):
     """Service for RunStrong strength training operations."""
 
-     
-    def add_exercise(self, data: dict) -> None:
-        """Add single exercise to db."""
-        try:
-            with self._get_connection() as conn:
-                runstrong_db_utils.add_exercise(conn, data)
-            self.logger.info(f"Added exercise routine: {data['name']} to database")
-        except Exception as e:
-            self.logger.error(f"Error getting exercises: {e}")
-            raise exception_utils.DatabaseError(f"Failed to get exercises: {e}")
-    
-    def save_routine(self, routine_name: str, routine_exercises: List[Dict[str, Any]]) -> None:
-        """Save a workout routine."""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                
-                # Save routine
-                cursor.execute(
-                    "INSERT INTO workout_routines (name) VALUES (?)", 
-                    (routine_name,)
-                )
-                routine_id = cursor.lastrowid
-                
-                # Save routine exercises
-                for item in routine_exercises:
-                    cursor.execute("""
-                        INSERT INTO routine_exercises (routine_id, exercise_id, order_index)
-                        VALUES (?, ?, ?)
-                    """, (routine_id, item['id'], item['order']))
-                
-                conn.commit()
-                self.logger.info(f"Saved routine: {routine_name} with {len(routine_exercises)} exercises")
-                
-        except Exception as e:
-            self.logger.error(f"Error saving routine {routine_name}: {e}")
-            raise exception_utils.DatabaseError(f"Failed to save routine: {e}")
-    
-    def get_routines(self) -> List[Tuple[int, str]]:
-        """Get all workout routines."""
-        try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT id, name FROM workout_routines")
-                return cursor.fetchall()
-        except Exception as e:
-            self.logger.error(f"Error getting routines: {e}")
-            raise exception_utils.DatabaseError(f"Failed to get routines: {e}")
-
-
-    def get_exercises(self) -> List[Tuple[int, str]]:
+    def get_exercises(self) -> List[Dict]:
         """Get all available exercises."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.get_all_exercises(conn)
-            return result
+                return runstrong_db_utils.get_all_exercises(conn)
         except Exception as e:
             self.logger.error(f"Error getting all exercises: {e}")
-            return []
-
-    def get_exercise_by_id(self, exercise_id: int) -> Optional[Tuple[int, str]]:
-        """Get exercise by ID."""
+            raise exception_utils.DatabaseError(f"Failed to get all exercises: {e}")
+        
+    def get_exercises_with_load(self) -> List[Dict]:
+        """Get all available exercises with load values."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.get_exercise_by_id(conn, exercise_id)
-            return result
+                return runstrong_db_utils.get_all_exercises_with_load(conn)
         except Exception as e:
-            self.logger.error(f"Error getting exercise {exercise_id}: {e}")
-            return None
+            self.logger.error(f"Error getting all exercises with load data: {e}")
+            raise exception_utils.DatabaseError(f"Failed to get all exercises with load data: {e}")        
 
-    def get_all_routines(self) -> List[Tuple[int, str]]:
-        """Get all available routines."""
+    def get_exercise_details(self, exercise_id: int) -> Dict:
+        """Get details for a specific exercise."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.get_all_routines(conn)
-            return result
+                return runstrong_db_utils.get_exercise_details_by_id(conn, exercise_id)
         except Exception as e:
-            self.logger.error(f"Error getting all routines: {e}")
-            return []
+            self.logger.error(f"Error getting details for exercise {exercise_id}: {e}")
+            raise exception_utils.DatabaseError("Failed to get exercise details.")
 
-    def get_routine_by_id(self, routine_id: int) -> Optional[Tuple[int, str]]:
-        """Get routine by ID."""
+    def get_workout_journal(self) -> List[Dict]:
+        """Get all workout sessions for the journal."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.get_routine_by_id(conn, routine_id)
-            return result
+                return runstrong_db_utils.get_all_workout_sessions_with_details(conn)
         except Exception as e:
-            self.logger.error(f"Error getting routine {routine_id}: {e}")
-            return None
+            self.logger.error(f"Error getting workout journal: {e}")
+            raise exception_utils.DatabaseError("Failed to get workout journal.")
 
-    def create_routine(self, name: str) -> Optional[int]:
-        """Create new routine and return routine ID."""
+    def get_fatigue_data(self) -> Dict[str, List]:
+        """Get and structure fatigue data for the dashboard."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.create_routine(conn, name)
-            return result
+                fatigue_list = runstrong_db_utils.get_fatigue_summary(conn)
+            
+            # Structure the data for easy rendering
+            structured_fatigue = {
+                'overall': [],
+                'body_part': [],
+                'muscle_group': []
+            }
+            for item in fatigue_list:
+                if item['entity_type'] in structured_fatigue:
+                    structured_fatigue[item['entity_type']].append(item)
+            return structured_fatigue
         except Exception as e:
-            self.logger.error(f"Error creating routine {name}: {e}")
-            return None
+            self.logger.error(f"Error getting fatigue data: {e}")
+            raise exception_utils.DatabaseError("Failed to get fatigue data.")
 
-    def add_exercise_to_routine(self, routine_id: int, exercise_id: int, sets: int, 
-                        reps: int, load_lbs: float, order_index: int, notes: str = '') -> bool:
-        """Add exercise to routine."""
+    def get_goals_with_progress(self) -> List[Dict]:
+        """Get active goals and calculate their progress percentage."""
         try:
             with self._get_connection() as conn:
-                result = runstrong_db_utils.add_exercise_to_routine(conn, routine_id, exercise_id, sets, 
-                        reps, load_lbs, order_index, notes)
-            return result
+                goals = runstrong_db_utils.get_active_goals(conn)
+            
+            for goal in goals:
+                start = goal['start_value_lbs']
+                current = goal['current_value_lbs']
+                target = goal['target_value_lbs']
+                if target > start:
+                    progress = ((current - start) / (target - start)) * 100
+                    goal['progress'] = round(max(0, min(progress, 100))) # Clamp between 0-100
+                else:
+                    goal['progress'] = 0
+            return goals
         except Exception as e:
-            self.logger.error(f"Error adding exercise to routine {routine_id}: {e}")
-            return False
-
-    def get_routine_exercises(self, routine_id: int) -> List[Dict]:
-        """Get all exercises for a specific routine"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_routine_exercises(conn, routine_id)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error getting exercises for routine {routine_id}: {e}")
-            return []
-
-    def delete_routine(self, routine_id: int) -> bool:
-        """Delete a routine and all associated exercises"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.delete_routine(conn, routine_id)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error deleting routine {routine_id}: {e}")
-            return False
-
-    def save_workout_performance_bulk(self, routine_id: int, workout_date: str, exercises: List[Dict]):
+            self.logger.error(f"Error getting goals: {e}")
+            raise exception_utils.DatabaseError("Failed to get goals.")
+        
+    def log_new_workout(self, workout_data: Dict) -> int:
         """
-        Service layer method to save a complete workout performance log.
-        Handles the database connection and calls the bulk DB utility.
+        Logs a new workout session and all of its sets in a single transaction.
+        Expects workout_data to have 'session_date', 'notes', and a 'sets' list.
         """
         try:
             with self._get_connection() as conn:
-                runstrong_db_utils.save_workout_performance_bulk(
-                    conn, routine_id, workout_date, exercises
+                # Create the session and get its ID
+                session_id = runstrong_db_utils.create_workout_session(
+                    conn,
+                    workout_data.get('session_date'),
+                    workout_data.get('notes')
                 )
-        except Exception as e:
-            # The DB layer will log the specific DB error. This logs the service-level failure.
-            self.logger.error(f"Failed to save bulk workout performance for routine {routine_id}: {e}")
-            # Propagate a generic error to the route layer
-            raise exception_utils.DatabaseError(f"Failed to save workout: {e}")
 
-    def get_workout_history(self, routine_id: int) -> List[Dict]:
-        """Get workout history for a specific routine"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_workout_history(conn, routine_id)
-            return result
+                # Loop through and log each set
+                for i, workout_set in enumerate(workout_data.get('sets', [])):
+                    runstrong_db_utils.create_workout_set(
+                        conn,
+                        session_id,
+                        workout_set.get('exercise_id'),
+                        i + 1,  # Set number
+                        workout_set.get('weight'),
+                        workout_set.get('reps'),
+                        workout_set.get('rpe')
+                    )
+                
+                conn.commit()
+                return session_id
+                
         except Exception as e:
-            self.logger.error(f"Error getting history for routine {routine_id}: {e}")
-            return []
-
-    def get_workout_performance_by_date(self, routine_id: int, workout_date: str) -> List[Dict]:
-        """Get workout performance for a specific routine and date"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_workout_performance_by_date(conn, routine_id, workout_date)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error getting history for routine {routine_id} on {workout_date}: {e}")
-            return []
-
-    def get_exercise_progress(self, exercise_id: int, limit: int = 10) -> List[Dict]:
-        """Get progress history for a specific exercise"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_exercise_progress(conn, exercise_id, limit)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error getting progress history for exercise {exercise_id}: {e}")
-            return []
-
-    def get_recent_workouts(self, limit: int = 10) -> List[Dict]:
-        """Get recent workout sessions"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_recent_workouts(conn, limit)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error getting recent workout data: {e}")
-            return []
-
-    def get_workout_stats(self, routine_id: int = None) -> Dict:
-        """Get workout statistics"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.get_workout_stats(conn, routine_id)
-            return result
-        except Exception as e:
-            self.logger.error(f"Error getting workout stats for routine {routine_id}: {e}")
-            return {}
-
-    def initialize_runstrong_database(self) -> bool:
-        """Initialize the database with all required tables"""
-        try:
-            with self._get_connection() as conn:
-                result = runstrong_db_utils.initialize_runstrong_database(conn)
-                self.logger.info("Runstrong Database Initialized!")
-            return result
-        except Exception as e:
-            self.logger.error(f"Error Initializing Runstrong Database: {e}")
-            return False
+            self.logger.error(f"Error logging new workout: {e}")
+            # The context manager will handle the rollback on error
+            raise exception_utils.DatabaseError("Failed to log new workout.")
         
-    def update_routine_name(self, routine_id: int, name: str):
-        """Update routine name."""
-        try:
-            with self._get_connection() as conn:
-                runstrong_db_utils.update_routine_name(conn, routine_id, name)
-        except Exception as e:
-            self.logger.error(f"Error updating routine name for ID {routine_id}: {e}")
-
-    def clear_routine_exercises(self, routine_id: int):
-        """Remove all exercises from a routine."""
-        try:
-            with self._get_connection() as conn:
-                runstrong_db_utils.clear_routine_exercises(conn, routine_id)
-        except Exception as e:
-            self.logger.error(f"Error clearing exercises for routine {routine_id}: {e}")
-
-    def get_exercise_max_loads(self) -> dict:
-        """Get maximum load for each exercise from workout performance history."""
-        try:
-            with self._get_connection() as conn:
-                return runstrong_db_utils.get_exercise_max_loads(conn)
-        except Exception as e:
-            self.logger.error(f"Error fetching max exercise loads: {e}")
-            return {}
-
-    def get_routine_name_datecreated(self) -> list:
-        """Get all workout routines."""
-        try:
-            with self._get_connection() as conn:
-                return runstrong_db_utils.get_routine_name_datecreated(conn)
-        except Exception as e:
-            self.logger.error(f"Error fetching all routines: {e}")
-            return []
-        
-    def run_daily_update(self):
-        try:
-            with self._get_connection() as conn:
-                runstrong_db_utils.run_daily_update(conn)
-        except Exception as e:
-            self.logger.error(f"Error in run_daily_update: {e}")
-
-    def get_fatigue_dashboard_data(self, muscle_group_filter: str = None) -> Dict:
-        """Get fatigue dashboard data with optional muscle group filtering"""
-        try:
-            with self._get_connection() as conn:
-                return runstrong_db_utils.get_fatigue_dashboard_data(conn, muscle_group_filter)
-        except Exception as e:
-            self.logger.error(f"Error in get_fatigue_dashboard_data: {e}")
-            return runstrong_db_utils.get_fallback_dashboard_data(muscle_group_filter)
-
-    def update_weekly_summary(self, week_start: datetime.datetime):
-        try:
-            with self._get_connection() as conn:
-                runstrong_db_utils.update_weekly_training_summary(conn, week_start)
-        except Exception as e:
-            self.logger.error(f"Error in update_weekly_summary: {e}")
-
-    def get_recommendation(self, overall_fatigue):
-        if overall_fatigue < 40:
-            return "You're well recovered. Consider a hard or high-volume workout today."
-        elif overall_fatigue < 70:
-            return "You're moderately fatigued. A light workout or recovery session is ideal."
+    def _get_fatigue_interpretation(self, score: float) -> str:
+        """Provides a human-readable interpretation of a given fatigue score."""
+        if score < 20:
+            return "Rested & Ready: Muscles are fully recovered. Excellent time for a high-intensity session."
+        elif score < 40:
+            return "Low Fatigue: Primed for performance. Optimal state for productive training."
+        elif score < 60:
+            return "Productive Fatigue: Training stimulus is being applied. Continue as planned, but monitor recovery."
+        elif score < 80:
+            return "High Fatigue: Accumulated stress is significant. Consider a lighter day or active recovery."
         else:
-            return "High fatigue detected. Rest or active recovery is strongly recommended."
+            return "Very High Fatigue: Pushing limits. Recovery is critical. Prioritize rest or very light activity to avoid overtraining."
 
-    def get_least_used_muscle_groups(self, muscle_fatigue, days_threshold=5):
-        try:
-            return sorted(
-                (m for m in muscle_fatigue if m['fatigue_level'] < 40 and m.get('last_trained')),
-                key=lambda m: m['last_trained']
-            )[:3]
-        except Exception as e:
-            self.logger.warning(f"Unable to compute least used muscle groups: {e}")
-            return []
+    def _acwr_to_fatigue_score(self, acwr: float) -> float:
+        """Converts an ACWR value to a 0-100 fatigue score. (No changes from before)"""
+        # ... (This function remains the same as the previous version)
+        if acwr < 0.8: return acwr * 25
+        elif acwr <= 1.3: return 20 + (acwr - 0.8) * 100
+        elif acwr <= 1.5: return 70 + (acwr - 1.3) * 75
+        else: return min(100, 85 + (acwr - 1.5) * 50)
 
-    def save_freestyle_workout(self, workout_date: str, exercises: List[Dict]):
+    def get_fatigue_dashboard_data(self) -> Dict:
         """
-        Saves an ad-hoc (freestyle) workout session.
-        It finds/creates a special routine and logs the exercises under it.
+        Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.
+        
+        This on-the-fly calculation includes:
+        - Exponentially decayed workload for higher accuracy.
+        - Fatigue scores for individual muscles, body groups, and overall.
+        - Human-readable interpretations of all scores.
+        - Data structured for categorical filtering (Overall, Lower, Upper, Core).
         """
-        try:
-            with self._get_connection() as conn:
-                # Get the ID for the special freestyle routine
-                freestyle_routine_id = runstrong_db_utils.get_or_create_freestyle_routine(conn)
+        with self._get_connection() as conn:
+            # Get raw daily workload for the last 28 days
+            workload_data = runstrong_db_utils.get_daily_muscle_workload(conn, days_history=28)
+
+        # --- 1. Calculate Time-Decayed Fatigue Score for Every Muscle ---
+        today = datetime.now().date()
+        DECAY_RATE = 0.96  # Daily workload retention rate (4% daily decay)
+        
+        workload_by_muscle = defaultdict(lambda: defaultdict(float))
+        all_muscle_info = {}
+        for row in workload_data:
+            muscle_id = row['muscle_group_id']
+            workload_by_muscle[muscle_id][datetime.strptime(row['workout_date'], '%Y-%m-%d').date()] = row['daily_workload']
+            if muscle_id not in all_muscle_info:
+                all_muscle_info[muscle_id] = {'name': row['muscle_group_name'], 'body_part': row['body_part']}
+
+        muscle_scores = []
+        for muscle_id, daily_loads in workload_by_muscle.items():
+            acute_load, chronic_load = 0.0, 0.0
+            
+            for day, load in daily_loads.items():
+                days_ago = (today - day).days
+                decayed_load = load * math.pow(DECAY_RATE, days_ago)
                 
-                # Use the existing bulk save function with the special ID
-                runstrong_db_utils.save_workout_performance_bulk(
-                    conn, freestyle_routine_id, workout_date, exercises
-                )
-                
-        except Exception as e:
-            self.logger.error(f"Failed to save freestyle workout: {e}")
-            raise exception_utils.DatabaseError(f"Failed to save freestyle workout: {e}")
+                if days_ago < 28: chronic_load += decayed_load
+                if days_ago < 7: acute_load += decayed_load
+            
+            # Use decayed totals instead of simple averages for ACWR
+            acwr = (acute_load / 7.0) / (chronic_load / 28.0) if chronic_load > 0 else (acute_load / 7.0)
+            fatigue_score = self._acwr_to_fatigue_score(acwr)
+            
+            muscle_scores.append({
+                'name': all_muscle_info[muscle_id]['name'],
+                'body_part': all_muscle_info[muscle_id]['body_part'],
+                'score': fatigue_score
+            })
+
+        # --- 2. Structure Data for Each Category (Overall, Lower, Upper, Core) ---
+        categories = {
+            "overall": muscle_scores,
+            "lower_body": [m for m in muscle_scores if m['body_part'] == 'Lower Body'],
+            "upper_body": [m for m in muscle_scores if m['body_part'] == 'Upper Body'],
+            "core": [m for m in muscle_scores if m['body_part'] == 'Core']
+        }
+        
+        final_data = {}
+        for cat_key, cat_muscles in categories.items():
+            # Calculate Summary Score
+            total_score = sum(m['score'] for m in cat_muscles)
+            summary_score = total_score / len(cat_muscles) if cat_muscles else 0
+            
+            # Calculate Top/Bottom 5
+            cat_muscles.sort(key=lambda x: x['score'], reverse=True)
+            top_5 = cat_muscles[:5]
+            least_5 = sorted(cat_muscles, key=lambda x: x['score'])[:5]
+            
+            # Calculate 7-Day Workload for the category
+            cat_workload_summary = defaultdict(float)
+            for i in range(7): cat_workload_summary[(today - timedelta(days=i)).strftime('%A, %b %d')] = 0
+            
+            for row in workload_data:
+                day = datetime.strptime(row['workout_date'], '%Y-%m-%d').date()
+                if (today - day).days < 7:
+                    if cat_key == 'overall' or row['body_part'].replace(' ', '_').lower() == cat_key:
+                        cat_workload_summary[day.strftime('%A, %b %d')] += row['daily_workload']
+
+            seven_day_workload = [{'day': d, 'workload': w} for d, w in cat_workload_summary.items()]
+            seven_day_workload.reverse()
+
+            final_data[cat_key] = {
+                "summary_score": summary_score,
+                "interpretation": self._get_fatigue_interpretation(summary_score),
+                "top_5_fatigued": top_5,
+                "least_5_fatigued": least_5,
+                "seven_day_workload": seven_day_workload
+            }
+            
+        return final_data

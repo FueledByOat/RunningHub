@@ -19,3 +19,11 @@ class FormattingError(Exception):
 class LanguageModelError(Exception):
     """Custom exception for language model operations."""
     pass
+
+class ServiceError(Exception):
+    """Custom exception for language model operations."""
+    pass
+
+class ValidationError(Exception):
+    """Custom exception for language model operations."""
+    pass

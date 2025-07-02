@@ -6,14 +6,16 @@ import logging
 import re
 from typing import List, Dict
 import sqlite3
+import json
 
 import markdown  # Import the markdown library
+from services.runstrong_service import RunStrongService
 from services.base_service import BaseService
 from utils import language_model_utils, exception_utils
 from config import LanguageModelConfig
 from utils.db import language_db_utils, runstrong_db_utils
 
-class CoachGService(BaseService):
+class CoachGService(RunStrongService):
     """Service for handling Coach G interactions."""
     
     def __init__(self, config):
@@ -58,6 +60,11 @@ class CoachGService(BaseService):
         
         elif topic == 'strength_status':
             text_for_history, response_for_user = self._get_strength_training_summary()
+            self._save_message(session_id, "coach", text_for_history)
+            return response_for_user
+        
+        elif topic == 'workout_recommendation':
+            text_for_history, response_for_user = self._get_strength_workout_recommendation()
             self._save_message(session_id, "coach", text_for_history)
             return response_for_user
 
@@ -136,49 +143,49 @@ class CoachGService(BaseService):
             f"ATL (Fatigue) is {metrics.get('atl', 0):.1f}, "
             f"and TSB (Freshness) is {metrics.get('tsb', 0):.1f}."
         )
-    def _create_summary_for_strength_history(self, strength_metrics: Dict) -> tuple:
-        """Creates a simple, text-only summary for the LLM's context history on strength training fatigue."""
-        overall_fatigue = strength_metrics.get("overall_fatigue", 0)
+    # def _create_summary_for_strength_history(self, strength_metrics: Dict) -> tuple:
+    #     """Creates a simple, text-only summary for the LLM's context history on strength training fatigue."""
+    #     overall_fatigue = strength_metrics.get("overall_fatigue", 0)
         
-        # Identify top fatigued muscle groups (fatigue_level > 70)
-        fatigued_muscles = [
-            m["muscle_group"] for m in strength_metrics.get("muscle_fatigue", [])
-            if m["fatigue_level"] >= 70
-        ]
-        top_fatigued = ", ".join(fatigued_muscles[:4]) + ("..." if len(fatigued_muscles) > 4 else "")
+    #     # Identify top fatigued muscle groups (fatigue_level > 70)
+    #     fatigued_muscles = [
+    #         m["muscle_group"] for m in strength_metrics.get("muscle_fatigue", [])
+    #         if m["fatigue_level"] >= 70
+    #     ]
+    #     top_fatigued = ", ".join(fatigued_muscles[:4]) + ("..." if len(fatigued_muscles) > 4 else "")
         
-        # Recent training summary
-        recent_training_days = [
-            d for d in strength_metrics.get("daily_training", []) if d["hasTraining"]
-        ]
-        recent_training_summary = ", ".join(
-            f"{d['day']} ({d['volume']:.0f} units, {d['intensity']}% intensity)"
-            for d in recent_training_days[::-1]
-        )
+    #     # Recent training summary
+    #     recent_training_days = [
+    #         d for d in strength_metrics.get("daily_training", []) if d["hasTraining"]
+    #     ]
+    #     recent_training_summary = ", ".join(
+    #         f"{d['day']} ({d['volume']:.0f} units, {d['intensity']}% intensity)"
+    #         for d in recent_training_days[::-1]
+    #     )
 
-        if overall_fatigue < 50:
-            coach_g_reply = 'Your overall fatigue is not too high, you can hit the gym pretty fresh!'
-        elif overall_fatigue < 75: 
-            coach_g_reply = 'Your overall fatigue is moderate, if you do go to the gym, be cognizant of your most fatigued muscles.'
-        else:
-            coach_g_reply = "You've been putting in work at the gym, give yourself a day or two to rebuild."
+    #     if overall_fatigue < 50:
+    #         coach_g_reply = 'Your overall fatigue is not too high, you can hit the gym pretty fresh!'
+    #     elif overall_fatigue < 75: 
+    #         coach_g_reply = 'Your overall fatigue is moderate, if you do go to the gym, be cognizant of your most fatigued muscles.'
+    #     else:
+    #         coach_g_reply = "You've been putting in work at the gym, give yourself a day or two to rebuild."
 
-        text_summary = (
-            f"Strength training status summary:\n"
-            f"- Overall fatigue score: {overall_fatigue} out of 100.\n"
-            f"- Heavily fatigued muscles: {top_fatigued or 'None'}.\n"
-            f"- Recent training days include: {recent_training_summary or 'None'}."
-            f"- Coach G's Advice**: {coach_g_reply}"
-        )
+    #     text_summary = (
+    #         f"Strength training status summary:\n"
+    #         f"- Overall fatigue score: {overall_fatigue} out of 100.\n"
+    #         f"- Heavily fatigued muscles: {top_fatigued or 'None'}.\n"
+    #         f"- Recent training days include: {recent_training_summary or 'None'}."
+    #         f"- Coach G's Advice**: {coach_g_reply}"
+    #     )
 
-        markdown_summary = (
-            f"### Strength Training Status Summary:\n\n"
-            f"**Overall fatigue score**: {overall_fatigue} out of 100.\n\n"
-            f"**Heavily fatigued muscles**: {top_fatigued or 'None'}.\n\n"
-            f"**Recent training days include**: {recent_training_summary or 'None'}.\n\n"
-            f"**Coach G's Advice**: {coach_g_reply}"
-        )
-        return text_summary, markdown_summary
+    #     markdown_summary = (
+    #         f"### Strength Training Status Summary:\n\n"
+    #         f"**Overall fatigue score**: {overall_fatigue} out of 100.\n\n"
+    #         f"**Heavily fatigued muscles**: {top_fatigued or 'None'}.\n\n"
+    #         f"**Recent training days include**: {recent_training_summary or 'None'}.\n\n"
+    #         f"**Coach G's Advice**: {coach_g_reply}"
+    #     )
+    #     return text_summary, markdown_summary
     
     def _get_daily_training_summary(self, conn: sqlite3.Connection) -> str:
             """Fetches, formats, and converts the latest daily training metrics to HTML."""
@@ -210,12 +217,14 @@ class CoachGService(BaseService):
         Fetches, formats, and converts the latest strength training metrics to HTML.
         """
         try:
-            with self._get_connection() as conn:
-                latest_metrics = runstrong_db_utils.get_fatigue_dashboard_data(conn=conn)
+            # Assumes self.runstrong_service is an instance of RunStrongService
+            latest_metrics = self.get_fatigue_dashboard_data()
             
-            if not latest_metrics:
-                return "<p>I couldn't find any recent training data to give you a summary.</p>"
+            if not latest_metrics or not latest_metrics.get('overall'):
+                no_data_message = "<p>I couldn't find any recent training data to give you a summary.</p>"
+                return no_data_message, no_data_message # Return for both history and user
             
+            # This helper function is updated below to handle the new data structure
             text_summary, markdown_summary = self._create_summary_for_strength_history(latest_metrics)
             html_summary = markdown.markdown(markdown_summary)
             
@@ -223,7 +232,112 @@ class CoachGService(BaseService):
 
         except Exception as e:
             self.logger.error(f"Error getting daily training summary: {e}")
-            return "<p>I was unable to retrieve your latest training summary.</p>"
+            error_message = "<p>I was unable to retrieve your latest training summary.</p>"
+            return error_message, error_message
+
+    # This function is rewritten to parse the new nested dictionary.
+    def _create_summary_for_strength_history(self, strength_metrics: dict) -> tuple:
+        """Creates a simple, text-only summary for the LLM's context history on strength training fatigue."""
+        
+        # Extract data from the 'overall' category
+        overall_data = strength_metrics.get('overall', {})
+        
+        overall_fatigue = overall_data.get('summary_score', 0)
+        coach_g_reply = overall_data.get('interpretation', 'No data available.')
+        
+        # Get the names of the top 5 most fatigued muscles
+        top_fatigued_muscles = [m['name'] for m in overall_data.get('top_5_fatigued', [])]
+        top_fatigued = ", ".join(top_fatigued_muscles) if top_fatigued_muscles else 'None'
+        
+        # Summarize the recent 7-day workload
+        seven_day_workload = overall_data.get('seven_day_workload', [])
+        recent_training_days = [d for d in seven_day_workload if d.get('workload', 0) > 0]
+        recent_training_summary = ", ".join(
+            f"{d['day']} ({d['workload']:.0f} units)"
+            for d in recent_training_days
+        ) if recent_training_days else 'None'
+
+        # Assemble the summaries
+        text_summary = (
+            f"Strength training status summary:\n"
+            f"- Overall fatigue score: {overall_fatigue:.1f} out of 100.\n"
+            f"- Most fatigued muscles: {top_fatigued}.\n"
+            f"- Recent training days (workload): {recent_training_summary}.\n"
+            f"- Coach G's Advice: {coach_g_reply}"
+        )
+
+        markdown_summary = (
+            f"### Strength Training Status\n\n"
+            f"**Overall Fatigue Score**: {overall_fatigue:.1f} / 100\n\n"
+            f"**Most Fatigued Muscles**: {top_fatigued}\n\n"
+            f"**Recent 7-Day Workload**: {recent_training_summary}\n\n"
+            f"**Coach G's Advice**: *{coach_g_reply}*"
+        )
+        
+        return text_summary, markdown_summary
+    
+    def _get_strength_workout_recommendation(self) -> tuple:
+        """
+        Generates a workout recommendation by creating a prompt for an LLM.
+        """
+        try:
+            # 1. Fetch the necessary data
+            fatigue_data = self.get_fatigue_dashboard_data()
+            exercises = self.get_exercises_with_load()
+            
+            if not fatigue_data or not exercises:
+                no_data_message = "I need more training data and a list of exercises to make a recommendation."
+                return no_data_message, f"<p>{no_data_message}</p>"
+
+            # 2. Create the prompt for the LLM
+            prompt = self._create_prompt_for_recommendation(fatigue_data, exercises)
+            
+            # 3. Call the LLM and get the response
+            # NOTE: This assumes you have an LLM interface at self.llm_interface.generate_response
+            # This part will need to be adapted to your actual LLM calling mechanism.
+            llm_response_text = self.coach_g.generate_general_coach_g_reply(prompt, 'motivational', [])
+            
+            # 4. Format the response for the user
+            llm_response_html = markdown.markdown(llm_response_text)
+            
+            # The prompt itself is saved as the "text for history" for perfect context recall
+            return llm_response_text, llm_response_html
+
+        except Exception as e:
+            self.logger.error(f"Error getting workout recommendation: {e}")
+            error_message = "I encountered an error trying to generate a workout recommendation."
+            return error_message, f"<p>{error_message}</p>"
+
+    def _create_prompt_for_recommendation(self, fatigue_data: dict, exercise_list: list) -> str:
+        """Creates a detailed, structured prompt for the LLM to generate a workout."""
+        
+        # Serialize the fatigue and exercise data into clean JSON strings
+        # We use the 'overall' category for the main prompt context
+        fatigue_context = json.dumps(fatigue_data.get('overall'), indent=2)
+        exercise_context = json.dumps(exercise_list, indent=2)
+    
+        prompt = f"""
+            You are an expert strength and conditioning coach for runners. Your task is to analyze the user's current fatigue state and recommend a specific workout for today.
+
+            The user's primary goal is STRENGTH not hypertrophy.
+
+            First, analyze the following user fatigue data. The 'score' is from 0-100 (higher is more fatigued). The 'interpretation' provides a human-readable summary.
+            {fatigue_context}
+        Based on this data, create a workout session for today. The workout must adhere to these rules:
+
+            Prioritize Recovery: Focus on the LEAST fatigued muscle groups. Actively avoid exercises that heavily target the MOST fatigued muscles.
+
+            Structure: The workout should consist of 5 to 6 exercises.
+
+            Prescription: For each exercise, provide the recommended number of sets and a specific rep range suitable for strength development (e.g., 3 sets of 4-6 reps).
+
+        You must choose exercises ONLY from the following list of available options that are ordered by highest load factor. Include 2 ploymetrics if possible:
+
+        {exercise_context}
+
+        Present the final recommended workout as a clear, well-formatted markdown list.
+        """
+        return prompt
 
     def _sanitize_user_input(self, user_query: str) -> str:
         """Basic sanitization of user input."""

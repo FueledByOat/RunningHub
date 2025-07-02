@@ -18,25 +18,16 @@ document.addEventListener('DOMContentLoaded', function () {
 async function loadExercises() {
   try {
     const response = await fetch('/strong/api/exercises');
-    const exercises = await response.json();
-    
-    // Transform the data to match expected format
-    currentExercises = exercises.map(ex => ({
-      id: ex.id || ex[0], // Handle both object and array formats
-      name: ex.name || ex[1],
-      primary_muscles: ex.primary_muscles || ex[2] || 'N/A'
-    }));
-    
+    const result = await response.json(); // Get the full response object
+
+    if (result.status !== 'success') {
+      throw new Error(result.message);
+    }
+
+    currentExercises = result.data; // Use the .data property
     displayExercises(currentExercises);
   } catch (error) {
     console.error('Error loading exercises:', error);
-    // Fallback for demo purposes
-    currentExercises = [
-      { id: 1, name: 'Push-ups', primary_muscles: 'Chest, Triceps' },
-      { id: 2, name: 'Squats', primary_muscles: 'Quadriceps, Glutes' },
-      { id: 3, name: 'Pull-ups', primary_muscles: 'Latissimus Dorsi, Biceps' }
-    ];
-    displayExercises(currentExercises);
   }
 }
 
@@ -44,13 +35,13 @@ async function loadExistingRoutines() {
   try {
     const response = await fetch('/strong/api/routines');
     const routines = await response.json();
-    
+
     // Transform the data to match expected format
-    const transformedRoutines = routines.map(routine => ({
+    const transformedRoutines = routines.data.map(routine => ({
       id: routine.id || routine[0],
       name: routine.name || routine[1]
     }));
-    
+
     displayRoutineSelector(transformedRoutines);
   } catch (error) {
     console.error('Error loading routines:', error);
@@ -69,16 +60,16 @@ async function loadExerciseMaxLoads() {
 
 function displayRoutineSelector(routines) {
   const existingSelector = document.getElementById('routine-selector-container');
-  
+
   if (routines.length > 0) {
     existingSelector.innerHTML = `
       <div class="form-group">
         <label for="existing-routine">Or Edit Existing Routine:</label>
         <select id="existing-routine" onchange="loadRoutineForEditing(this.value)">
           <option value="">Select a routine to edit...</option>
-          ${routines.map(routine => 
-            `<option value="${routine.id}">${routine.name}</option>`
-          ).join('')}
+          ${routines.map(routine =>
+      `<option value="${routine.id}">${routine.name}</option>`
+    ).join('')}
         </select>
       </div>
     `;
@@ -95,16 +86,16 @@ async function loadRoutineForEditing(routineId) {
   }
 
   try {
-    const response = await fetch(`/strong/api/routines/${routineId}/exercises`);
+    const response = await fetch(`/strong/api/routines/${routineId}`);
     const data = await response.json();
-    
+
     if (data.routine && data.exercises) {
       isEditingRoutine = true;
       currentRoutineId = routineId;
-      
+
       // Populate routine name
       document.getElementById('routine-name').value = data.routine.name || data.routine[1];
-      
+
       // Load routine exercises - handle different data formats
       routineExercises = data.exercises.map(ex => ({
         exercise: {
@@ -118,10 +109,10 @@ async function loadRoutineForEditing(routineId) {
         notes: ex.notes || '',
         order_index: ex.order_index || 0
       }));
-      
+
       // Sort by order_index
       routineExercises.sort((a, b) => a.order_index - b.order_index);
-      
+
       updateRoutineDisplay();
       updateSaveButtonText();
     }
@@ -136,12 +127,12 @@ function resetForm() {
   currentRoutineId = null;
   routineExercises = [];
   document.getElementById('routine-name').value = '';
-  
+
   const existingRoutineSelect = document.getElementById('existing-routine');
   if (existingRoutineSelect) {
     existingRoutineSelect.value = '';
   }
-  
+
   updateRoutineDisplay();
   updateSaveButtonText();
   cancelExerciseSelection();
@@ -186,11 +177,11 @@ function selectExercise(exerciseId) {
   // Reset form values
   document.getElementById('exercise-sets').value = 3;
   document.getElementById('exercise-reps').value = 10;
-  
+
   // Pre-populate load with max load if available
   const maxLoad = exerciseMaxLoads[exerciseId] || 0;
   document.getElementById('exercise-load').value = maxLoad;
-  
+
   // Update placeholder text to show this is auto-populated
   const loadInput = document.getElementById('exercise-load');
   if (maxLoad > 0) {
@@ -198,7 +189,7 @@ function selectExercise(exerciseId) {
   } else {
     loadInput.title = "No previous maximum load found";
   }
-  
+
   document.getElementById('exercise-notes').value = '';
 
   // Scroll to exercise details
@@ -285,12 +276,12 @@ function updateRoutineDisplay() {
 function removeExercise(index) {
   if (confirm('Are you sure you want to remove this exercise from the routine?')) {
     routineExercises.splice(index, 1);
-    
+
     // Update order indices
     routineExercises.forEach((item, idx) => {
       item.order_index = idx;
     });
-    
+
     updateRoutineDisplay();
 
     // If we were editing this exercise, cancel the editing
@@ -323,11 +314,20 @@ async function saveRoutine() {
   });
 
   try {
-    const url = isEditingRoutine 
-      ? `/strong/api/routines/${currentRoutineId}` 
+    const url = isEditingRoutine
+      ? `/strong/api/routines/${currentRoutineId}`
       : '/strong/api/routines';
-    
+
     const method = isEditingRoutine ? 'PUT' : 'POST';
+
+    const payloadExercises = routineExercises.map(item => ({
+      exercise_id: item.exercise.id,
+      sets: item.sets,
+      reps: item.reps,
+      load_lbs: item.load_lbs,
+      notes: item.notes,
+      order_index: item.order_index
+    }));
 
     const response = await fetch(url, {
       method: method,
@@ -336,14 +336,14 @@ async function saveRoutine() {
       },
       body: JSON.stringify({
         name: routineName,
-        exercises: routineExercises
+        exercises: payloadExercises
       })
     });
 
     if (response.ok) {
       const action = isEditingRoutine ? 'updated' : 'saved';
       alert(`Routine ${action} successfully!`);
-      
+
       // Reset form and reload routines
       resetForm();
       loadExistingRoutines();

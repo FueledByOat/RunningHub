@@ -1,4 +1,5 @@
 # blueprints/run_strong/routes.py
+
 """
 RunStrong Blueprint - Strength training functionality.
 Includes: Exercise library, routine planning, workout journaling, and dashboard.
@@ -6,11 +7,9 @@ Includes: Exercise library, routine planning, workout journaling, and dashboard.
 
 import logging
 import os
-from flask import Blueprint, render_template, request, jsonify, render_template_string
+from flask import Blueprint, render_template, request, jsonify
 from werkzeug.exceptions import BadRequest
 from services.runstrong_service import RunStrongService
-
-from utils.db import runstrong_db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,17 @@ run_strong_bp = Blueprint(
     url_prefix='/strong'
 )
 
+def _success(data=None, status_code=200):
+    """Creates a standardized success JSON response."""
+    response = {"status": "success"}
+    if data is not None:
+        response["data"] = data
+    return jsonify(response), status_code
+
+def _error(message, status_code):
+    """Creates a standardized error JSON response."""
+    return jsonify({"status": "error", "message": message}), status_code
+
 def init_run_strong_blueprint(config):
     """Initialize services for RunStrong blueprint."""
     runstrong_service = RunStrongService(config.DB_PATH)
@@ -34,307 +44,82 @@ def init_run_strong_blueprint(config):
 
 def register_routes(runstrong_service):
     """Register all RunStrong routes."""
-    
-    # Main Pages
+
+    # --- Main Pages (HTML Rendering) ---
     @run_strong_bp.route('/')
     @run_strong_bp.route('/runstrong')
     def runstrong():
         """Display RunStrong home page."""
         return render_template('runstrong_home.html')
-    
-    @run_strong_bp.route('/exercise-library')
-    def exercise_library():
-        """Display exercise library."""
-        return render_template('runstrong_exercise_library.html')
-    
-    @run_strong_bp.route('/planner')
-    def planner():
-        """Display workout planner."""
-        return render_template('planner.html')
-    
-    @run_strong_bp.route('/journal')
-    def journal():
-        """Display workout journal."""
-        return render_template('journal.html')
-    
-    @run_strong_bp.route('/progress-dashboard')
-    def progress_dashboard():
-        """Display progress and fatigure dashboard."""
-        data = runstrong_service.get_fatigue_dashboard_data()
-        return render_template('progress_dashboard.html', fatigue_data=data)
-        
-    # Exercise Management Routes
-    @run_strong_bp.route('/exercises')
-    def exercises():
-        """API endpoint for exercise data."""
-        try:
-            exercises = runstrong_service.get_exercises()
-            return jsonify({'exercises': exercises})
-        except Exception as e:
-            logger.error(f"Error getting exercises: {e}")
-            return jsonify({'error': 'Failed to load exercises'}), 500
-    
-    @run_strong_bp.route('/exercises/add', methods=['GET', 'POST'])
-    def add_exercise():
-        """Add new exercise."""
-        if request.method == 'POST':
-            try:
-                data = request.get_json()
-                runstrong_service.add_exercise(data)
-                return jsonify({'message': 'Exercise added successfully!'})
-            except Exception as e:
-                logger.error(f"Error adding exercise: {e}")
-                return jsonify({'error': 'Failed to add exercise.'}), 500
-        return render_template('add_exercise.html')
-    
-    # Routine Management Routes
-    @run_strong_bp.route('/save-routine', methods=['POST'])
-    def save_routine():
-        """Save workout routine."""
-        try:
-            data = request.get_json()
-            if not data or 'name' not in data or 'routine' not in data:
-                raise BadRequest("Invalid routine data")
-            
-            runstrong_service.save_routine(data['name'], data['routine'])
-            return jsonify({'status': 'success'})
-        except Exception as e:
-            logger.error(f"Error saving routine: {e}")
-            return jsonify({'error': 'Failed to save routine'}), 500
-    
-    @run_strong_bp.route('/load-routines')
-    def load_routines():
-        """Load all workout routines."""
-        try:
-            routines = runstrong_service.get_routines()
-            return jsonify({'routines': routines})
-        except Exception as e:
-            logger.error(f"Error loading routines: {e}")
-            return jsonify({'error': 'Failed to load routines'}), 500
-    
-    @run_strong_bp.route('/load-routine/<int:routine_id>')
-    def load_routine(routine_id: int):
-        """Load specific workout routine."""
-        try:
-            exercises = runstrong_service.get_routine_exercises(routine_id)
-            return jsonify({'exercises': exercises})
-        except Exception as e:
-            logger.error(f"Error loading routine {routine_id}: {e}")
-            return jsonify({'error': 'Failed to load routine'}), 500
-    
-    # API Routes for Planner
+
     @run_strong_bp.route('/api/exercises', methods=['GET'])
     def get_exercises():
-        """Get all exercises for the planner."""
+        """API: Get all exercises for the planner."""
         try:
             exercises = runstrong_service.get_exercises()
-            return jsonify(exercises)
+            return _success(exercises)
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"API error getting exercises: {e}", exc_info=True)
+            return _error('Failed to load exercises.', 500)
 
-    @run_strong_bp.route('/api/routines', methods=['GET'])
-    def get_routines():
-        """Get all workout routines."""
+    @run_strong_bp.route('/exercise_library')
+    def exercise_library():
+        """Display the exercise library page."""
         try:
-            routines = runstrong_service.get_all_routines()
-            return jsonify(routines)
+            exercises = runstrong_service.get_exercises()
+            return render_template('exercise_library.html', exercises=exercises)
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error loading exercise library: {e}")
+            return _error("Could not load exercise library.", 500)
 
-    @run_strong_bp.route('/api/routines', methods=['POST'])
-    def create_routine():
-        """Create a new workout routine with exercises."""
+    @run_strong_bp.route('/journal')
+    def journal():
+        """Display the workout journal page and the form for new entries."""
         try:
-            data = request.get_json()
-            routine_name = data.get('name')
-            exercises = data.get('exercises', [])
-            
-            if not routine_name:
-                return jsonify({'error': 'Routine name is required'}), 400
-            
-            # Create the routine
-            routine_id = runstrong_service.create_routine(routine_name)
-            
-            # Add exercises to the routine
-            for exercise_data in exercises:
-                runstrong_service.add_exercise_to_routine(
-                    routine_id=routine_id,
-                    exercise_id=exercise_data['exercise']['id'],
-                    sets=exercise_data['sets'],
-                    reps=exercise_data['reps'],
-                    load_lbs=exercise_data['load_lbs'],
-                    order_index=exercise_data['order_index'],
-                    notes=exercise_data.get('notes', '')
-                )
-            
-            return jsonify({'message': 'Routine created successfully', 'routine_id': routine_id})
+            sessions = runstrong_service.get_workout_journal()
+            exercises = runstrong_service.get_exercises() # Fetch exercises for the form
+            return render_template('journal.html', sessions=sessions, exercises=exercises)
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error loading workout journal: {e}")
+            # This should render an error page or return a JSON error
+            return "Could not load workout journal.", 500
 
-    @run_strong_bp.route('/api/routines/<int:routine_id>/exercises', methods=['GET'])
-    def get_routine_exercises_api(routine_id):
-        """Get a specific routine with its exercises."""
+    # --- NEW API ROUTE ---
+    @run_strong_bp.route('/api/journal/log', methods=['POST'])
+    def log_workout_entry():
+        """API endpoint to log a new workout session."""
         try:
-            routine = runstrong_service.get_routine_by_id(routine_id)
-            if not routine:
-                return jsonify({'error': 'Routine not found'}), 404
+            workout_data = request.get_json()
+            if not workout_data or 'sets' not in workout_data or not workout_data['sets']:
+                return _error('Invalid workout data provided.', 400)
             
-            exercises = runstrong_service.get_routine_exercises(routine_id)
-            
-            return jsonify({
-                'routine': routine,
-                'exercises': exercises
-            })
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            session_id = runstrong_service.log_new_workout(workout_data)
+            return _success({'session_id': session_id}, status_code=201)
 
-    # API Routes for Journal
-    @run_strong_bp.route('/api/workout-performance', methods=['POST'])
-    def save_workout_performance():
-        """Save workout performance data for an entire session."""
+        except BadRequest:
+            return _error('Invalid JSON format.', 400)
+        except Exception as e:
+            logger.error(f"API error logging workout: {e}", exc_info=True)
+            return _error('Failed to log workout.', 500)
+
+    @run_strong_bp.route('/fatigue_dashboard')
+    def fatigue_dashboard():
+        """Display the enhanced fatigue dashboard page."""
         try:
-            data = request.get_json()
-            if not data:
-                return jsonify({'error': 'Invalid request body.'}), 400
-
-            routine_id = data.get('routine_id')
-            workout_date = data.get('workout_date')
-            exercises = data.get('exercises', [])
-            
-            if not routine_id or not workout_date:
-                return jsonify({'error': 'Routine ID and workout date are required'}), 400
-
-            if not exercises:
-                return jsonify({'error': 'No exercises to log.'}), 400
-            
-            # Single call to the new bulk save service method
-            runstrong_service.save_workout_performance_bulk(
-                routine_id, workout_date, exercises
-            )
-            
-            return jsonify({'message': 'Workout performance saved successfully'})
-
+            # This one service call now does all the heavy lifting
+            fatigue_data = runstrong_service.get_fatigue_dashboard_data()
+            print(fatigue_data)
+            return render_template('fatigue_dashboard.html', data=fatigue_data)
         except Exception as e:
-            logger.error(f"Error saving workout performance: {e}")
-            return jsonify({'error': str(e)}), 500
+            logger.error(f"Error loading fatigue dashboard: {e}", exc_info=True)
+            return "Could not load fatigue dashboard.", 500
 
-    @run_strong_bp.route('/api/workout-performance/<int:routine_id>', methods=['GET'])
-    def get_workout_history(routine_id):
-        """Get workout history for a specific routine."""
+    @run_strong_bp.route('/goals')
+    def goals():
+        """Display the goals dashboard page."""
         try:
-            history = runstrong_service.get_workout_history(routine_id)
-            return jsonify(history)
+            goals_data = runstrong_service.get_goals_with_progress()
+            return render_template('goals.html', goals=goals_data)
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    @run_strong_bp.route('/api/routines/<int:routine_id>', methods=['PUT'])
-    def update_routine(routine_id):
-        """Update an existing workout routine."""
-        try:
-            data = request.get_json()
-            routine_name = data.get('name')
-            exercises = data.get('exercises', [])
-            
-            if not routine_name:
-                return jsonify({'error': 'Routine name is required'}), 400
-            
-            # Update the routine name
-            runstrong_service.update_routine_name(routine_id, routine_name)
-            
-            # Remove existing exercises for this routine
-            runstrong_service.clear_routine_exercises(routine_id)
-            
-            # Add updated exercises to the routine
-            for exercise_data in exercises:
-                runstrong_service.add_exercise_to_routine(
-                    routine_id=routine_id,
-                    exercise_id=exercise_data['exercise']['id'],
-                    sets=exercise_data['sets'],
-                    reps=exercise_data['reps'],
-                    load_lbs=exercise_data['load_lbs'],
-                    order_index=exercise_data['order_index'],
-                    notes=exercise_data.get('notes', '')
-                )
-            
-            return jsonify({'message': 'Routine updated successfully'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    @run_strong_bp.route('/api/exercise-max-loads', methods=['GET'])
-    def get_exercise_max_loads():
-        """Get maximum load for each exercise from workout history."""
-        try:
-            max_loads = runstrong_service.get_exercise_max_loads()
-            return jsonify(max_loads)
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    @run_strong_bp.route('/api/routines/<int:routine_id>', methods=['DELETE'])
-    def delete_routine(routine_id):
-        """Delete a workout routine."""
-        try:
-            runstrong_service.delete_routine(routine_id)
-            return jsonify({'message': 'Routine deleted successfully'})
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    @run_strong_bp.route('/api/fatigue-data')
-    def get_fatigue_data():
-        """API endpoint to get current fatigue data with optional filtering"""
-        try:
-            # Get muscle group filter from query parameters
-            muscle_group_filter = request.args.get('muscle_group', None)
-            
-            # Validate filter
-            valid_filters = ['all', 'upper body', 'lower body', 'core']
-            if muscle_group_filter and muscle_group_filter.lower() not in valid_filters:
-                muscle_group_filter = None
-            
-            data = runstrong_service.get_fatigue_dashboard_data(muscle_group_filter)
-            data['recommendation'] = runstrong_service.get_recommendation(data['overall_fatigue'])
-            data['least_used_muscles'] = runstrong_service.get_least_used_muscle_groups(data['muscle_fatigue'])
-            print(data)
-            return jsonify(data)
-        except Exception as e:
-            logger.error(f"API error: {e}")
-            return jsonify({'error': 'Failed to fetch data'}), 500
-
-    @run_strong_bp.route('/api/muscle-groups')
-    def get_available_muscle_groups():
-        """API endpoint to get available muscle group filters"""
-        try:
-            return jsonify({
-                'filters': ['All', 'Upper body', 'Lower body', 'Core'],
-                'default': 'All'
-            })
-        except Exception as e:
-            logger.error(f"API error: {e}")
-            return jsonify({'error': 'Failed to fetch muscle groups'}), 500
-    
-    @run_strong_bp.route('/api/update-fatigue')
-    def update_fatigue():
-        """API endpoint to trigger fatigue update"""
-        try:
-            data = runstrong_service.run_daily_update()
-            return jsonify({'status': 'success', 'data': data})
-        except Exception as e:
-            logger.error(f"Update error: {e}")
-            return jsonify({'error': 'Failed to update data'}), 500
-        
-    @run_strong_bp.route('/api/workout-performance/freestyle', methods=['POST'])
-    def save_freestyle_workout():
-        """API endpoint to save an ad-hoc/freestyle workout session."""
-        try:
-            data = request.get_json()
-            workout_date = data.get('workout_date')
-            exercises = data.get('exercises', [])
-
-            if not workout_date or not exercises:
-                return jsonify({'error': 'Workout date and at least one exercise are required'}), 400
-
-            runstrong_service.save_freestyle_workout(workout_date, exercises)
-            
-            return jsonify({'message': 'Freestyle workout saved successfully'})
-        except Exception as e:
-            logger.error(f"Error saving freestyle workout: {e}")
-            return jsonify({'error': str(e)}), 500
-    
+            logger.error(f"Error loading goals dashboard: {e}")
+            return _error("Could not load goals dashboard.", 500)

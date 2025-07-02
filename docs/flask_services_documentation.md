@@ -55,7 +55,7 @@ Abstract base class for all services.
   
 Service for handling Coach G interactions.  
   
-**Inherits from**: BaseService  
+**Inherits from**: RunStrongService  
   
 **Methods**:  
   
@@ -68,12 +68,16 @@ Service for handling Coach G interactions.
     - Handles the user's query by routing to the appropriate function based on keywords.  
 - `_create_text_summary_for_history(metrics)` → str  
     - Creates a simple, text-only summary for the LLM's context history.  
-- `_create_summary_for_strength_history(strength_metrics)` → tuple  
-    - Creates a simple, text-only summary for the LLM's context history on strength training fatigue.  
 - `_get_daily_training_summary(conn)` → str  
     - Fetches, formats, and converts the latest daily training metrics to HTML.  
 - `_get_strength_training_summary()` → tuple  
     - Fetches, formats, and converts the latest strength training metrics to HTML.  
+- `_create_summary_for_strength_history(strength_metrics)` → tuple  
+    - Creates a simple, text-only summary for the LLM's context history on strength training fatigue.  
+- `_get_strength_workout_recommendation()` → tuple  
+    - Generates a workout recommendation by creating a prompt for an LLM.  
+- `_create_prompt_for_recommendation(fatigue_data, exercise_list)` → str  
+    - Creates a detailed, structured prompt for the LLM to generate a workout.  
 - `_sanitize_user_input(user_query)` → str  
     - Basic sanitization of user input.  
 - `_save_message(session_id, role, message)`  
@@ -163,58 +167,26 @@ Service for RunStrong strength training operations.
   
 **Methods**:  
   
-- `add_exercise(data)` → None  
-    - Add single exercise to db.  
-- `save_routine(routine_name, routine_exercises)` → None  
-    - Save a workout routine.  
-- `get_routines()` → List[Tuple[(int, str)]]  
-    - Get all workout routines.  
-- `get_exercises()` → List[Tuple[(int, str)]]  
+- `get_exercises()` → List[Dict]  
     - Get all available exercises.  
-- `get_exercise_by_id(exercise_id)` → Optional[Tuple[(int, str)]]  
-    - Get exercise by ID.  
-- `get_all_routines()` → List[Tuple[(int, str)]]  
-    - Get all available routines.  
-- `get_routine_by_id(routine_id)` → Optional[Tuple[(int, str)]]  
-    - Get routine by ID.  
-- `create_routine(name)` → Optional[int]  
-    - Create new routine and return routine ID.  
-- `add_exercise_to_routine(routine_id, exercise_id, sets, reps, load_lbs, order_index, notes)` → bool  
-    - Add exercise to routine.  
-- `get_routine_exercises(routine_id)` → List[Dict]  
-    - Get all exercises for a specific routine  
-- `delete_routine(routine_id)` → bool  
-    - Delete a routine and all associated exercises  
-- `save_workout_performance_bulk(routine_id, workout_date, exercises)`  
-    - Service layer method to save a complete workout performance log.  
-- `get_workout_history(routine_id)` → List[Dict]  
-    - Get workout history for a specific routine  
-- `get_workout_performance_by_date(routine_id, workout_date)` → List[Dict]  
-    - Get workout performance for a specific routine and date  
-- `get_exercise_progress(exercise_id, limit)` → List[Dict]  
-    - Get progress history for a specific exercise  
-- `get_recent_workouts(limit)` → List[Dict]  
-    - Get recent workout sessions  
-- `get_workout_stats(routine_id)` → Dict  
-    - Get workout statistics  
-- `initialize_runstrong_database()` → bool  
-    - Initialize the database with all required tables  
-- `update_routine_name(routine_id, name)`  
-    - Update routine name.  
-- `clear_routine_exercises(routine_id)`  
-    - Remove all exercises from a routine.  
-- `get_exercise_max_loads()` → dict  
-    - Get maximum load for each exercise from workout performance history.  
-- `get_routine_name_datecreated()` → list  
-    - Get all workout routines.  
-- `run_daily_update()`  
-- `get_fatigue_dashboard_data(muscle_group_filter)` → Dict  
-    - Get fatigue dashboard data with optional muscle group filtering  
-- `update_weekly_summary(week_start)`  
-- `get_recommendation(overall_fatigue)`  
-- `get_least_used_muscle_groups(muscle_fatigue, days_threshold)`  
-- `save_freestyle_workout(workout_date, exercises)`  
-    - Saves an ad-hoc (freestyle) workout session.  
+- `get_exercises_with_load()` → List[Dict]  
+    - Get all available exercises with load values.  
+- `get_exercise_details(exercise_id)` → Dict  
+    - Get details for a specific exercise.  
+- `get_workout_journal()` → List[Dict]  
+    - Get all workout sessions for the journal.  
+- `get_fatigue_data()` → Dict[(str, List)]  
+    - Get and structure fatigue data for the dashboard.  
+- `get_goals_with_progress()` → List[Dict]  
+    - Get active goals and calculate their progress percentage.  
+- `log_new_workout(workout_data)` → int  
+    - Logs a new workout session and all of its sets in a single transaction.  
+- `_get_fatigue_interpretation(score)` → str  
+    - Provides a human-readable interpretation of a given fatigue score.  
+- `_acwr_to_fatigue_score(acwr)` → float  
+    - Converts an ACWR value to a 0-100 fatigue score. (No changes from before)  
+- `get_fatigue_dashboard_data()` → Dict  
+    - Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.  
   
 ---  
   

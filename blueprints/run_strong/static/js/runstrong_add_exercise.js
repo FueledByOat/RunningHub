@@ -1,3 +1,5 @@
+// runstrong_add_exercise.js
+
 function addTagInput(sectionId, inputName) {
     const section = document.getElementById(sectionId);
     const newInput = document.createElement("input");
@@ -10,44 +12,38 @@ function addTagInput(sectionId, inputName) {
 function gatherFormData() {
     const form = document.getElementById("exercise-form");
     const data = {};
+    const formData = new FormData(form);
 
-    new FormData(form).forEach((value, key) => {
-        // Handle multiple input fields with the same name (tags)
+    // Iterate over all form elements
+    for (const [key, value] of formData.entries()) {
+        const cleanValue = value.trim();
+        if (cleanValue === "") continue;
+
+        // If the key indicates an array (e.g., 'primary_muscles[]')
         if (key.endsWith("[]")) {
             const realKey = key.slice(0, -2);
-            data[realKey] = data[realKey] || [];
-            if (value.trim() !== "") data[realKey].push(value.trim());
+            if (!data[realKey]) {
+                data[realKey] = []; // Initialize array if it doesn't exist
+            }
+            data[realKey].push(cleanValue);
         } else {
-            data[key] = value.trim() === "" ? null : value.trim();
+            data[key] = cleanValue;
         }
-    });
-
-    // JSON encode fields expected to be arrays
-    const arrayFields = [
-        'primary_muscles', 'secondary_muscles', 'progressions', 'regressions',
-        'equipment_required', 'common_mistakes', 'training_style',
-        'experience_level', 'goals', 'alternatives', 'supersets_well_with'
-    ];
-    arrayFields.forEach(field => {
-        if (data[field]) {
-            data[field] = JSON.stringify(data[field]);
-        } else {
-            data[field] = JSON.stringify([]);
-        }
-    });
-
+    }
     return data;
 }
-
 async function submitExerciseForm(event) {
     event.preventDefault();
     const form = event.target;
+    // CORRECTED: gatherFormData now returns a clean JS object with arrays.
+    // We don't need to JSON.stringify individual fields anymore.
     const data = gatherFormData();
 
     try {
         const response = await fetch(form.action, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            // The entire object is stringified here, which is correct.
             body: JSON.stringify(data)
         });
 
