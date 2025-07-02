@@ -36,9 +36,22 @@ def get_activity_details_by_id(conn, activity_id: int, activity_types: List[str]
     # Using dynamic placeholders here as the number of parameters is variable
     placeholders = ",".join("?" * len(activity_types))
     query = f"""
-        SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name
+    SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name, 
+    w.location_name as location_name,
+    w.temp_f as temp_f,
+    w.condition_text as condition_text,
+    w.condition_icon as condition_icon,
+    w.wind_mph as wind_mph,
+    w.feelslike_f as feelslike_f, 
+    w.windchill_f as windchill_f,
+    w.heatindex_f as heatindex_f,
+    w.dewpoint_f as dewpoint_f,
+    w.gust_mph as gust_mph,
+    w.uv as uv,
+    w.humidity as humidity
         FROM activities as a
         LEFT JOIN gear as g ON a.gear_id = g.gear_id
+		LEFT JOIN weather as w ON a.id = w.activity_id
         WHERE a.id = ?
         AND a.gear_id IS NOT NULL AND a.gear_id != ''
         AND a.type IN ({placeholders})

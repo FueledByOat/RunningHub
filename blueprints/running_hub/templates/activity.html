@@ -28,15 +28,15 @@
     <h2 class="page-title">{{ activity.name }}</h2>
     <p class="activity-meta">
       <i class="fas fa-hashtag"></i> {{ activity.id }} |
-      <i class="fas fa-map-marker-alt"></i> {{ activity.location_city }} |
+      <i class="fas fa-map-marker-alt"></i> {{ activity.location_name }} |
       <i class="fas fa-calendar"></i> {{ activity.start_date }} {{ activity.start_time}}
     </p>
-            <div class="unit-selector">
-            <a href="{{ url_for('running_hub.activity', units='mi', id=activity['id']) }}"
-                class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
-            <a href="{{ url_for('running_hub.activity', units='km', id=activity['id']) }}"
-                class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
-        </div>
+    <div class="unit-selector">
+      <a href="{{ url_for('running_hub.activity', units='mi', id=activity['id']) }}"
+        class="unit-btn {{ 'active' if units == 'mi' }}">Miles</a>
+      <a href="{{ url_for('running_hub.activity', units='km', id=activity['id']) }}"
+        class="unit-btn {{ 'active' if units == 'km' }}">Kilometers</a>
+    </div>
 
     <div class="activity-banner">
       <div class="metric-card">
@@ -97,6 +97,70 @@
         <div class="metric-icon"><i class="fas fa-running"></i></div>
         <div class="metric-value">{{ activity.gear_name }}</div>
         <div class="metric-label">Shoes</div>
+      </div>
+    </div>
+
+    <div class="activity-banner">
+      <div class="metric-card">
+        <div class="metric-icon"><img src="{{ activity.condition_icon }}" alt="Condition Icon" /></div>
+        <div class="metric-value">{{ condition_text }}</div>
+        <div class="metric-label">Condition</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-thermometer-half"></i></div>
+        <div class="metric-value">{{ activity.temp_f }} °F</div>
+        <div class="metric-label">Temperature</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-temperature-low"></i></div>
+        <div class="metric-value">{{ activity.feelslike_f }} °F</div>
+        <div class="metric-label">Feels Like</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-snowflake"></i></div>
+        <div class="metric-value">{{ activity.windchill_f }} °F</div>
+        <div class="metric-label">Wind Chill</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-sun"></i></div>
+        <div class="metric-value">{{ activity.heatindex_f }} °F</div>
+        <div class="metric-label">Heat Index</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-tint"></i></div>
+        <div class="metric-value">{{ activity.dewpoint_f }} °F</div>
+        <div class="metric-label">Dew Point</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-tint"></i></div>
+        <div class="metric-value">{{ activity.humidity }} </div>
+        <div class="metric-label">Dew Point</div>
+      </div>
+
+
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-wind"></i></div>
+        <div class="metric-value">{{ activity.wind_mph }} mph</div>
+        <div class="metric-label">Wind</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-wind"></i></div>
+        <div class="metric-value">{{ activity.gust_mph }} mph</div>
+        <div class="metric-label">Gusts</div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-sun"></i></div>
+        <div class="metric-value">{{ activity.uv }}</div>
+        <div class="metric-label">UV Index</div>
       </div>
     </div>
 

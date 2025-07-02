@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "CoachGService",
-        "coach_g_service"
+        "coach_g_service",
+        "CoachGService"
       ]
     },
     "runner_vision": {
@@ -272,15 +272,15 @@
         "config.Config"
       ],
       "services_used": [
-        "ActivityService",
-        "StatisticsService",
-        "MotivationService",
-        "statistics_service",
-        "QueryService",
-        "TrophyService",
         "motivation_service",
         "query_service",
         "trophy_service",
+        "QueryService",
+        "statistics_service",
+        "TrophyService",
+        "ActivityService",
+        "MotivationService",
+        "StatisticsService",
         "activity_service"
       ]
     },
@@ -386,8 +386,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "RunStrongService",
-        "runstrong_service"
+        "runstrong_service",
+        "RunStrongService"
       ]
     }
   },
@@ -961,7 +961,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 313,
+              "line_number": 311,
               "is_async": false,
               "decorators": []
             },
@@ -975,7 +975,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 344,
+              "line_number": 342,
               "is_async": false,
               "decorators": []
             },
@@ -997,7 +997,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 348,
+              "line_number": 346,
               "is_async": false,
               "decorators": []
             },
@@ -1015,7 +1015,7 @@
                 }
               ],
               "return_type": "List[Dict]",
-              "line_number": 357,
+              "line_number": 355,
               "is_async": false,
               "decorators": []
             },
@@ -1024,7 +1024,7 @@
               "docstring": "Fetches and formats a summary of the last 7 days of running.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 366,
+              "line_number": 364,
               "is_async": false,
               "decorators": []
             },
@@ -1033,7 +1033,7 @@
               "docstring": "Fetches and formats a summary of the last 28-day training trend.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 434,
+              "line_number": 432,
               "is_async": false,
               "decorators": []
             },
@@ -1055,7 +1055,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 499,
+              "line_number": 497,
               "is_async": false,
               "decorators": []
             }
