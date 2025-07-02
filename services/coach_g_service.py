@@ -298,7 +298,7 @@ class CoachGService(RunStrongService):
             llm_response_text = self.coach_g.generate_general_coach_g_reply(prompt, 'motivational', [])
             
             # 4. Format the response for the user
-            llm_response_html = markdown.markdown(llm_response_text) if "##" in llm_response_text else llm_response_text
+            llm_response_html = markdown.markdown(llm_response_text)
             
             # The prompt itself is saved as the "text for history" for perfect context recall
             return llm_response_text, llm_response_html

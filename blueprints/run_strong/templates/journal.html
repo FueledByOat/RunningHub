@@ -17,9 +17,11 @@
         <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
         <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
     </div>
-    <div class="runstrong-container">
-        <h1>Workout Journal 📓</h1>
-
+     <div class="runstrong-header">
+        <h1>
+            <a href="{{ url_for('running_hub.home') }}">Workout Journal 📓</a>
+        </h1>
+    </div>
         <div class="form-container">
             <h2>Log New Workout</h2>
             <form id="workout-form">

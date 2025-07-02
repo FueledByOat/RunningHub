@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "RunnerVisionService",
-        "runnervision_service"
+        "runnervision_service",
+        "RunnerVisionService"
       ]
     },
     "running_hub": {
@@ -272,16 +272,16 @@
         "config.Config"
       ],
       "services_used": [
-        "motivation_service",
-        "statistics_service",
-        "trophy_service",
-        "MotivationService",
-        "QueryService",
-        "activity_service",
         "ActivityService",
+        "StatisticsService",
+        "MotivationService",
+        "statistics_service",
+        "QueryService",
         "TrophyService",
+        "motivation_service",
         "query_service",
-        "StatisticsService"
+        "trophy_service",
+        "activity_service"
       ]
     },
     "run_strong": {
@@ -961,7 +961,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 311,
+              "line_number": 313,
               "is_async": false,
               "decorators": []
             },
@@ -975,7 +975,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 342,
+              "line_number": 344,
               "is_async": false,
               "decorators": []
             },
@@ -997,7 +997,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 346,
+              "line_number": 348,
               "is_async": false,
               "decorators": []
             },
@@ -1015,7 +1015,7 @@
                 }
               ],
               "return_type": "List[Dict]",
-              "line_number": 355,
+              "line_number": 357,
               "is_async": false,
               "decorators": []
             },
@@ -1024,7 +1024,7 @@
               "docstring": "Fetches and formats a summary of the last 7 days of running.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 364,
+              "line_number": 366,
               "is_async": false,
               "decorators": []
             },
@@ -1033,7 +1033,7 @@
               "docstring": "Fetches and formats a summary of the last 28-day training trend.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 432,
+              "line_number": 434,
               "is_async": false,
               "decorators": []
             },
@@ -1055,7 +1055,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 497,
+              "line_number": 499,
               "is_async": false,
               "decorators": []
             }
