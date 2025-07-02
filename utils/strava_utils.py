@@ -9,9 +9,11 @@ import requests
 import json
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
+import time
 from dotenv import load_dotenv
+
 
 from utils.db import db_utils
 from utils.db import dash_db_utils
@@ -770,23 +772,264 @@ def update_daily_dashboard_metrics() -> None:
     metrics like ctl, atl, tsb, tss, etc.
     """
 
-    df = dash_db_utils.get_ctl_atl_tsb_tss_data().tail(1)
     try:
         with sqlite3.connect(Config.DB_PATH) as conn:
+            df = dash_db_utils.get_ctl_atl_tsb_tss_data(conn).tail(1)
             language_db_utils.update_daily_training_metrics(conn=conn, df=df)
             logger.info(f"Daily stats updated with: {df}")
     except sqlite3.Error as e:
         logger.error(f"Database error updating daily metrics: {e}")
         raise
 
-def update_daily_runstrong_metrics() -> None:
-    """
-    Updates fatigue metrics on strength training data
-    """
+def create_weather_table(cursor):
+    """Create the weather table if it doesn't exist"""
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS weather (
+            id INTEGER PRIMARY KEY,
+            activity_id INTEGER,
+            location_name TEXT,
+            location_region TEXT,
+            location_country TEXT,
+            time_epoch INTEGER,
+            time TEXT,
+            temp_c REAL,
+            temp_f REAL,
+            is_day INTEGER,
+            condition_text TEXT,
+            condition_icon TEXT,
+            condition_code INTEGER,
+            wind_mph REAL,
+            wind_kph REAL,
+            wind_degree INTEGER,
+            wind_dir TEXT,
+            pressure_mb REAL,
+            pressure_in REAL,
+            precip_mm REAL,
+            precip_in REAL,
+            snow_cm REAL,
+            humidity INTEGER,
+            cloud INTEGER,
+            feelslike_c REAL,
+            feelslike_f REAL,
+            windchill_c REAL,
+            windchill_f REAL,
+            heatindex_c REAL,
+            heatindex_f REAL,
+            dewpoint_c REAL,
+            dewpoint_f REAL,
+            will_it_rain INTEGER,
+            chance_of_rain INTEGER,
+            will_it_snow INTEGER,
+            chance_of_snow INTEGER,
+            vis_km REAL,
+            vis_miles REAL,
+            gust_mph REAL,
+            gust_kph REAL,
+            uv REAL,
+            import_date TEXT,
+            FOREIGN KEY (activity_id) REFERENCES activities (id)
+        )
+    ''')
+
+def parse_latlng(latlng_str):
+    """Parse the lat/lng string format [lat, lng] into separate values"""
+    if not latlng_str or latlng_str == 'NULL':
+        return None, None
+    
+    coords = latlng_str.strip('[]').split(',')
+    if len(coords) != 2:
+        return None, None
+    
     try:
-        with sqlite3.connect(Config.DB_PATH) as conn:
-            runstrong_db_utils.update_muscle_group_fatigue(conn=conn)
-            logger.info(f"Muscle group fatigue updated")
+        lat = float(coords[0].strip())
+        lng = float(coords[1].strip())
+        return lat, lng
+    except ValueError:
+        return None, None
+
+def get_weather_data(lat, lng, date_str, hour, api_key):
+    """Fetch weather data from WeatherAPI"""
+    url = "https://api.weatherapi.com/v1/history.json"
+    params = {
+        'q': f"{lat},{lng}",
+        'dt': date_str,
+        'hour': hour,
+        'key': api_key
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching weather data: {e}")
+        return None
+
+def extract_hour_from_datetime(weather_date_str):
+    """Extract hour from weather_date string"""
+    try:
+        dt = datetime.strptime(weather_date_str, '%Y-%m-%d %H:%M:%S')
+        return dt.hour, dt.strftime('%Y-%m-%d')
+    except ValueError:
+        try:
+            dt = datetime.strptime(weather_date_str, '%m/%d/%Y %H:%M')
+            return dt.hour, dt.strftime('%Y-%m-%d')
+        except ValueError:
+            logger.warning(f"Could not parse datetime: {weather_date_str}")
+            return None, None
+
+def insert_weather_data(cursor, activity_id, weather_response):
+    """Insert weather data into the database"""
+    if not weather_response:
+        return False
+    
+    location = weather_response.get('location', {})
+    forecast = weather_response.get('forecast', {})
+    
+    if not forecast.get('forecastday'):
+        return False
+    
+    hourly_data = forecast['forecastday'][0].get('hour', [])
+    
+    if hourly_data:
+        hour_data = hourly_data[0]
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO weather (
+                activity_id, location_name, location_region, location_country,
+                time_epoch, time, temp_c, temp_f, is_day,
+                condition_text, condition_icon, condition_code,
+                wind_mph, wind_kph, wind_degree, wind_dir,
+                pressure_mb, pressure_in, precip_mm, precip_in, snow_cm,
+                humidity, cloud, feelslike_c, feelslike_f,
+                windchill_c, windchill_f, heatindex_c, heatindex_f,
+                dewpoint_c, dewpoint_f, will_it_rain, chance_of_rain,
+                will_it_snow, chance_of_snow, vis_km, vis_miles,
+                gust_mph, gust_kph, uv, import_date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            activity_id,
+            location.get('name'),
+            location.get('region'),
+            location.get('country'),
+            hour_data.get('time_epoch'),
+            hour_data.get('time'),
+            hour_data.get('temp_c'),
+            hour_data.get('temp_f'),
+            hour_data.get('is_day'),
+            hour_data.get('condition', {}).get('text'),
+            hour_data.get('condition', {}).get('icon'),
+            hour_data.get('condition', {}).get('code'),
+            hour_data.get('wind_mph'),
+            hour_data.get('wind_kph'),
+            hour_data.get('wind_degree'),
+            hour_data.get('wind_dir'),
+            hour_data.get('pressure_mb'),
+            hour_data.get('pressure_in'),
+            hour_data.get('precip_mm'),
+            hour_data.get('precip_in'),
+            hour_data.get('snow_cm'),
+            hour_data.get('humidity'),
+            hour_data.get('cloud'),
+            hour_data.get('feelslike_c'),
+            hour_data.get('feelslike_f'),
+            hour_data.get('windchill_c'),
+            hour_data.get('windchill_f'),
+            hour_data.get('heatindex_c'),
+            hour_data.get('heatindex_f'),
+            hour_data.get('dewpoint_c'),
+            hour_data.get('dewpoint_f'),
+            hour_data.get('will_it_rain'),
+            hour_data.get('chance_of_rain'),
+            hour_data.get('will_it_snow'),
+            hour_data.get('chance_of_snow'),
+            hour_data.get('vis_km'),
+            hour_data.get('vis_miles'),
+            hour_data.get('gust_mph'),
+            hour_data.get('gust_kph'),
+            hour_data.get('uv'),
+            datetime.now().isoformat()
+        ))
+        return True
+    return False
+
+def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: str) -> int:
+    """
+    Fetch weather data for a list of activities and store in database.
+    
+    Args:
+        activities: List of activity dictionaries from Strava API
+        db_path: Path to the SQLite database
+        api_key: WeatherAPI key
+        
+    Returns:
+        Number of activities processed successfully
+    """
+    if not activities or not api_key:
+        logger.info("No activities or API key provided for weather fetching")
+        return 0
+    
+    try:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            create_weather_table(cursor)
+            
+            # Get existing weather data to avoid duplicates
+            cursor.execute('SELECT DISTINCT activity_id FROM weather')
+            existing_weather_ids = set(row[0] for row in cursor.fetchall())
+            
+            processed = 0
+            
+            for i, activity in enumerate(activities):
+                activity_id = activity.get('id')
+                if not activity_id or activity_id in existing_weather_ids:
+                    continue
+                
+                # Get coordinates from activity
+                start_latlng = activity.get('start_latlng')
+                if not start_latlng or len(start_latlng) != 2:
+                    logger.debug(f"No coordinates for activity {activity_id}")
+                    continue
+                
+                lat, lng = start_latlng[0], start_latlng[1]
+                
+                # Calculate weather date (midpoint of activity)
+                start_date = activity.get('start_date_local', activity.get('start_date', ''))
+                elapsed_time = activity.get('elapsed_time', 0)
+                
+                if not start_date:
+                    continue
+                
+                try:
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    weather_dt = start_dt + timedelta(seconds=elapsed_time // 2)
+                    hour = weather_dt.hour
+                    date_str = weather_dt.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not parse date for activity {activity_id}")
+                    continue
+                
+                # Fetch weather data
+                weather_data = get_weather_data(lat, lng, date_str, hour, api_key)
+                
+                if weather_data and insert_weather_data(cursor, activity_id, weather_data):
+                    processed += 1
+                    logger.debug(f"Weather data stored for activity {activity_id}")
+                
+                # Rate limiting
+                time.sleep(0.2)
+                
+                # Commit every 10 records
+                if processed % 10 == 0:
+                    conn.commit()
+            
+            conn.commit()
+            logger.info(f"Weather fetch complete: {processed} activities processed")
+            return processed
+            
     except sqlite3.Error as e:
-        logger.error(f"Database error updating muscle group fatigue: {e}")
-        raise
+        logger.error(f"Database error during weather fetch: {e}")
+        return 0
+    except Exception as e:
+        logger.error(f"Unexpected error during weather fetch: {e}")
+        return 0

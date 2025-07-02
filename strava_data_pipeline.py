@@ -243,6 +243,31 @@ class StravaDataPipeline:
         
         self.logger.info(f"Gear fetch complete: {successful_gear}/{len(gear_ids)} successful")
     
+    def fetch_and_store_weather(self, activities: List[Dict]) -> None:
+        """
+        Fetch weather data for activities and store in database.
+        
+        Args:
+            activities: List of activity dictionaries
+        """
+        api_key = os.getenv('WEATHER_API_KEY')
+        if not api_key:
+            self.logger.warning("WEATHER_API_KEY not found in environment variables")
+            return
+        
+        if not activities:
+            self.logger.info("No activities provided for weather fetching")
+            return
+        
+        self.logger.info(f"Starting weather data fetch for {len(activities)} activities")
+        
+        try:
+            processed = strava_utils.fetch_weather_for_activities(activities, self.db_path, api_key)
+            self.logger.info(f"Weather fetch complete: {processed} activities processed")
+            
+        except Exception as e:
+            self.logger.error(f"Error in weather fetch: {e}")
+
     def update_daily_dashboard_metrics(self) -> None:
         """
         After any potential activity import, call to db to calculate
@@ -288,8 +313,11 @@ class StravaDataPipeline:
             
             # Step 4: Fetch and store gear data
             self.fetch_and_store_gear(activities)
+            
+            # Step 5: Fetch and store weather data
+            self.fetch_and_store_weather(activities)
 
-            # Step 5: Update daily dashboard metrics
+            # Step 6: Update daily dashboard metrics
             self.update_daily_dashboard_metrics()
             
             self.logger.info("=== Pipeline completed successfully ===")
