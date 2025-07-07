@@ -108,7 +108,6 @@ def register_routes(runstrong_service):
         try:
             # This one service call now does all the heavy lifting
             fatigue_data = runstrong_service.get_fatigue_dashboard_data()
-            print(fatigue_data)
             return render_template('fatigue_dashboard.html', data=fatigue_data)
         except Exception as e:
             logger.error(f"Error loading fatigue dashboard: {e}", exc_info=True)

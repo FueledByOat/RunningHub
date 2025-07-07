@@ -20,11 +20,12 @@ from utils import format_utils, exception_utils
 from utils.RunnerVision import runnervision_utils as rv_utils
 from utils.db import db_utils
 
-class RunnerVisionService:
+class RunnerVisionService(BaseService):
     """Service for RunnerVision biomechanics analysis."""
     
     def __init__(self, config):
         self.config = config
+        self.db_path = config.DB_PATH
         self.logger = logging.getLogger(self.__class__.__name__)
     
     def get_latest_analysis(self) -> Dict[str, Any]:
@@ -114,10 +115,11 @@ class RunnerVisionService:
             "warnings": errors if errors else None
         }
     
-    def run_analysis(self) -> Dict[str, Any]:
+    def run_analysis(self, ) -> Dict[str, Any]:
         """Execute biomechanics analysis."""
         try:
-            result = rv_utils.run_analysis()
+            with self._get_connection() as conn:
+                result = rv_utils.run_analysis(conn)
             return {
                 "status": "complete",
                 "message": "Analysis finished!",

@@ -11,6 +11,8 @@ import json
 import pandas as pd
 import numpy as np
 import matplotlib
+import sqlite3
+from typing import Optional, Tuple
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -18,6 +20,8 @@ import cv2
 from datetime import datetime
 from glob import glob
 import logging
+
+from utils.db import runnervision_db_utils
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -28,7 +32,7 @@ from runnervision_utils.reports.report_generators.side_report_details.side_repor
 from utils.RunnerVision.RunnerVisionClass import RunnerVisionAnalyzer
 
 class RunAnalyzer:
-    def __init__(self, session_date=None, session_id=None):
+    def __init__(self, session_date=None, session_id=None, athlete_id = 24266563):
         """Initialize the run analyzer with session details."""
         self.base_dir = os.getcwd()
 
@@ -36,8 +40,8 @@ class RunAnalyzer:
             self.session_date = datetime.now().strftime('%Y-%m-%d')
         else:
             self.session_date = session_date
-            
-        self.session_id = self.session_date
+        self.user_id = str(athlete_id)
+        self.session_id = self.session_date + str(athlete_id)
         
         self.videos_upload_dir = os.path.join(self.base_dir, "uploads")
         self.videos_output_dir = os.path.join(self.base_dir, 'videos')
@@ -104,7 +108,7 @@ class RunAnalyzer:
         logger.info("Metadata loaded successfully")
         logger.debug(f"Metadata contents: {self.metadata}")
 
-    def process_videos(self):
+    def process_videos(self, conn: sqlite3.Connection):
         if self.side_video:
             logger.info(f"Processing side video: {self.side_video}")
             side_output = os.path.join(self.videos_output_dir, f"{self.session_id}_side_processed.mp4")
@@ -113,6 +117,14 @@ class RunAnalyzer:
             side_metrics_path = os.path.join(self.data_dir, f"{self.session_id}_side_metrics.csv")
             self.side_metrics.to_csv(side_metrics_path, index=False)
             logger.info(f"Side metrics saved to: {side_metrics_path}")
+            self.process_analysis_complete(
+                    conn=conn,
+                    user_id=self.user_id,
+                    rear_df=None,
+                    side_df=self.side_metrics,
+                    video_duration_seconds=self.side_metrics['timestamp'].iloc[-1],
+                    fps=60.0
+                    )
         else:
             self.side_metrics = None
             logger.warning("No side video found")
@@ -126,6 +138,14 @@ class RunAnalyzer:
             rear_metrics_path = os.path.join(self.data_dir, f"{self.session_id}_rear_metrics.csv")
             self.rear_metrics.to_csv(rear_metrics_path, index=False)
             logger.info(f"Rear metrics saved to: {rear_metrics_path}")
+            self.process_analysis_complete(
+                    conn=conn,
+                    user_id=self.user_id,
+                    rear_df=self.rear_metrics,
+                    side_df=None,
+                    video_duration_seconds=self.rear_metrics['timestamp'].iloc[-1],
+                    fps=60.0
+                    )
         else:
             self.rear_metrics = None
             logger.warning("No rear video found")
@@ -199,7 +219,63 @@ class RunAnalyzer:
         else:
             logger.warning(f"Unsupported output format: {output_format}")
 
-def run_analysis():
+    def process_analysis_complete(self,
+        conn: sqlite3.Connection,
+        user_id: str,
+        rear_df: Optional[pd.DataFrame] = None,
+        side_df: Optional[pd.DataFrame] = None,
+        video_duration_seconds: float = 0.0,
+        fps: float = 30.0
+    ) -> str:
+        """
+        Complete workflow: creates session, inserts raw data, generates summaries.
+        Returns session_id.
+        """
+        # Determine analysis type and frame count
+        analysis_type = "both"
+        total_frames = 0
+        
+        if rear_df is not None and side_df is not None:
+            analysis_type = "both"
+            total_frames = max(len(rear_df), len(side_df))
+        elif rear_df is not None:
+            analysis_type = "rear"
+            total_frames = len(rear_df)
+        elif side_df is not None:
+            analysis_type = "side"
+            total_frames = len(side_df)
+        else:
+            raise ValueError("At least one DataFrame (rear_df or side_df) must be provided")
+        
+        # Create session
+        try:
+            session_id = runnervision_db_utils.create_analysis_session(
+                conn, user_id, video_duration_seconds, total_frames, fps, analysis_type
+            )
+        except Exception as e:
+            logger.error(f"Error creating analysis session: {e}", exc_info=True)
+
+        # Insert raw data
+        if rear_df is not None:
+            try:
+                runnervision_db_utils.insert_rear_metrics_raw(conn, session_id, rear_df)
+            except Exception as e:
+                logger.error(f"Error inserting rear metrics: {e}", exc_info=True)
+        
+        if side_df is not None:
+            try:
+                runnervision_db_utils.insert_side_metrics_raw(conn, session_id, side_df)
+            except Exception as e:
+                logger.error(f"Error inserting side metrics: {e}", exc_info=True)
+
+        # Generate summaries
+        try:
+            runnervision_db_utils.generate_summaries(conn, session_id)
+        except Exception as e:
+            logger.error(f"Error generating summary metrics: {e}", exc_info=True)
+        return session_id
+
+def run_analysis(conn: sqlite3.Connection):
     analyzer = RunAnalyzer(datetime.now().strftime("%Y%m%d"), 44)
     
     try:
@@ -209,7 +285,7 @@ def run_analysis():
             return
 
         analyzer.load_metadata()
-        analyzer.process_videos()
+        analyzer.process_videos(conn = conn)
 
         for file in [analyzer.side_video, analyzer.rear_video]:
             if file and "side" in file.lower():

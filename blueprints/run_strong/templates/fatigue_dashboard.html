@@ -6,100 +6,6 @@
     <title>Fatigue Dashboard | RUNSTRONG</title>
     <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-        }
-
-        .dashboard-card {
-            padding: 1.5rem;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-        }
-
-        .dashboard-card h2,
-        .dashboard-card h3 {
-            margin-top: 0;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 0.5rem;
-        }
-
-        .fatigue-list li {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        #category-toggle {
-            margin-bottom: 2rem;
-            display: flex;
-            gap: 10px;
-        }
-
-        #category-toggle button {
-            padding: 10px 15px;
-            border: 1px solid #ccc;
-            background: #f7f7f7;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-
-        #category-toggle button.active {
-            background: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .circular-meter {
-            display: flex;
-            justify-content: center;
-            margin: 1rem 0;
-        }
-
-        .circular-chart {
-            display: block;
-            max-width: 120px;
-            max-height: 120px;
-        }
-
-        .circular-chart .circle-bg {
-            fill: none;
-            stroke: #eee;
-            stroke-width: 3.8;
-        }
-
-        .circular-chart .circle {
-            fill: none;
-            stroke-width: 2.8;
-            stroke-linecap: round;
-            stroke: var(--rs-highlight);
-            animation: progress 1s ease-out forwards;
-        }
-
-        .circular-chart .percentage {
-            fill: #fff;
-            font-size: 0.5em;
-            text-anchor: middle;
-        }
-
-        @keyframes progress {
-            0% {
-                stroke-dasharray: 0 100;
-            }
-        }
-
-        .fatigue-score {
-            --score-color: hsl(calc(120 - var(--score) * 1.2), 80%, 60%);
-            color: var(--score-color);
-        }
-    </style>
 </head>
 
 <body class="runstrong">
@@ -214,35 +120,38 @@
                 }
             });
 
-            // Render workload charts
-            {% for category, details in data.items() %}
-            const ctx_{{ category }
-        } = document.getElementById('chart-{{ category }}');
-        if (ctx_{ { category } }) {
-            new Chart(ctx_{{ category }}, {
-            type: 'line',
-                data: {
-                labels: { { details.seven_day_workload | map(attribute = 'day') | list | tojson } },
-                datasets: [{
-                    label: 'Workload (units)',
-                    data: {{ details.seven_day_workload | map(attribute = 'workload') | list | tojson }},
-            backgroundColor: 'rgba(255, 78, 199, 0.2)',
-                borderColor: 'rgba(255, 78, 199, 1)',
-                    borderWidth: 2,
-                        pointRadius: 4,
+        // Render workload charts
+        {% for category, details in data.items() %}
+            // FIX: The entire declaration is on one line
+            const ctx_{{ category }} = document.getElementById('chart-{{ category }}');
+            
+            // FIX: Removed the space inside the variable name
+            if (ctx_{{ category }}) {
+                new Chart(ctx_{{ category }}, {
+                    type: 'line',
+                    data: {
+                        // FIX: Removed the space before the data
+                        labels: {{ details.seven_day_workload | map(attribute='day') | list | tojson }},
+                        datasets: [{
+                            label: 'Workload (units)',
+                            data: {{ details.seven_day_workload | map(attribute='workload') | list | tojson }},
+                            backgroundColor: 'rgba(255, 78, 199, 0.2)',
+                            borderColor: 'rgba(255, 78, 199, 1)',
+                            borderWidth: 2,
+                            pointRadius: 4,
                             tension: 0.3
-        }]
-            },
-        options: {
-            scales: {
-                y: { beginAtZero: true }
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
             }
-        }
-        });
-    }
         {% endfor %}
-});
-    </script>
+    });
+</script>
 </body>
 
 </html>

@@ -135,6 +135,8 @@ Service for handling database queries.
   
 Service for RunnerVision biomechanics analysis.  
   
+**Inherits from**: BaseService  
+  
 **Methods**:  
   
 - `__init__(config)`  

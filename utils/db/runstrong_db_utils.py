@@ -3,15 +3,12 @@
 """Database utilities RunStrong."""
 
 import json
-import logging
 import sqlite3
 from typing import Optional, Dict, Any, List, Tuple
 import datetime
 from datetime import datetime, timedelta
 
 from utils.db import db_utils
-
-logger = logging.getLogger(__name__)
 
 def get_all_exercises(conn: sqlite3.Connection) -> list:
     """Get all exercises."""

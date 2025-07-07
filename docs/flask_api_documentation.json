@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "coach_g_service",
-        "CoachGService"
+        "CoachGService",
+        "coach_g_service"
       ]
     },
     "runner_vision": {
@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -272,16 +272,16 @@
         "config.Config"
       ],
       "services_used": [
-        "motivation_service",
-        "query_service",
-        "trophy_service",
-        "QueryService",
         "statistics_service",
-        "TrophyService",
-        "ActivityService",
+        "QueryService",
         "MotivationService",
+        "ActivityService",
+        "TrophyService",
+        "activity_service",
+        "trophy_service",
         "StatisticsService",
-        "activity_service"
+        "query_service",
+        "motivation_service"
       ]
     },
     "run_strong": {
@@ -370,7 +370,7 @@
           ],
           "docstring": "Display the goals dashboard page.",
           "parameters": [],
-          "line_number": 118,
+          "line_number": 117,
           "blueprint": "run_strong",
           "full_url": "/strong/goals"
         }
@@ -386,8 +386,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
@@ -669,7 +669,7 @@
       ],
       "docstring": "Display the goals dashboard page.",
       "parameters": [],
-      "line_number": 118,
+      "line_number": 117,
       "blueprint": "run_strong",
       "full_url": "/strong/goals"
     }
@@ -1181,7 +1181,7 @@
               "docstring": "Get latest RunnerVision analysis results.",
               "parameters": [],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 30,
+              "line_number": 31,
               "is_async": false,
               "decorators": []
             },
@@ -1195,7 +1195,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 50,
+              "line_number": 51,
               "is_async": false,
               "decorators": []
             },
@@ -1209,7 +1209,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 64,
+              "line_number": 65,
               "is_async": false,
               "decorators": []
             },
@@ -1223,7 +1223,7 @@
                 }
               ],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 84,
+              "line_number": 85,
               "is_async": false,
               "decorators": []
             },
@@ -1232,7 +1232,7 @@
               "docstring": "Execute biomechanics analysis.",
               "parameters": [],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 117,
+              "line_number": 118,
               "is_async": false,
               "decorators": []
             },
@@ -1246,13 +1246,15 @@
                 }
               ],
               "return_type": "bool",
-              "line_number": 133,
+              "line_number": 135,
               "is_async": false,
               "decorators": []
             }
           ],
           "line_number": 23,
-          "bases": []
+          "bases": [
+            "BaseService"
+          ]
         }
       ],
       "functions": [],
@@ -1337,7 +1339,7 @@
               "docstring": "Get active goals and calculate their progress percentage.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 79,
+              "line_number": 78,
               "is_async": false,
               "decorators": []
             },
@@ -1351,7 +1353,7 @@
                 }
               ],
               "return_type": "int",
-              "line_number": 99,
+              "line_number": 98,
               "is_async": false,
               "decorators": []
             },
@@ -1365,7 +1367,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 133,
+              "line_number": 132,
               "is_async": false,
               "decorators": []
             },
@@ -1379,7 +1381,7 @@
                 }
               ],
               "return_type": "float",
-              "line_number": 146,
+              "line_number": 145,
               "is_async": false,
               "decorators": []
             },
@@ -1388,7 +1390,7 @@
               "docstring": "Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.\n\nThis on-the-fly calculation includes:\n- Exponentially decayed workload for higher accuracy.\n- Fatigue scores for individual muscles, body groups, and overall.\n- Human-readable interpretations of all scores.\n- Data structured for categorical filtering (Overall, Lower, Upper, Core).",
               "parameters": [],
               "return_type": "Dict",
-              "line_number": 154,
+              "line_number": 153,
               "is_async": false,
               "decorators": []
             }

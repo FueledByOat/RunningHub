@@ -61,7 +61,6 @@ class RunStrongService(BaseService):
         try:
             with self._get_connection() as conn:
                 fatigue_list = runstrong_db_utils.get_fatigue_summary(conn)
-            
             # Structure the data for easy rendering
             structured_fatigue = {
                 'overall': [],

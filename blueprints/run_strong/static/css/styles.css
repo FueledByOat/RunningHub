@@ -704,4 +704,5 @@ body.runstrong {
 
 .fatigue-score {
   --score-color: hsl(calc(120 - var(--score) * 1.2), 80%, 60%);
-  color: var(--score-color);
+  color: var(--score-color)
+};
