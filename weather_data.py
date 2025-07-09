@@ -206,7 +206,7 @@ def main():
         FROM
             activities
         WHERE
-            start_date_local >= date('now', '-365 days')
+            start_date_local > '2025-07-02 06:00'
         ORDER BY
             start_date_local DESC
     ''')

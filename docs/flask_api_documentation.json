@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "CoachGService",
-        "coach_g_service"
+        "coach_g_service",
+        "CoachGService"
       ]
     },
     "runner_vision": {
@@ -273,15 +273,15 @@
       ],
       "services_used": [
         "statistics_service",
-        "QueryService",
-        "MotivationService",
-        "ActivityService",
-        "TrophyService",
-        "activity_service",
-        "trophy_service",
-        "StatisticsService",
         "query_service",
-        "motivation_service"
+        "TrophyService",
+        "MotivationService",
+        "motivation_service",
+        "ActivityService",
+        "QueryService",
+        "activity_service",
+        "StatisticsService",
+        "trophy_service"
       ]
     },
     "run_strong": {

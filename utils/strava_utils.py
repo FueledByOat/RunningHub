@@ -241,6 +241,17 @@ def get_gear(access_token: str, gear_id: str) -> Dict[str, Any]:
         logger.error(f"Request error fetching gear {gear_id}: {e}")
         raise
 
+def calculate_pahr(average_speed, average_heartrate):
+    """Pace to Heart Rate Ratio (PaHR)
+    PaHR = average_speed / average_heartrate
+    Where:
+    - average_speed is in meters per second (m/s)
+    - average_heartrate is in beats per minute (bpm)
+    - PaHR is a unit-less ratio representing efficiency (higher = faster pace per bpm)
+    """
+    if average_speed is None or average_heartrate is None or average_heartrate == 0:
+        return None
+    return round(average_speed / average_heartrate, 5)
 
 def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -> int:
     """
@@ -272,6 +283,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                 # Safely extract nested values with proper defaults
                 athlete_data = activity.get("athlete", {})
                 map_data = activity.get("map", {})
+                pahr = calculate_pahr(activity.get("average_speed"), activity.get("average_heartrate"))
                 
                 data.append({
                     "id": activity.get("id"),
@@ -332,7 +344,8 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                     "pr_count": activity.get("pr_count"),
                     "total_photo_count": activity.get("total_photo_count"),
                     "has_kudoed": activity.get("has_kudoed"),
-                    "import_date": current_time
+                    "import_date": current_time,
+                    "pahr": pahr
                 })
 
             # Execute batch insert with proper error handling
@@ -352,7 +365,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                     :heartrate_opt_out, :display_hide_heartrate_option,
                     :elev_high, :elev_low,
                     :upload_id, :upload_id_str, :external_id, :from_accepted_tag,
-                    :pr_count, :total_photo_count, :has_kudoed, :import_date
+                    :pr_count, :total_photo_count, :has_kudoed, :import_date, :pahr
                 )
             ''', data)
             
@@ -890,9 +903,22 @@ def insert_weather_data(cursor, activity_id, weather_response):
         return False
     
     hourly_data = forecast['forecastday'][0].get('hour', [])
-    
+
     if hourly_data:
         hour_data = hourly_data[0]
+
+        try:
+            rcs = calculate_rcs(hour_data.get("dewpoint_c"),
+                                hour_data.get("feelslike_c"),
+                                hour_data.get("wind_kph"),
+                                hour_data.get("chance_of_rain"),
+                                hour_data.get("chance_of_snow"),
+                                hour_data.get("uv"),
+                                hour_data.get("temp_c")
+            )
+        except:
+            logger.warning(f"RCS calculation failed for Activity ID {activity_id}")
+            rcs = 0
         
         cursor.execute('''
             INSERT OR REPLACE INTO weather (
@@ -905,8 +931,8 @@ def insert_weather_data(cursor, activity_id, weather_response):
                 windchill_c, windchill_f, heatindex_c, heatindex_f,
                 dewpoint_c, dewpoint_f, will_it_rain, chance_of_rain,
                 will_it_snow, chance_of_snow, vis_km, vis_miles,
-                gust_mph, gust_kph, uv, import_date
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                gust_mph, gust_kph, uv, import_date, rcs
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             activity_id,
             location.get('name'),
@@ -948,7 +974,8 @@ def insert_weather_data(cursor, activity_id, weather_response):
             hour_data.get('gust_mph'),
             hour_data.get('gust_kph'),
             hour_data.get('uv'),
-            datetime.now().isoformat()
+            datetime.now().isoformat(),
+            rcs
         ))
         return True
     return False
@@ -1033,3 +1060,116 @@ def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: 
     except Exception as e:
         logger.error(f"Unexpected error during weather fetch: {e}")
         return 0
+    
+## Running Condition Score (RCS) calculations
+
+def score_dewpoint(dew_c):
+    if dew_c < 10:
+        return 10
+    elif dew_c < 15:
+        return 8
+    elif dew_c < 18:
+        return 6
+    elif dew_c < 21:
+        return 4
+    elif dew_c < 24:
+        return 2
+    else:
+        return 0
+
+def score_feelslike(temp_c):
+    # Ideal range: 5°C to 15°C
+    if 5 <= temp_c <= 15:
+        return 10
+    elif 0 <= temp_c < 5 or 15 < temp_c <= 20:
+        return 8
+    elif -5 <= temp_c < 0 or 20 < temp_c <= 25:
+        return 5
+    elif -10 <= temp_c < -5 or 25 < temp_c <= 30:
+        return 3
+    else:
+        return 0
+
+def score_wind(wind_kph):
+    if wind_kph < 10:
+        return 10
+    elif wind_kph < 20:
+        return 6
+    elif wind_kph < 30:
+        return 3
+    else:
+        return 0
+
+def score_precipitation(chance_of_rain, chance_of_snow):
+    chance = max(chance_of_rain or 0, chance_of_snow or 0)
+    if chance > 80:
+        return 0
+    elif chance > 60:
+        return 3
+    elif chance > 40:
+        return 5
+    elif chance > 20:
+        return 8
+    else:
+        return 10
+
+def score_uv(uv):
+    if uv is None:
+        return 10
+    elif uv <= 2:
+        return 10
+    elif uv <= 5:
+        return 8
+    elif uv <= 7:
+        return 5
+    elif uv <= 10:
+        return 3
+    else:
+        return 0
+
+def score_temp(temp_c):
+    # Ideal: 5-15°C
+    if 5 <= temp_c <= 15:
+        return 10
+    elif 0 <= temp_c < 5 or 15 < temp_c <= 20:
+        return 7
+    elif -5 <= temp_c < 0 or 20 < temp_c <= 25:
+        return 4
+    else:
+        return 1
+
+def calculate_rcs(dew_c, feelslike_c, wind_kph, chance_of_rain, chance_of_snow, uv, temp_c):
+    """Calculates Running Condition Score (RCS) using the following structure
+    
+    Component	Importance	Weight	Notes
+    Dew Point	High	0.25	Correlates with discomfort; humid air makes sweating ineffective.
+    Feels-like Temp	High	0.25	Accounts for both wind chill and heat index.
+    Wind Speed	Medium	0.15	Higher winds can impair pace and comfort.
+    Precipitation Chance	Medium	0.15	Wet conditions can impact traction and comfort.
+    UV Index	Lower	0.10	Strong sun can increase fatigue and sunburn risk.
+    Actual Temp	Lower	0.10	Secondary to feels-like, but still impactful.
+
+    Total: 1.00
+
+    All sub-scores will be normalized to a 0–10 scale, where 10 is ideal and 0 is poor.
+    
+    """
+    scores = {
+        "dew": score_dewpoint(dew_c),
+        "feelslike": score_feelslike(feelslike_c),
+        "wind": score_wind(wind_kph),
+        "precip": score_precipitation(chance_of_rain, chance_of_snow),
+        "uv": score_uv(uv),
+        "temp": score_temp(temp_c)
+    }
+
+    rcs = (
+        scores["dew"] * 0.25 +
+        scores["feelslike"] * 0.25 +
+        scores["wind"] * 0.15 +
+        scores["precip"] * 0.15 +
+        scores["uv"] * 0.10 +
+        scores["temp"] * 0.10
+    )
+
+    return round(rcs, 2)

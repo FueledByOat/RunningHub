@@ -261,18 +261,21 @@ class RunAnalyzer:
                 runnervision_db_utils.insert_rear_metrics_raw(conn, session_id, rear_df)
             except Exception as e:
                 logger.error(f"Error inserting rear metrics: {e}", exc_info=True)
+            try:
+                runnervision_db_utils.generate_rear_summary(conn, session_id)
+            except Exception as e:
+                logger.error(f"Error inserting rear summary: {e}", exc_info=True) 
         
         if side_df is not None:
             try:
                 runnervision_db_utils.insert_side_metrics_raw(conn, session_id, side_df)
             except Exception as e:
                 logger.error(f"Error inserting side metrics: {e}", exc_info=True)
+            try:
+                runnervision_db_utils.generate_side_summary(conn, session_id)
+            except Exception as e:
+                logger.error(f"Error inserting side summary: {e}", exc_info=True) 
 
-        # Generate summaries
-        try:
-            runnervision_db_utils.generate_summaries(conn, session_id)
-        except Exception as e:
-            logger.error(f"Error generating summary metrics: {e}", exc_info=True)
         return session_id
 
 def run_analysis(conn: sqlite3.Connection):

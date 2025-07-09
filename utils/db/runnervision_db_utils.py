@@ -346,12 +346,20 @@ FROM base
         print(f"Error calculating side summary: {e}")
         return False
 
-def generate_summaries(conn: sqlite3.Connection, session_id: str) -> Tuple[bool, bool]:
+def generate_side_summary(conn: sqlite3.Connection, session_id: str) -> bool:
+    """
+    Generates summary tables for both rear and side metrics.
+    Returns tuple of (rear_success, side_success).
+    """
+    side_success = calculate_side_summary(conn, session_id)
+    
+    return side_success
+
+def generate_rear_summary(conn: sqlite3.Connection, session_id: str) -> bool:
     """
     Generates summary tables for both rear and side metrics.
     Returns tuple of (rear_success, side_success).
     """
     rear_success = calculate_rear_summary(conn, session_id)
-    side_success = calculate_side_summary(conn, session_id)
     
-    return rear_success, side_success
+    return rear_success
