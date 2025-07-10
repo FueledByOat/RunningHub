@@ -101,6 +101,12 @@
     </div>
 
     <div class="activity-banner">
+
+      <div class="metric-card">
+        <div class="metric-icon"><i class="fas fa-meteor"></i></div>
+        <div class="metric-value">{{ activity.rcs }}</div>
+        <div class="metric-label">RCS Score</div>
+      </div>
       <div class="metric-card">
         <div class="metric-icon"><img src="{{ activity.condition_icon }}" alt="Condition Icon" /></div>
         <div class="metric-value">{{ condition_text }}</div>
@@ -117,12 +123,6 @@
         <div class="metric-icon"><i class="fas fa-temperature-low"></i></div>
         <div class="metric-value">{{ activity.feelslike_f }} °F</div>
         <div class="metric-label">Feels Like</div>
-      </div>
-
-      <div class="metric-card">
-        <div class="metric-icon"><i class="fas fa-snowflake"></i></div>
-        <div class="metric-value">{{ activity.windchill_f }} °F</div>
-        <div class="metric-label">Wind Chill</div>
       </div>
 
       <div class="metric-card">

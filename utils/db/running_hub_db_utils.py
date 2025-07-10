@@ -48,7 +48,8 @@ def get_activity_details_by_id(conn, activity_id: int, activity_types: List[str]
     w.dewpoint_f as dewpoint_f,
     w.gust_mph as gust_mph,
     w.uv as uv,
-    w.humidity as humidity
+    w.humidity as humidity,
+    w.rcs as rcs
         FROM activities as a
         LEFT JOIN gear as g ON a.gear_id = g.gear_id
 		LEFT JOIN weather as w ON a.id = w.activity_id

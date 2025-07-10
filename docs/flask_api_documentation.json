@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "coach_g_service",
-        "CoachGService"
+        "CoachGService",
+        "coach_g_service"
       ]
     },
     "runner_vision": {
@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "RunnerVisionService",
-        "runnervision_service"
+        "runnervision_service",
+        "RunnerVisionService"
       ]
     },
     "running_hub": {
@@ -272,16 +272,16 @@
         "config.Config"
       ],
       "services_used": [
+        "StatisticsService",
+        "TrophyService",
+        "motivation_service",
         "statistics_service",
         "query_service",
-        "TrophyService",
-        "MotivationService",
-        "motivation_service",
         "ActivityService",
-        "QueryService",
+        "MotivationService",
+        "trophy_service",
         "activity_service",
-        "StatisticsService",
-        "trophy_service"
+        "QueryService"
       ]
     },
     "run_strong": {
@@ -386,8 +386,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "RunStrongService",
-        "runstrong_service"
+        "runstrong_service",
+        "RunStrongService"
       ]
     }
   },
@@ -764,7 +764,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 32,
+              "line_number": 31,
               "is_async": false,
               "decorators": []
             },
@@ -773,12 +773,12 @@
               "docstring": "Get database connection with error handling.",
               "parameters": [],
               "return_type": "sqlite3.Connection",
-              "line_number": 36,
+              "line_number": 35,
               "is_async": false,
               "decorators": []
             }
           ],
-          "line_number": 29,
+          "line_number": 28,
           "bases": [
             "ABC"
           ]
@@ -805,7 +805,6 @@
         "os",
         "utils.format_utils",
         "utils.exception_utils",
-        "utils.RunnerVision.runnervision_utils",
         "config.Config",
         "utils.db.db_utils"
       ]
