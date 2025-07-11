@@ -87,12 +87,15 @@ def get_active_goals(conn: sqlite3.Connection) -> List[Dict]:
             ug.id,
             e.name as exercise_name,
             ug.goal_description,
-            ug.start_value_lbs,
-            ug.current_value_lbs,
-            ug.target_value_lbs
+			ug.target_value_lbs,
+            min(ws.weight_lbs) as start_value_lbs,
+            max(ws.weight_lbs) as current_value_lbs
+
         FROM user_goals ug
         JOIN exercises e ON ug.exercise_id = e.id
-        WHERE ug.is_active = 1;
+        JOIN workout_sets ws on e.id = ws.exercise_id
+        WHERE ug.is_active = 1
+		GROUP BY 1,2,3,4
     """
     cursor = conn.execute(query)
     return db_utils.dicts_from_rows(cursor.fetchall())
@@ -136,3 +139,34 @@ def get_daily_muscle_workload(conn: sqlite3.Connection, days_history: int = 28) 
     """
     cursor = conn.execute(query, (start_date,))
     return db_utils.dicts_from_rows(cursor.fetchall())
+
+def get_exercise_max_weights(conn: sqlite3.Connection) -> List[Dict]:
+    """Get exercises with their maximum weights from completed workout sets."""
+    query = """
+    SELECT 
+        e.name as exercise_name,
+        e.type as exercise_type,
+        MAX(ws.weight_lbs) as max_weight_lbs,
+        COUNT(ws.id) as total_sets,
+        MAX(wo_sesh.session_date) as last_max_date
+    FROM exercises e
+    INNER JOIN workout_sets ws ON e.id = ws.exercise_id
+    INNER JOIN workout_sessions wo_sesh on ws.session_id = wo_sesh.id
+    WHERE ws.weight_lbs IS NOT NULL 
+        AND ws.weight_lbs > 0
+    GROUP BY e.id, e.name, e.type
+    ORDER BY max_weight_lbs DESC;
+    """
+    cursor = conn.execute(query)
+    return [dict(row) for row in cursor.fetchall()]
+
+def get_exercise_max_for_goals(conn: sqlite3.Connection, exercise_id: int) -> float:
+    """Get maximum weight for a specific exercise for goals tracking."""
+    query = """
+    SELECT MAX(weight_lbs) as max_weight
+    FROM workout_sets
+    WHERE exercise_id = ? AND weight_lbs IS NOT NULL AND weight_lbs > 0
+    """
+    cursor = conn.execute(query, (exercise_id,))
+    result = cursor.fetchone()
+    return result['max_weight'] if result and result['max_weight'] else 0.0

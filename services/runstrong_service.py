@@ -238,3 +238,21 @@ class RunStrongService(BaseService):
             }
             
         return final_data
+    
+    def get_exercise_max_weights(self) -> List[Dict]:
+        """Get exercises with their maximum weights."""
+        try:
+            with self._get_connection() as conn:
+                return runstrong_db_utils.get_exercise_max_weights(conn)
+        except Exception as e:
+            self.logger.error(f"Error getting exercise max weights: {e}")
+            raise exception_utils.DatabaseError(f"Failed to get exercise max weights: {e}")
+
+    def get_exercise_max_for_goals(self, exercise_id: int) -> float:
+        """Get maximum weight for a specific exercise for goals tracking."""
+        try:
+            with self._get_connection() as conn:
+                return runstrong_db_utils.get_exercise_max_for_goals(conn, exercise_id)
+        except Exception as e:
+            self.logger.error(f"Error getting exercise max for goals: {e}")
+            raise exception_utils.DatabaseError(f"Failed to get exercise max for goals: {e}")

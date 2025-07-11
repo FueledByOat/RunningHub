@@ -189,6 +189,10 @@ Service for RunStrong strength training operations.
     - Converts an ACWR value to a 0-100 fatigue score. (No changes from before)  
 - `get_fatigue_dashboard_data()` → Dict  
     - Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.  
+- `get_exercise_max_weights()` → List[Dict]  
+    - Get exercises with their maximum weights.  
+- `get_exercise_max_for_goals(exercise_id)` → float  
+    - Get maximum weight for a specific exercise for goals tracking.  
   
 ---  
   

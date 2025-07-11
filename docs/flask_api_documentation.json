@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -274,14 +274,14 @@
       "services_used": [
         "StatisticsService",
         "TrophyService",
-        "motivation_service",
-        "statistics_service",
-        "query_service",
+        "QueryService",
         "ActivityService",
+        "motivation_service",
+        "activity_service",
         "MotivationService",
         "trophy_service",
-        "activity_service",
-        "QueryService"
+        "statistics_service",
+        "query_service"
       ]
     },
     "run_strong": {
@@ -373,6 +373,32 @@
           "line_number": 117,
           "blueprint": "run_strong",
           "full_url": "/strong/goals"
+        },
+        {
+          "function_name": "max_weights",
+          "endpoint": "/max-weights",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display exercise max weights page.",
+          "parameters": [],
+          "line_number": 127,
+          "blueprint": "run_strong",
+          "full_url": "/strong/max-weights"
+        },
+        {
+          "function_name": "get_exercise_max",
+          "endpoint": "/api/exercise-max/<int:exercise_id>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API: Get maximum weight for a specific exercise.",
+          "parameters": [
+            "exercise_id"
+          ],
+          "line_number": 137,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/exercise-max/<int:exercise_id>"
         }
       ],
       "imports": [
@@ -672,6 +698,32 @@
       "line_number": 117,
       "blueprint": "run_strong",
       "full_url": "/strong/goals"
+    },
+    {
+      "function_name": "max_weights",
+      "endpoint": "/max-weights",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display exercise max weights page.",
+      "parameters": [],
+      "line_number": 127,
+      "blueprint": "run_strong",
+      "full_url": "/strong/max-weights"
+    },
+    {
+      "function_name": "get_exercise_max",
+      "endpoint": "/api/exercise-max/<int:exercise_id>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API: Get maximum weight for a specific exercise.",
+      "parameters": [
+        "exercise_id"
+      ],
+      "line_number": 137,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/exercise-max/<int:exercise_id>"
     }
   ],
   "services": {
@@ -1390,6 +1442,29 @@
               "parameters": [],
               "return_type": "Dict",
               "line_number": 153,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_exercise_max_weights",
+              "docstring": "Get exercises with their maximum weights.",
+              "parameters": [],
+              "return_type": "List[Dict]",
+              "line_number": 242,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_exercise_max_for_goals",
+              "docstring": "Get maximum weight for a specific exercise for goals tracking.",
+              "parameters": [
+                {
+                  "name": "exercise_id",
+                  "type": "int"
+                }
+              ],
+              "return_type": "float",
+              "line_number": 251,
               "is_async": false,
               "decorators": []
             }
@@ -4595,11 +4670,11 @@
   },
   "summary": {
     "total_blueprints": 4,
-    "total_routes": 23,
+    "total_routes": 25,
     "total_services": 9,
     "total_biomechanic_modules": 24,
     "methods_distribution": {
-      "GET": 17,
+      "GET": 19,
       "POST": 7
     },
     "blueprints_list": [

@@ -3,10 +3,10 @@
 ## Summary  
   
 - **Total Blueprints**: 4  
-- **Total Routes**: 23  
+- **Total Routes**: 25  
 - **Total Services**: 9  
 - **Total Biomechanic Modules**: 24  
-- **HTTP Methods**: GET(17), POST(7)  
+- **HTTP Methods**: GET(19), POST(7)  
   
 ## Blueprint: coach_g  
   
@@ -29,7 +29,7 @@
 **Directory**: `blueprints\runner_vision`  
 **Routes Count**: 5  
   
-**Services Used**: runnervision_service, RunnerVisionService  
+**Services Used**: RunnerVisionService, runnervision_service  
   
 ### Routes  
   
@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 9  
   
-**Services Used**: StatisticsService, TrophyService, motivation_service, statistics_service, query_service, ActivityService, MotivationService, trophy_service, activity_service, QueryService  
+**Services Used**: StatisticsService, TrophyService, QueryService, ActivityService, motivation_service, activity_service, MotivationService, trophy_service, statistics_service, query_service  
   
 ### Routes  
   
@@ -79,7 +79,7 @@
   
 **URL Prefix**: `/strong`  
 **Directory**: `blueprints\run_strong`  
-**Routes Count**: 7  
+**Routes Count**: 9  
   
 **Services Used**: runstrong_service, RunStrongService  
   
@@ -99,4 +99,9 @@
     - Display the enhanced fatigue dashboard page  
 - **GET** `/strong/goals` → `goals()`  
     - Display the goals dashboard page  
+- **GET** `/strong/max-weights` → `max_weights()`  
+    - Display exercise max weights page  
+- **GET** `/strong/api/exercise-max/<int:exercise_id>` → `get_exercise_max()`  
+    - API: Get maximum weight for a specific exercise  
+    - Parameters: exercise_id  
   

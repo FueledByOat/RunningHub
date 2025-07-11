@@ -122,3 +122,23 @@ def register_routes(runstrong_service):
         except Exception as e:
             logger.error(f"Error loading goals dashboard: {e}")
             return _error("Could not load goals dashboard.", 500)
+        
+    @run_strong_bp.route('/max-weights')
+    def max_weights():
+        """Display exercise max weights page."""
+        try:
+            exercises = runstrong_service.get_exercise_max_weights()
+            return render_template('max_weights.html', exercises=exercises)
+        except Exception as e:
+            logger.error(f"Error displaying max weights page: {e}")
+            return render_template('error.html', error='Failed to load max weights data.')
+
+    @run_strong_bp.route('/api/exercise-max/<int:exercise_id>')
+    def get_exercise_max(exercise_id):
+        """API: Get maximum weight for a specific exercise."""
+        try:
+            max_weight = runstrong_service.get_exercise_max_for_goals(exercise_id)
+            return _success({"max_weight": max_weight})
+        except Exception as e:
+            logger.error(f"API error getting exercise max: {e}", exc_info=True)
+            return _error('Failed to get exercise max weight.', 500)

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+<head>
+    <meta charset="UTF-8" />
+    <title>Exercise Max Weights | RUNSTRONG</title>
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+</head>
+<body class="runstrong">
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
+        <a href="{{ url_for('run_strong.max_weights') }}" class="active">Max Weights</a>
+    </div>
+    <div class="runstrong-header">
+        <h1>
+            <a href="{{ url_for('running_hub.home') }}">Exercise Max Weights 💪</a>
+        </h1>
+    </div>
+    <div class="max-weights-container">
+        <div class="max-weights-list">
+            {% for exercise in exercises %}
+            <div class="max-weight-item">
+                <div class="max-weight-content">
+                    <h3>{{ exercise.exercise_name }}</h3>
+                    <p><strong>Current Max:</strong> {{ exercise.max_weight_lbs }} lbs</p>
+                    <p><strong>Last Achieved:</strong> {{ exercise.last_max_date }}</p>
+                </div>
+                <div class="max-weight-progress">
+                    <span class="weight-badge">{{ exercise.max_weight_lbs }} lbs</span>
+                    <span class="sets-count">{{ exercise.total_sets }} sets</span>
+                </div>
+            </div>
+            {% else %}
+            <p class="no-exercises">No exercises with recorded weights yet. Start lifting!</p>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
