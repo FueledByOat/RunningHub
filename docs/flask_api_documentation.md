@@ -3,10 +3,10 @@
 ## Summary  
   
 - **Total Blueprints**: 4  
-- **Total Routes**: 26  
-- **Total Services**: 9  
+- **Total Routes**: 32  
+- **Total Services**: 10  
 - **Total Biomechanic Modules**: 24  
-- **HTTP Methods**: GET(20), POST(7)  
+- **HTTP Methods**: GET(23), POST(8), PUT(1), DELETE(1)  
   
 ## Blueprint: coach_g  
   
@@ -14,7 +14,7 @@
 **Directory**: `blueprints\coach_g`  
 **Routes Count**: 2  
   
-**Services Used**: coach_g_service, CoachGService  
+**Services Used**: CoachGService, coach_g_service  
   
 ### Routes  
   
@@ -50,9 +50,9 @@
   
 **URL Prefix**: `/hub`  
 **Directory**: `blueprints\running_hub`  
-**Routes Count**: 9  
+**Routes Count**: 15  
   
-**Services Used**: TrophyService, ActivityService, StatisticsService, activity_service, QueryService, motivation_service, trophy_service, MotivationService, query_service, statistics_service  
+**Services Used**: StatisticsService, statistics_service, query_service, QueryService, ActivityService, trophy_service, MotivationService, calendar_service, TrophyService, activity_service, motivation_service, CalendarService  
   
 ### Routes  
   
@@ -74,6 +74,20 @@
     - API endpoint to generate a daily motivational message based on selected personality  
 - **GET** `/hub/skill_tree/` → `skill_tree()`  
     - Progressive skill tree for running achievement and side-quests  
+- **GET** `/hub/calendar` → `calendar()`  
+    - Renders the main calendar page  
+- **GET** `/hub/api/planned_workouts` → `get_planned_workouts()`  
+    - API endpoint to fetch planned workouts for the visible calendar range  
+- **POST** `/hub/api/planned_workouts` → `save_planned_workout()`  
+    - API endpoint to save a new planned workout  
+- **GET** `/hub/api/planned_workouts/<int:workout_id>` → `get_planned_workout()`  
+    - API endpoint to fetch a single planned workout by ID  
+    - Parameters: workout_id  
+- **PUT** `/hub/api/planned_workouts` → `update_planned_workout()`  
+    - API endpoint to update an existing planned workout  
+- **DELETE** `/hub/api/planned_workouts/<int:workout_id>` → `delete_planned_workout()`  
+    - API endpoint to delete a planned workout  
+    - Parameters: workout_id  
   
 ## Blueprint: run_strong  
   

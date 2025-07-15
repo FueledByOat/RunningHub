@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RunningHub | Track Your Progress</title>
+  <link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
+  <!-- <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/main.min.css" rel="stylesheet"> -->
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/index.global.min.js'></script>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="{{ url_for('running_hub.home') }}">
+        <h1 class="logo">RUNNING<span>HUB</span></h1>
+      </a>
+      <p class="tagline">Detailed activity analysis</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <div id="calendar"></div>
+  </main>
+
+  <!-- Modal -->
+  <div id="eventModal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close-button" onclick="document.getElementById('eventModal').style.display='none';">&times;</span>
+      <form id="workoutForm">
+        <input type="hidden" id="workout_id" name="id">
+
+        <label for="workout_date">Date</label>
+        <input type="date" id="workout_date" name="workout_date" required>
+
+        <label for="workout_name">Workout Name</label>
+        <input type="text" id="workout_name" name="workout_name" placeholder="e.g. 5x1K @ 5K pace">
+
+        <label for="workout_type">Workout Type</label>
+        <select id="workout_type" name="workout_type">
+          <option value="">-- Select Type --</option>
+          <option value="Workout">Workout</option>
+          <option value="Long Run">Long Run</option>
+          <option value="GA">GA</option>
+          <option value="Trail">Trail</option>
+          <option value="Recovery">Recovery</option>
+        </select>
+
+        <label for="effort">Effort (1–10)</label>
+        <input type="number" id="effort" name="effort" min="1" max="10">
+
+        <label for="success">Completed Successfully?</label>
+        <select id="success" name="success">
+          <option value="">-- Select --</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+
+        <label for="planned_notes">Planned Notes</label>
+        <textarea id="planned_notes" name="planned_notes" rows="2"></textarea>
+
+        <label for="recap_notes">Recap Notes</label>
+        <textarea id="recap_notes" name="recap_notes" rows="2"></textarea>
+
+        <div style="margin-top: 12px;">
+          <button type="submit">Save</button>
+          <button type="button" id="deleteWorkoutBtn"
+            style="background: #c00; color: white; display: none; margin-left: 10px;">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+
+</body>
+<script src="{{ url_for('running_hub.static', filename='js/calendar.js') }}" defer></script>
+<script>
+  const EVENTS_API_URL = "{{ url_for('running_hub.get_planned_workouts') }}";
+  const POST_API_URL = "{{ url_for('running_hub.save_planned_workout') }}";
+</script>
+</html>

@@ -1,6 +1,6 @@
 # Services Documentation  
   
-Found 9 service files.  
+Found 10 service files.  
   
 ## Service: activity_service  
   
@@ -42,6 +42,33 @@ Abstract base class for all services.
 - `__init__(db_path)`  
 - `_get_connection()` → sqlite3.Connection  
     - Get database connection with error handling.  
+  
+---  
+  
+## Service: calendar_service  
+  
+**File**: `services\calendar_service.py`  
+  
+### Classes  
+  
+#### CalendarService  
+  
+Service for handling calendar and planned workout operations.  
+  
+**Inherits from**: BaseService  
+  
+**Methods**:  
+  
+- `get_planned_workouts_for_calendar(start_date, end_date)` → list[dict]  
+    - Retrieves planned workouts in a date range and formats them for FullCalendar.  
+- `save_planned_workout(workout_data)`  
+    - Saves a new or updated planned workout to the database.  
+- `get_planned_workout(workout_id)` → dict | None  
+    - Retrieves a single planned workout.  
+- `update_planned_workout(workout_data)` → None  
+    - Updates an existing planned workout.  
+- `delete_planned_workout(workout_id)` → None  
+    - Deletes a planned workout.  
   
 ---  
   
