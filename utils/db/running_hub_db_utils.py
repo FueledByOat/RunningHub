@@ -3,6 +3,7 @@
 
 import logging
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from config import Config
@@ -278,10 +279,10 @@ def insert_planned_workout(conn, data: dict):
         query = """
             INSERT INTO planned_running_workouts (
                 user_id, workout_date, workout_name, workout_type, effort, 
-                success, planned_notes, recap_notes
+                success, planned_notes, recap_notes, linked_activity_id
             ) VALUES (
                 :user_id, :workout_date, :workout_name, :workout_type, :effort,
-                :success, :planned_notes, :recap_notes
+                :success, :planned_notes, :recap_notes, :linked_activity_id
             )
         """
         cur = conn.cursor()
@@ -308,7 +309,8 @@ def update_planned_workout(conn, data: dict):
             UPDATE planned_running_workouts SET
                 workout_date = :workout_date, workout_name = :workout_name, 
                 workout_type = :workout_type, effort = :effort, success = :success, 
-                planned_notes = :planned_notes, recap_notes = :recap_notes
+                planned_notes = :planned_notes, recap_notes = :recap_notes,
+                linked_activity_id = :linked_activity_id
             WHERE id = :id
         """
         cur = conn.cursor()
@@ -324,6 +326,22 @@ def delete_planned_workout_by_id(conn, workout_id: int):
         cur.execute("DELETE FROM planned_running_workouts WHERE id = ?", (workout_id,))
     except Exception as e:
         logger.error(f"Error deleting workout ID {workout_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to delete workout: {e}") from e
+
+def get_recent_strava_activity_ids(conn):
+    """Retrieves recent Strava IDs"""
+    recent_start = (datetime.now() - timedelta(days=3)).isoformat()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT id, name, start_date_local
+        FROM activities
+        WHERE start_date_local >= ?
+        ORDER BY start_date_local DESC
+    """, (recent_start,))
+        return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error fetching strava ID values: {e}")
         raise exception_utils.DatabaseError(f"Failed to delete workout: {e}") from e
 
 # -------------------------------------

@@ -240,7 +240,10 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
     @running_hub_bp.route("/calendar")
     def calendar():
         """Renders the main calendar page."""
-        return render_template("calendar.html")
+
+        recent_activities = calendar_service.get_recent_strava_activity_ids()
+
+        return render_template("calendar.html", recent_activities=recent_activities)
 
     @running_hub_bp.route("/api/planned_workouts", methods=["GET"])
     def get_planned_workouts():

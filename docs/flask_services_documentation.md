@@ -69,6 +69,8 @@ Service for handling calendar and planned workout operations.
     - Updates an existing planned workout.  
 - `delete_planned_workout(workout_id)` → None  
     - Deletes a planned workout.  
+- `get_recent_strava_activity_ids()` → list[Any]  
+    - Retrieves recent Strava IDs  
   
 ---  
   

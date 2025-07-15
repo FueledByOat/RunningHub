@@ -96,3 +96,13 @@ class CalendarService(BaseService):
             self.logger.error(f"Service error deleting workout {workout_id}: {e}")
             raise exception_utils.ServiceError("Failed to delete workout.")
         
+    def get_recent_strava_activity_ids(self) -> list[Any]:
+        """Retrieves recent Strava IDs"""
+        try:
+            with self._get_connection() as conn:
+                recent_activities = running_hub_db_utils.get_recent_strava_activity_ids(conn)
+            self.logger.info(f"Sucesfully pulled recent Strava IDs")
+            return recent_activities
+        except Exception as e:
+            self.logger.error(f"Service error pulling recent Strava IDs: {e}")
+            raise exception_utils.ServiceError("Unable to pull recent Strava IDs")

@@ -14,7 +14,7 @@
 **Directory**: `blueprints\coach_g`  
 **Routes Count**: 2  
   
-**Services Used**: CoachGService, coach_g_service  
+**Services Used**: coach_g_service, CoachGService  
   
 ### Routes  
   
@@ -29,7 +29,7 @@
 **Directory**: `blueprints\runner_vision`  
 **Routes Count**: 5  
   
-**Services Used**: RunnerVisionService, runnervision_service  
+**Services Used**: runnervision_service, RunnerVisionService  
   
 ### Routes  
   
@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 15  
   
-**Services Used**: StatisticsService, statistics_service, query_service, QueryService, ActivityService, trophy_service, MotivationService, calendar_service, TrophyService, activity_service, motivation_service, CalendarService  
+**Services Used**: StatisticsService, statistics_service, motivation_service, trophy_service, TrophyService, calendar_service, QueryService, MotivationService, ActivityService, query_service, activity_service, CalendarService  
   
 ### Routes  
   

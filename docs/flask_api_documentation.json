@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "CoachGService",
-        "coach_g_service"
+        "coach_g_service",
+        "CoachGService"
       ]
     },
     "runner_vision": {
@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "RunnerVisionService",
-        "runnervision_service"
+        "runnervision_service",
+        "RunnerVisionService"
       ]
     },
     "running_hub": {
@@ -266,7 +266,7 @@
           ],
           "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
           "parameters": [],
-          "line_number": 246,
+          "line_number": 249,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -278,7 +278,7 @@
           ],
           "docstring": "API endpoint to save a new planned workout.",
           "parameters": [],
-          "line_number": 273,
+          "line_number": 276,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -292,7 +292,7 @@
           "parameters": [
             "workout_id"
           ],
-          "line_number": 290,
+          "line_number": 293,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts/<int:workout_id>"
         },
@@ -304,7 +304,7 @@
           ],
           "docstring": "API endpoint to update an existing planned workout.",
           "parameters": [],
-          "line_number": 302,
+          "line_number": 305,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -318,7 +318,7 @@
           "parameters": [
             "workout_id"
           ],
-          "line_number": 318,
+          "line_number": 321,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts/<int:workout_id>"
         }
@@ -352,15 +352,15 @@
       "services_used": [
         "StatisticsService",
         "statistics_service",
-        "query_service",
-        "QueryService",
-        "ActivityService",
-        "trophy_service",
-        "MotivationService",
-        "calendar_service",
-        "TrophyService",
-        "activity_service",
         "motivation_service",
+        "trophy_service",
+        "TrophyService",
+        "calendar_service",
+        "QueryService",
+        "MotivationService",
+        "ActivityService",
+        "query_service",
+        "activity_service",
         "CalendarService"
       ]
     },
@@ -727,7 +727,7 @@
       ],
       "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
       "parameters": [],
-      "line_number": 246,
+      "line_number": 249,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -739,7 +739,7 @@
       ],
       "docstring": "API endpoint to save a new planned workout.",
       "parameters": [],
-      "line_number": 273,
+      "line_number": 276,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -753,7 +753,7 @@
       "parameters": [
         "workout_id"
       ],
-      "line_number": 290,
+      "line_number": 293,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts/<int:workout_id>"
     },
@@ -765,7 +765,7 @@
       ],
       "docstring": "API endpoint to update an existing planned workout.",
       "parameters": [],
-      "line_number": 302,
+      "line_number": 305,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -779,7 +779,7 @@
       "parameters": [
         "workout_id"
       ],
-      "line_number": 318,
+      "line_number": 321,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts/<int:workout_id>"
     },
@@ -1117,6 +1117,15 @@
               ],
               "return_type": "None",
               "line_number": 88,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_recent_strava_activity_ids",
+              "docstring": "Retrieves recent Strava IDs",
+              "parameters": [],
+              "return_type": "list[Any]",
+              "line_number": 99,
               "is_async": false,
               "decorators": []
             }

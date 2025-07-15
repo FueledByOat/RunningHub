@@ -50,14 +50,24 @@
         <label for="effort">Effort (1–10)</label>
         <input type="number" id="effort" name="effort" min="1" max="10">
 
-        <label for="success">Completed Successfully?</label>
+        <label for="success">Completed Successfully?*</label>
         <select id="success" name="success">
           <option value="">-- Select --</option>
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
 
-        <label for="planned_notes">Planned Notes</label>
+        <label for="linked_activity_id">Link to Strava Activity</label>
+        <select id="linked_activity_id" name="linked_activity_id">
+          <option value="">-- Optional --</option>
+          {% for activity in recent_activities %}
+          <option value="{{ activity.id }}">
+            {{ activity.start_date_local[:10] }} - {{ activity.name|truncate(50) }}
+          </option>
+          {% endfor %}
+        </select>
+
+        <label for="planned_notes"><br>Planned Notes</label>
         <textarea id="planned_notes" name="planned_notes" rows="2"></textarea>
 
         <label for="recap_notes">Recap Notes</label>
@@ -80,4 +90,5 @@
   const EVENTS_API_URL = "{{ url_for('running_hub.get_planned_workouts') }}";
   const POST_API_URL = "{{ url_for('running_hub.save_planned_workout') }}";
 </script>
+
 </html>
