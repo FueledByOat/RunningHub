@@ -865,3 +865,43 @@ body.runstrong {
   font-weight: bold;
   font-size: 1.1rem;
 }
+
+.accordion {
+  background-color: var(--rs-primary);
+  color: var(--rs-white);
+  cursor: pointer;
+  padding: 1rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+.active, .accordion:hover {
+  background-color: var(--rs-highlight);
+}
+.panel {
+  padding: 0 1rem;
+  background-color: var(--rs-background);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+.exercise-card {
+  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
+  border: 2px solid var(--rs-accent);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 15px var(--rs-shadow);
+}
+.exercise-card h4 {
+  margin: 0;
+  color: var(--rs-highlight);
+}
+.exercise-card a {
+  color: var(--rs-secondary);
+  font-size: 0.95rem;
+}

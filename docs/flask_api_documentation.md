@@ -3,10 +3,10 @@
 ## Summary  
   
 - **Total Blueprints**: 4  
-- **Total Routes**: 25  
+- **Total Routes**: 26  
 - **Total Services**: 9  
 - **Total Biomechanic Modules**: 24  
-- **HTTP Methods**: GET(19), POST(7)  
+- **HTTP Methods**: GET(20), POST(7)  
   
 ## Blueprint: coach_g  
   
@@ -14,7 +14,7 @@
 **Directory**: `blueprints\coach_g`  
 **Routes Count**: 2  
   
-**Services Used**: CoachGService, coach_g_service  
+**Services Used**: coach_g_service, CoachGService  
   
 ### Routes  
   
@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 9  
   
-**Services Used**: StatisticsService, TrophyService, QueryService, ActivityService, motivation_service, activity_service, MotivationService, trophy_service, statistics_service, query_service  
+**Services Used**: TrophyService, ActivityService, StatisticsService, activity_service, QueryService, motivation_service, trophy_service, MotivationService, query_service, statistics_service  
   
 ### Routes  
   
@@ -79,7 +79,7 @@
   
 **URL Prefix**: `/strong`  
 **Directory**: `blueprints\run_strong`  
-**Routes Count**: 9  
+**Routes Count**: 10  
   
 **Services Used**: runstrong_service, RunStrongService  
   
@@ -104,4 +104,6 @@
 - **GET** `/strong/api/exercise-max/<int:exercise_id>` → `get_exercise_max()`  
     - API: Get maximum weight for a specific exercise  
     - Parameters: exercise_id  
+- **GET** `/strong/movement-catalog` → `movement_catalog()`  
+    - Display movement catalog page  
   

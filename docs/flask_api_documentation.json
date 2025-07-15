@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "CoachGService",
-        "coach_g_service"
+        "coach_g_service",
+        "CoachGService"
       ]
     },
     "runner_vision": {
@@ -272,16 +272,16 @@
         "config.Config"
       ],
       "services_used": [
-        "StatisticsService",
         "TrophyService",
-        "QueryService",
         "ActivityService",
-        "motivation_service",
+        "StatisticsService",
         "activity_service",
-        "MotivationService",
+        "QueryService",
+        "motivation_service",
         "trophy_service",
-        "statistics_service",
-        "query_service"
+        "MotivationService",
+        "query_service",
+        "statistics_service"
       ]
     },
     "run_strong": {
@@ -399,6 +399,18 @@
           "line_number": 137,
           "blueprint": "run_strong",
           "full_url": "/strong/api/exercise-max/<int:exercise_id>"
+        },
+        {
+          "function_name": "movement_catalog",
+          "endpoint": "/movement-catalog",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display movement catalog page.",
+          "parameters": [],
+          "line_number": 147,
+          "blueprint": "run_strong",
+          "full_url": "/strong/movement-catalog"
         }
       ],
       "imports": [
@@ -724,6 +736,18 @@
       "line_number": 137,
       "blueprint": "run_strong",
       "full_url": "/strong/api/exercise-max/<int:exercise_id>"
+    },
+    {
+      "function_name": "movement_catalog",
+      "endpoint": "/movement-catalog",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display movement catalog page.",
+      "parameters": [],
+      "line_number": 147,
+      "blueprint": "run_strong",
+      "full_url": "/strong/movement-catalog"
     }
   ],
   "services": {
@@ -4670,11 +4694,11 @@
   },
   "summary": {
     "total_blueprints": 4,
-    "total_routes": 25,
+    "total_routes": 26,
     "total_services": 9,
     "total_biomechanic_modules": 24,
     "methods_distribution": {
-      "GET": 19,
+      "GET": 20,
       "POST": 7
     },
     "blueprints_list": [
