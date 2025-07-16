@@ -17,7 +17,12 @@
       <a href="{{ url_for('running_hub.home') }}">
         <h1 class="logo">RUNNING<span>HUB</span></h1>
       </a>
-      <p class="tagline">Detailed activity analysis</p>
+      <p class="tagline">
+        <a href="https://docs.google.com/spreadsheets/d/1REdIAB6WNbkuGJ-j8E2woSB8gfxVdyfgrL-auGASZXg/edit?usp=sharing"
+          target="_blank">
+
+          Detailed planning tracker</a>
+      </p>
     </div>
   </header>
 
@@ -82,10 +87,6 @@
       </form>
     </div>
   </div>
-
-  <p><a href="https://docs.google.com/spreadsheets/d/1REdIAB6WNbkuGJ-j8E2woSB8gfxVdyfgrL-auGASZXg/edit?usp=sharing" target="_blank">Planning Source</p>
-
-
 
 </body>
 <script src="{{ url_for('running_hub.static', filename='js/calendar.js') }}" defer></script>

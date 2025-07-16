@@ -29,7 +29,7 @@
 **Directory**: `blueprints\runner_vision`  
 **Routes Count**: 5  
   
-**Services Used**: RunnerVisionService, runnervision_service  
+**Services Used**: runnervision_service, RunnerVisionService  
   
 ### Routes  
   
@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 15  
   
-**Services Used**: query_service, calendar_service, ActivityService, TrophyService, CalendarService, motivation_service, QueryService, StatisticsService, statistics_service, MotivationService, trophy_service, activity_service  
+**Services Used**: activity_service, trophy_service, CalendarService, query_service, QueryService, ActivityService, StatisticsService, statistics_service, MotivationService, motivation_service, calendar_service, TrophyService  
   
 ### Routes  
   
@@ -95,7 +95,7 @@
 **Directory**: `blueprints\run_strong`  
 **Routes Count**: 10  
   
-**Services Used**: runstrong_service, RunStrongService  
+**Services Used**: RunStrongService, runstrong_service  
   
 ### Routes  
   

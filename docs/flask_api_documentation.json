@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "RunnerVisionService",
-        "runnervision_service"
+        "runnervision_service",
+        "RunnerVisionService"
       ]
     },
     "running_hub": {
@@ -350,18 +350,18 @@
         "config.Config"
       ],
       "services_used": [
-        "query_service",
-        "calendar_service",
-        "ActivityService",
-        "TrophyService",
+        "activity_service",
+        "trophy_service",
         "CalendarService",
-        "motivation_service",
+        "query_service",
         "QueryService",
+        "ActivityService",
         "StatisticsService",
         "statistics_service",
         "MotivationService",
-        "trophy_service",
-        "activity_service"
+        "motivation_service",
+        "calendar_service",
+        "TrophyService"
       ]
     },
     "run_strong": {
@@ -504,8 +504,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
