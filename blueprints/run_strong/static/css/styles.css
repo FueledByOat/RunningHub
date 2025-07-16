@@ -4,11 +4,56 @@
   --rs-accent: #ff0080;
   --rs-secondary: #ffa500;
   --rs-highlight: #ff4ec7;
-  --rs-white: #fff;
+  --rs-white: #ffffff;
   --rs-shadow: rgba(255, 105, 180, 0.3);
   --rs-background: #2d003e;
 }
 
+/* Base Classes */
+.rs-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px var(--rs-shadow);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.rs-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+}
+
+.rs-input {
+  padding: 0.5rem;
+  border: 1px solid var(--rs-accent);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+}
+
+.rs-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rs-button {
+  background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
+  color: var(--rs-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px var(--rs-shadow);
+}
+
+.rs-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px var(--rs-shadow);
+  background: linear-gradient(135deg, var(--rs-highlight), var(--rs-secondary));
+}
+
+/* Main Layout */
 body.runstrong {
   background: linear-gradient(to right, #46003d, #1b002a);
   color: var(--rs-white);
@@ -35,7 +80,6 @@ body.runstrong {
     opacity: 0;
     transform: translateY(-10px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -159,7 +203,7 @@ body.runstrong {
   border: 2px solid var(--rs-accent);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
+  color: var(--rs-white);
   backdrop-filter: blur(5px);
 }
 
@@ -196,6 +240,7 @@ body.runstrong {
   transform: scale(1.05);
 }
 
+/* Exercise Components */
 .exercise-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -204,16 +249,29 @@ body.runstrong {
 }
 
 .exercise-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 10px var(--rs-shadow);
-  transition: transform 0.2s ease;
-  backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
+  border: 2px solid var(--rs-accent);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 15px var(--rs-shadow);
+  transition: all 0.3s ease;
 }
 
 .exercise-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+  border-color: var(--rs-highlight);
+}
+
+.exercise-card h4 {
+  margin: 0;
+  color: var(--rs-highlight);
+}
+
+.exercise-card a {
+  color: var(--rs-secondary);
+  font-size: 0.95rem;
 }
 
 .exercise-title {
@@ -258,7 +316,7 @@ body.runstrong {
   border-radius: 6px;
   border: 2px solid var(--rs-accent);
   background: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
+  color: var(--rs-white);
 }
 
 .exercise-form {
@@ -297,6 +355,75 @@ body.runstrong {
   margin-top: 1rem;
 }
 
+/* Form Components */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  color: var(--rs-white);
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  padding: 0.5rem;
+  border: 1px solid var(--rs-accent);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-group input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--rs-accent);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--rs-highlight);
+}
+
+.btn-secondary {
+  background-color: var(--rs-secondary);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: var(--rs-white);
+  border: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Specialized Components */
 .journal-section {
   background: rgba(255, 255, 255, 0.1);
   padding: 2rem;
@@ -378,58 +505,6 @@ body.runstrong {
   margin: 1rem 0;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  color: var(--rs-white);
-  font-weight: bold;
-  font-size: 0.9rem;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  padding: 0.5rem;
-  border: 1px solid var(--rs-accent);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--rs-white);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-.btn-primary {
-  background-color: var(--rs-accent);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: var(--rs-highlight);
-}
-
-.btn-secondary {
-  background-color: var(--rs-secondary);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
 .status-selector {
   display: flex;
   gap: 0.5rem;
@@ -454,7 +529,6 @@ body.runstrong {
 .status-btn.active {
   background-color: var(--rs-shadow);
   color: var(--rs-white);
-  /* Or white depending on your theme */
   font-weight: bold;
   border: 4px solid var(--rs-white);
 }
@@ -511,41 +585,6 @@ body.runstrong {
   background-color: rgba(255, 0, 128, 0.1);
 }
 
-.exercise-details {
-  display: none;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  color: var(--rs-white);
-  font-weight: bold;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  padding: 0.5rem;
-  border: 1px solid var(--rs-accent);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
-}
-
-.form-group input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .routine-builder {
   background: rgba(255, 255, 255, 0.05);
   padding: 2rem;
@@ -563,41 +602,6 @@ body.runstrong {
   border-radius: 8px;
 }
 
-.btn-primary {
-  background-color: var(--rs-accent);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: var(--rs-highlight);
-}
-
-.btn-secondary {
-  background-color: var(--rs-secondary);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: var(--rs-white);
-  border: none;
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
 .search-box {
   width: 100%;
   padding: 0.8rem;
@@ -613,7 +617,7 @@ body.runstrong {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Fatigue Dashboard 2.0 */
+/* Dashboard Components */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -691,7 +695,7 @@ body.runstrong {
 }
 
 .circular-chart .percentage {
-  fill: #fff;
+  fill: var(--rs-white);
   font-size: 0.5em;
   text-anchor: middle;
 }
@@ -704,10 +708,10 @@ body.runstrong {
 
 .fatigue-score {
   --score-color: hsl(calc(120 - var(--score) * 1.2), 80%, 60%);
-  color: var(--score-color)
-};
+  color: var(--score-color);
+}
 
-/* Max Weights Page Styles */
+/* Max Weights Page */
 .max-weights-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -733,33 +737,6 @@ body.runstrong {
   min-height: 160px;
 }
 
-.max-weight-content {
-  flex-grow: 1;
-}
-
-.max-weight-content h3 {
-  color: var(--rs-highlight);
-  margin: 0 0 0.5rem 0;
-  font-size: 1.2rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.max-weight-content p {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-  color: var(--rs-white);
-}
-
-.max-weight-progress {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid var(--rs-accent);
-}
-
 .max-weight-item:hover {
   transform: translateY(-5px);
   box-shadow: 0 6px 20px var(--rs-shadow);
@@ -777,6 +754,24 @@ body.runstrong {
 .max-weight-item p {
   margin: 0.5rem 0;
   font-size: 1.1rem;
+  color: var(--rs-white);
+}
+
+.max-weight-content {
+  flex-grow: 1;
+}
+
+.max-weight-content h3 {
+  color: var(--rs-highlight);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.max-weight-content p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
   color: var(--rs-white);
 }
 
@@ -805,7 +800,7 @@ body.runstrong {
   font-style: italic;
 }
 
-/* Goals Integration Styles */
+/* Goals Integration */
 .goals-list .goal-item {
   background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
   border: 2px solid var(--rs-accent);
@@ -866,6 +861,7 @@ body.runstrong {
   font-size: 1.1rem;
 }
 
+/* Accordion Component */
 .accordion {
   background-color: var(--rs-primary);
   color: var(--rs-white);
@@ -879,29 +875,15 @@ body.runstrong {
   font-size: 1.2rem;
   margin-top: 1rem;
 }
+
 .active, .accordion:hover {
   background-color: var(--rs-highlight);
 }
+
 .panel {
   padding: 0 1rem;
   background-color: var(--rs-background);
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease-out;
-}
-.exercise-card {
-  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
-  border: 2px solid var(--rs-accent);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 4px 15px var(--rs-shadow);
-}
-.exercise-card h4 {
-  margin: 0;
-  color: var(--rs-highlight);
-}
-.exercise-card a {
-  color: var(--rs-secondary);
-  font-size: 0.95rem;
 }
