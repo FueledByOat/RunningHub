@@ -279,6 +279,16 @@ class StravaDataPipeline:
         except Exception as e:
             self.logger.warning("Update workout activity to strava activity linkage database update failed!")
 
+    def update_workout_embeddings(self) -> None:
+        """
+        After any potential activity import, attempt to link workout to strava activity id.
+        """
+        try:
+            strava_utils.embed_workouts_and_build_faiss(self.db_path, "faiss_workout_index.idx")
+            self.logger.info(f"Update workout embeddings operation is successful")
+        except Exception as e:
+            self.logger.warning("Update workout embeddings procedure failed!")
+
     def update_daily_dashboard_metrics(self) -> None:
         """
         After any potential activity import, call to db to calculate
@@ -333,6 +343,9 @@ class StravaDataPipeline:
 
             # Step 7: Attempt to link custom workout data and Strava activity data
             self.update_workout_linkage()
+
+            # Step 8: Generate and store embeddings from workout data
+            self.update_workout_embeddings()
             
             self.logger.info("=== Pipeline completed successfully ===")
             return True

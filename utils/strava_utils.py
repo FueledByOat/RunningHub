@@ -15,11 +15,11 @@ from typing import Dict, List, Optional, Any, Union
 import time
 from dotenv import load_dotenv
 
+from sentence_transformers import SentenceTransformer
+import faiss
 
-from utils.db import db_utils
 from utils.db import dash_db_utils
 from utils.db import language_db_utils
-from utils.db import runstrong_db_utils
 from config import Config
 
 # Configure module-level logger
@@ -1280,7 +1280,137 @@ def auto_link_strava_activities(db_path):
                     logger.error(f"Database error updating planned_running_workouts {workout["id"]} with {best["id"]}: {e}")
                     raise
                 except (ValueError, AttributeError) as e:
-                    logger.error(f"Error error updating planned_running_workouts with link: {e}")
+                    logger.error(f"Error updating planned_running_workouts with link: {e}")
                 return None
             else:
                 logger.info(f"Multiple possible matches for workout {workout['id']}, skipping.")
+
+def generate_natural_language_description(row):
+    """Generate natural language summary from workout data for vector embedding"""
+
+    workout_date = row["workout_date"]
+    workout_type = row["workout_type"] or "Unknown type"
+    workout_name = row["workout_name"] or ""
+    effort = row["effort"] or "unknown"
+    success = "successful" if row["success"] == "yes" else "not successful"
+    planned_notes = row["planned_notes"] or ""
+    recap_notes = row["recap_notes"] or ""
+    activity_id = row["linked_activity_id"]
+
+    return (
+        f"On {workout_date}, a {workout_type} activity was planned: '{workout_name}'. "
+        f"The effort was rated an RPE of: {effort}/10 and it was marked as {success}. "
+        f"Planned notes: '{planned_notes}'. Recap: '{recap_notes}'. "
+        f"This workout is linked to Strava activity ID {activity_id}."
+    )
+
+def embed_workouts_and_build_faiss(db_path: str, faiss_index_path: str = "faiss_workout_index.idx"):
+    """Generate and store the FAISS index-to-workout ID mapping in a dedicated SQLite table"""
+
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Ensure the mapping table exists
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS workout_vector_index (
+                    faiss_index INTEGER PRIMARY KEY,
+                    workout_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error creating workout_vector_index table: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error on workout_vector_index table: {e}")
+            return None
+
+        try:
+            # Select only linked workouts that aren't embedded
+            cur.execute("""
+                SELECT * FROM planned_running_workouts
+                WHERE linked_activity_id != ''
+                AND embedding_generated = 0
+            """)
+            rows = cur.fetchall()
+        except sqlite3.Error as e:
+            logger.error(f"Database error accessing data from planned_running_workouts: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error on planned_running_workouts select query: {e}")
+            return None
+
+        if not rows:
+            logger.info("No new workouts to embed.")
+            return
+
+        texts = []
+        workout_ids = []
+
+        for row in rows:
+            text = generate_natural_language_description(row)
+            texts.append(text)
+            workout_ids.append(row["id"])
+            try:
+                cur.execute("""
+                    UPDATE planned_running_workouts
+                    SET workout_embedding_text = ?
+                    WHERE id = ?
+                """, (text, row["id"]))
+            except sqlite3.Error as e:
+                logger.error(f"Database error updating planned_running_workouts with workout embedding text: {e}")
+                raise
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Error updating planned_running_workouts: {e}")
+                return None
+
+        embeddings = model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+
+        dim = embeddings.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index.add(embeddings)
+        faiss.write_index(index, faiss_index_path)
+
+        # Clear old index mapping if re-generating full index
+        try:
+            cur.execute("DELETE FROM workout_vector_index")
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting old index mapping from workout_vector_index: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error updating workout_vector_index: {e}")
+            return None
+
+        # Insert new FAISS index → workout ID rows
+        try:
+            cur.executemany("""
+                INSERT INTO workout_vector_index (faiss_index, workout_id)
+                VALUES (?, ?)
+            """, [(i, wid) for i, wid in enumerate(workout_ids)])
+        except sqlite3.Error as e:
+            logger.error(f"Database error inserting index mapping into workout_vector_index: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error inserting data into workout_vector_index: {e}")
+            return None
+        
+        # Mark embedded
+        try:
+            cur.executemany("""
+                UPDATE planned_running_workouts
+                SET embedding_generated = 1
+                WHERE id = ?
+            """, [(wid,) for wid in workout_ids])
+        except sqlite3.Error as e:
+            logger.error(f"Database error marking planned_running_workouts activity as having an embedding: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error marking embeddings on planned_running_workouts: {e}")
+            return None
+
+    logger.info(f"Indexed and mapped {len(workout_ids)} workouts to FAISS.")
