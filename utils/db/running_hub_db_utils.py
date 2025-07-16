@@ -279,10 +279,10 @@ def insert_planned_workout(conn, data: dict):
         query = """
             INSERT INTO planned_running_workouts (
                 user_id, workout_date, workout_name, workout_type, effort, 
-                success, planned_notes, recap_notes, linked_activity_id
+                success, planned_notes, recap_notes, linked_activity_id, last_modified
             ) VALUES (
                 :user_id, :workout_date, :workout_name, :workout_type, :effort,
-                :success, :planned_notes, :recap_notes, :linked_activity_id
+                :success, :planned_notes, :recap_notes, :linked_activity_id, CURRENT_TIMESTAMP
             )
         """
         cur = conn.cursor()
@@ -310,7 +310,7 @@ def update_planned_workout(conn, data: dict):
                 workout_date = :workout_date, workout_name = :workout_name, 
                 workout_type = :workout_type, effort = :effort, success = :success, 
                 planned_notes = :planned_notes, recap_notes = :recap_notes,
-                linked_activity_id = :linked_activity_id
+                linked_activity_id = :linked_activity_id, last_modified = CURRENT_TIMESTAMP
             WHERE id = :id
         """
         cur = conn.cursor()

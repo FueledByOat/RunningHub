@@ -52,7 +52,7 @@
 **Directory**: `blueprints\running_hub`  
 **Routes Count**: 15  
   
-**Services Used**: activity_service, trophy_service, CalendarService, query_service, QueryService, ActivityService, StatisticsService, statistics_service, MotivationService, motivation_service, calendar_service, TrophyService  
+**Services Used**: TrophyService, motivation_service, MotivationService, CalendarService, ActivityService, query_service, trophy_service, calendar_service, StatisticsService, QueryService, activity_service, statistics_service  
   
 ### Routes  
   
@@ -95,7 +95,7 @@
 **Directory**: `blueprints\run_strong`  
 **Routes Count**: 10  
   
-**Services Used**: RunStrongService, runstrong_service  
+**Services Used**: runstrong_service, RunStrongService  
   
 ### Routes  
   

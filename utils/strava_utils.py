@@ -1335,7 +1335,10 @@ def embed_workouts_and_build_faiss(db_path: str, faiss_index_path: str = "faiss_
             cur.execute("""
                 SELECT * FROM planned_running_workouts
                 WHERE linked_activity_id != ''
-                AND embedding_generated = 0
+                AND (
+                embedding_generated_at IS NULL
+                OR last_modified > embedding_generated_at
+            )
             """)
             rows = cur.fetchall()
         except sqlite3.Error as e:
@@ -1403,9 +1406,12 @@ def embed_workouts_and_build_faiss(db_path: str, faiss_index_path: str = "faiss_
         try:
             cur.executemany("""
                 UPDATE planned_running_workouts
-                SET embedding_generated = 1
+                SET 
+                    workout_embedding_text = ?,
+                    embedding_generated = 1,
+                    embedding_generated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, [(wid,) for wid in workout_ids])
+            """, list(zip(texts, workout_ids)))
         except sqlite3.Error as e:
             logger.error(f"Database error marking planned_running_workouts activity as having an embedding: {e}")
             raise
