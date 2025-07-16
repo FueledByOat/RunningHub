@@ -14,6 +14,16 @@ class CalendarService(BaseService):
         """
         Retrieves planned workouts in a date range and formats them for FullCalendar.
         """
+
+        # color coding
+
+        type_colors = {
+            'Workout': "#eb5252", 
+            'Long Run': "#8495a7",
+            'GA': "#0d69c5", 
+            'Trail': "#8F6A25", 
+            'Race':  "#5950d4"
+        }
         try:
             with self._get_connection() as conn:
                 # Call the new date-filtered database function
@@ -25,17 +35,18 @@ class CalendarService(BaseService):
             for row in rows:
                 # Business logic for color-coding events
                 if row["success"] == "yes":
-                    color = "#0c1559"  # Completed
+                    color = "#1ec275"  # Completed
                 elif row["success"] == "no":
-                    color = "#ffe066"  # Not completed
+                    color = "#d8be56"  # Not completed
                 else:
-                    color = "#ccc"     # Planned
+                    color = type_colors.get(row['workout_type'], '#0d69c5')     # Planned
 
                 events.append({
                     "id": row["id"],
                     "title": row["workout_name"] or row["workout_type"] or "Planned Workout",
                     "start": row["workout_date"],
-                    "color": color
+                    "color": color,
+                    'linked': row['linked_activity_id']
                 })
             return events
         except Exception as e:

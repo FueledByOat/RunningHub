@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RunningHub | Track Your Progress</title>
   <link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
   <!-- <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/main.min.css" rel="stylesheet"> -->
   <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/index.global.min.js'></script>
 </head>
@@ -24,9 +25,9 @@
     <div id="calendar"></div>
   </main>
 
-  <!-- Modal -->
-  <div id="eventModal" class="modal" style="display:none;">
-    <div class="modal-content">
+  <!-- Sidebar Modal -->
+  <div id="eventModal" class="modal-sidebar" style="display: none;">
+    <div class="sidebar-content">
       <span class="close-button" onclick="document.getElementById('eventModal').style.display='none';">&times;</span>
       <form id="workoutForm">
         <input type="hidden" id="workout_id" name="id">
@@ -41,21 +42,27 @@
         <select id="workout_type" name="workout_type">
           <option value="">-- Select Type --</option>
           <option value="Workout">Workout</option>
+          <option value="Race">Race</option>
           <option value="Long Run">Long Run</option>
           <option value="GA">GA</option>
           <option value="Trail">Trail</option>
-          <option value="Recovery">Recovery</option>
         </select>
 
         <label for="effort">Effort (1–10)</label>
         <input type="number" id="effort" name="effort" min="1" max="10">
 
-        <label for="success">Completed Successfully?*</label>
+        <label for="success">Completed Full Workout?</label>
         <select id="success" name="success">
           <option value="">-- Select --</option>
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
+
+        <label for="planned_notes">Planned Notes</label>
+        <textarea id="planned_notes" name="planned_notes" rows="5"></textarea>
+
+        <label for="recap_notes">Recap Notes</label>
+        <textarea id="recap_notes" name="recap_notes" rows="5"></textarea>
 
         <label for="linked_activity_id">Link to Strava Activity</label>
         <select id="linked_activity_id" name="linked_activity_id">
@@ -67,12 +74,6 @@
           {% endfor %}
         </select>
 
-        <label for="planned_notes"><br>Planned Notes</label>
-        <textarea id="planned_notes" name="planned_notes" rows="2"></textarea>
-
-        <label for="recap_notes">Recap Notes</label>
-        <textarea id="recap_notes" name="recap_notes" rows="2"></textarea>
-
         <div style="margin-top: 12px;">
           <button type="submit">Save</button>
           <button type="button" id="deleteWorkoutBtn"
@@ -81,6 +82,8 @@
       </form>
     </div>
   </div>
+
+  <p><a href="https://docs.google.com/spreadsheets/d/1REdIAB6WNbkuGJ-j8E2woSB8gfxVdyfgrL-auGASZXg/edit?usp=sharing" target="_blank">Planning Source</p>
 
 
 

@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -350,18 +350,18 @@
         "config.Config"
       ],
       "services_used": [
-        "StatisticsService",
-        "statistics_service",
-        "motivation_service",
-        "trophy_service",
-        "TrophyService",
-        "calendar_service",
-        "QueryService",
         "MotivationService",
-        "ActivityService",
-        "query_service",
+        "CalendarService",
         "activity_service",
-        "CalendarService"
+        "motivation_service",
+        "TrophyService",
+        "QueryService",
+        "calendar_service",
+        "statistics_service",
+        "query_service",
+        "StatisticsService",
+        "ActivityService",
+        "trophy_service"
       ]
     },
     "run_strong": {
@@ -504,8 +504,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
@@ -1074,7 +1074,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 45,
+              "line_number": 56,
               "is_async": false,
               "decorators": []
             },
@@ -1088,7 +1088,7 @@
                 }
               ],
               "return_type": "dict | None",
-              "line_number": 65,
+              "line_number": 76,
               "is_async": false,
               "decorators": []
             },
@@ -1102,7 +1102,7 @@
                 }
               ],
               "return_type": "None",
-              "line_number": 74,
+              "line_number": 85,
               "is_async": false,
               "decorators": []
             },
@@ -1116,7 +1116,7 @@
                 }
               ],
               "return_type": "None",
-              "line_number": 88,
+              "line_number": 99,
               "is_async": false,
               "decorators": []
             },
@@ -1125,7 +1125,7 @@
               "docstring": "Retrieves recent Strava IDs",
               "parameters": [],
               "return_type": "list[Any]",
-              "line_number": 99,
+              "line_number": 110,
               "is_async": false,
               "decorators": []
             }

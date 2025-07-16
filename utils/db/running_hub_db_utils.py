@@ -261,7 +261,7 @@ def get_planned_workouts_by_date_range(conn, start_date, end_date) -> list[dict]
     """Retrieve all planned workouts within a specific date range."""
     try:
         query = """
-            SELECT id, workout_name, workout_date, workout_type, success
+            SELECT id, workout_name, workout_date, workout_type, success, linked_activity_id
             FROM planned_running_workouts
             WHERE workout_date BETWEEN ? AND ?
         """
@@ -337,6 +337,7 @@ def get_recent_strava_activity_ids(conn):
         SELECT id, name, start_date_local
         FROM activities
         WHERE start_date_local >= ?
+        AND type = 'Run'
         ORDER BY start_date_local DESC
     """, (recent_start,))
         return cur.fetchall()

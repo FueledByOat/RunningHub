@@ -15,6 +15,16 @@ document.addEventListener('DOMContentLoaded', function () {
             center: 'title',
             right: ''
         },
+        eventContent: function (arg) {
+            const workout = arg.event.extendedProps;
+            const icon = workout.linked
+                ? `<span class="linked-icon" title="Linked to Strava">&#x1F517;</span>`  // 🏃
+                : "";
+
+            return {
+                html: `${icon}<span>${arg.event.title}</span>`
+            };
+        },
         dateClick: function (info) {
             form.reset();
             isEditMode = false;

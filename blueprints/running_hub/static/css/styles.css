@@ -837,3 +837,73 @@ textarea {
 }
 
 /* Motivation */
+
+/* Calendar Modal */
+.modal-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 400px;
+  height: 100vh;
+  background-color: var(--white);
+  box-shadow: -4px 0 12px var(--shadow);
+  border-left: 4px solid var(--accent);
+  z-index: 1000;
+  transition: transform 0.3s ease-in-out;
+  overflow-y: auto;
+}
+
+.sidebar-content {
+  padding: 20px;
+}
+
+.modal-sidebar .close-button {
+  font-size: 1.5rem;
+  float: right;
+  color: var(--text-light);
+  cursor: pointer;
+}
+
+.modal-sidebar form {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-sidebar label {
+  font-weight: 600;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+.modal-sidebar input,
+.modal-sidebar select,
+.modal-sidebar textarea {
+  padding: 8px;
+  border: 1px solid var(--gray-light);
+  border-radius: 6px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-sidebar button {
+  padding: 10px 16px;
+  border: none;
+  background-color: var(--primary);
+  color: white;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+.modal-sidebar button:hover {
+  background-color: var(--primary-light);
+}
+
+.linked-icon {
+  color: var(--accent);
+  font-size: 1.2rem;
+  margin-right: 4px;
+  vertical-align: middle;
+}
