@@ -6,6 +6,7 @@ Handles data extraction, transformation, and loading for Strava athlete data.
 
 import sqlite3
 import requests
+from difflib import SequenceMatcher
 import json
 import os
 import logging
@@ -1173,3 +1174,113 @@ def calculate_rcs(dew_c, feelslike_c, wind_kph, chance_of_rain, chance_of_snow, 
     )
 
     return round(rcs, 2)
+
+def fuzzy_match(a, b):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+def auto_link_strava_activities(db_path):
+    try:
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM planned_running_workouts
+                WHERE linked_activity_id = ''
+                AND workout_date <= date('now')
+            """)
+            planned_workouts = cursor.fetchall()
+            
+    except sqlite3.Error as e:
+        logger.error(f"Database error getting unlinked planned_running_workouts data: {e}")
+        raise
+    except (ValueError, AttributeError) as e:
+        logger.error(f"Error getting unlinked planned_running_workouts data: {e}")
+        return None
+    
+    for workout in planned_workouts:
+        date_str = workout["workout_date"][:10]  # yyyy-mm-dd
+        workout_type = workout["workout_type"]
+        workout_name = workout["workout_name"] or ""
+    # Pull all activities from that day
+        try:
+            with sqlite3.connect(db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                SELECT * FROM activities
+                WHERE DATE(start_date_local) = ? AND type = 'Run'
+            """, (date_str,))
+            activities = cursor.fetchall()
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting unlinked activity data: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error getting unlinked activity data: {e}")
+            return None
+        
+        candidates = []
+
+        for activity in activities:
+            act_type = activity["workout_type"]
+            act_name = activity["name"] or ""
+
+            # Rule 2: If workout_type = 'Workout', prefer workout_type = 3
+            if workout_type == 'Workout' and act_type == 3:
+                candidates.append((activity, 1.0))  # strong match
+
+            # Rule 3: If workout_type = 'Long Run', prefer workout_type = 2
+            elif workout_type == 'Long Run' and act_type == 2:
+                candidates.append((activity, 1.0))  # strong match
+
+            # Rule 4: Non-Workout matching to workout_type = 0
+            elif workout_type != 'Workout' and workout_type != 'Long Run' and act_type == 0:
+                candidates.append((activity, 0.9))
+
+            # Fallback: fuzzy name match
+            else:
+                score = fuzzy_match(workout_name, act_name)
+                if score > 0.8:
+                    candidates.append((activity, score))
+
+        # Choose best candidate
+        if len(candidates) == 1:
+            best = candidates[0][0]
+            logger.info(f"Auto-linking workout {workout['id']} to activity {best['id']}")
+            try:
+                with sqlite3.connect(db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE planned_running_workouts
+                        SET linked_activity_id = ?
+                        WHERE id = ?
+                    """, (best["id"], workout["id"]))
+            except sqlite3.Error as e:
+                logger.error(f"Database error updating planned_running_workouts {workout["id"]} with {best["id"]}: {e}")
+                raise
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Error error updating planned_running_workouts with link: {e}")
+                return None
+    
+        elif len(candidates) > 1:
+            # Sort by score, only auto-link if clear winner
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            if candidates[0][1] > 0.9 and (candidates[0][1] - candidates[1][1]) > 0.1:
+                best = candidates[0][0]
+                logger.info(f"Auto-linking (strong match) workout {workout['id']} to activity {best['id']}")
+                try:
+                    with sqlite3.connect(db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                        UPDATE planned_running_workouts
+                        SET linked_activity_id = ?
+                        WHERE id = ?
+                        """, (best["id"], workout["id"]))
+                except sqlite3.Error as e:
+                    logger.error(f"Database error updating planned_running_workouts {workout["id"]} with {best["id"]}: {e}")
+                    raise
+                except (ValueError, AttributeError) as e:
+                    logger.error(f"Error error updating planned_running_workouts with link: {e}")
+                return None
+            else:
+                logger.info(f"Multiple possible matches for workout {workout['id']}, skipping.")

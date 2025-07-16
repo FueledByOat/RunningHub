@@ -269,6 +269,16 @@ class StravaDataPipeline:
         except Exception as e:
             self.logger.error(f"Error in weather fetch: {e}")
 
+    def update_workout_linkage(self) -> None:
+        """
+        After any potential activity import, attempt to link workout to strava activity id.
+        """
+        try:
+            strava_utils.auto_link_strava_activities(self.db_path)
+            self.logger.info(f"Update workout activity to strava activity linkage operation is successful")
+        except Exception as e:
+            self.logger.warning("Update workout activity to strava activity linkage database update failed!")
+
     def update_daily_dashboard_metrics(self) -> None:
         """
         After any potential activity import, call to db to calculate
@@ -320,6 +330,9 @@ class StravaDataPipeline:
 
             # Step 6: Update daily dashboard metrics
             self.update_daily_dashboard_metrics()
+
+            # Step 7: Attempt to link custom workout data and Strava activity data
+            self.update_workout_linkage()
             
             self.logger.info("=== Pipeline completed successfully ===")
             return True
