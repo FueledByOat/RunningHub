@@ -6,13 +6,13 @@
   --primary-dark: #070d3b;
   --accent: #ffcc00;
   --accent-light: #ffe066;
-  
+
   /* Coach G specific colors */
   --cg-primary: #ec6e68;
   --cg-accent: #7ff6ed;
   --cg-secondary: #163c67;
   --cg-highlight: #efae59;
-  
+
   /* Common colors */
   --white: #fff;
   --background: #f4f4f9;
@@ -166,13 +166,13 @@ body.coach_g {
 /* Chat Interface */
 .coach_g_chat_container {
   max-width: 800px;
-  width: 800px;
+  width: 100%;
   margin: 2rem auto;
   background: rgba(255, 255, 255, 0.95);
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  min-height: 600px;
+  min-height: 80vh;
   display: flex;
   flex-direction: column;
   animation: coach_g_fade_in_up 1.5s ease-out;
@@ -448,6 +448,7 @@ body.coach_g {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -455,10 +456,14 @@ body.coach_g {
 }
 
 @keyframes coach_g_typing {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     transform: scale(0);
     opacity: 0.5;
   }
+
   40% {
     transform: scale(1);
     opacity: 1;
@@ -470,6 +475,7 @@ body.coach_g {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -481,6 +487,7 @@ body.coach_g {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -489,38 +496,83 @@ body.coach_g {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .coach_g_container {
-    padding: 0 10px;
+
+  /* Optimize body for mobile viewport */
+  body.coach_g {
+    min-height: 100svh;
+    /* Use 'small viewport height' for better mobile browser support */
   }
 
-  .logo {
-    font-size: 2rem;
+  /* Hide the large background image on small screens for clarity and performance */
+  .coach_g_background {
+    display: none;
   }
 
+  /* Make the chat container full-screen on mobile */
   .coach_g_chat_container {
-    margin: 1rem auto;
-    border-radius: 15px;
+    margin: 0;
+    min-height: 100svh;
+    border-radius: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
+  /* Adjust padding and message avatar size */
   .coach_g_chat_messages {
     padding: 1rem;
+    max-height: none;
+    /* Allow message area to grow */
+  }
+
+  .coach_g_message_avatar {
+    width: 40px;
+    height: 40px;
   }
 
   .coach_g_message_content {
     padding: 0.8rem 1rem;
   }
 
+  /* Re-style the input area for vertical stacking */
+  .coach_g_chat_input {
+    padding: 1rem;
+  }
+
   .coach_g_input_group {
     flex-direction: column;
     align-items: stretch;
+    /* Make children full-width */
+    gap: 0.75rem;
+  }
+
+  .coach_g_personality_selector {
+    margin-right: 0;
+    /* Remove right margin */
+  }
+
+  .coach_g_personality_dropdown {
+    width: 100%;
+    /* Make dropdown full-width */
   }
 
   .coach_g_send_button {
     align-self: flex-end;
+    /* Keep send button to the right */
     margin-top: 0.5rem;
   }
 
+  /* Allow quick questions to wrap naturally */
   .coach_g_quick_questions_list {
-    flex-direction: column;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    /* Or 'center' */
+    flex-direction: row;
+    /* Override the previous column direction */
+  }
+
+  /* Add padding to the footer */
+  .coach_g_footer_content {
+    padding: 0 1rem;
   }
 }

@@ -583,9 +583,17 @@ textarea {
 }
 
 @keyframes flipAnimation {
-  0% { transform: rotateX(0deg); }
-  50% { transform: rotateX(180deg); }
-  100% { transform: rotateX(360deg); }
+  0% {
+    transform: rotateX(0deg);
+  }
+
+  50% {
+    transform: rotateX(180deg);
+  }
+
+  100% {
+    transform: rotateX(360deg);
+  }
 }
 
 .progress-bar {
@@ -736,13 +744,46 @@ textarea {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .activity-banner {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 15px;
-  }
 
+  /* Header & General Layout */
   .logo {
     font-size: 2.2rem;
+  }
+
+  .tagline {
+    font-size: 1rem;
+  }
+
+  /* Main Buttons */
+  .btn-container {
+    flex-direction: column;
+    /* Stack buttons vertically */
+    align-items: stretch;
+    /* Make buttons full-width */
+  }
+
+  /* Image Container */
+  .image-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Already centers horizontally */
+    justify-content: center; /* Vertically centers the images */
+    gap: 20px;
+  }
+
+  #runner_vision_img,
+  #coach-g-img,
+  #run_strong_img {
+    float: none;
+    width: 80%;
+    max-width: 300px;
+  }
+
+  /* Activity Page */
+  .activity-banner {
+    grid-template-columns: repeat(2, 1fr);
+    /* Simplify to 2 columns */
+    gap: 15px;
   }
 
   .activity-item {
@@ -753,5 +794,48 @@ textarea {
   .activity-metrics {
     justify-content: flex-start;
     margin-top: 5px;
+    flex-wrap: wrap;
+  }
+
+  /* Query Forms */
+  .query-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .query-form,
+  .nlp-form {
+    width: 100%;
+  }
+
+  .or-divider {
+    display: none;
+    /* Hide the 'OR' divider on mobile */
+  }
+
+  /* Race Countdown */
+  .race-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flip-number {
+    font-size: 2rem;
+    /* Reduce font size */
+  }
+
+  /* Modal Sidebar */
+  .modal-sidebar {
+    width: 90%;
+    max-width: 350px;
+  }
+
+  /* Fixed Back Button */
+  .back-button {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+    bottom: 20px;
+    right: 20px;
   }
 }

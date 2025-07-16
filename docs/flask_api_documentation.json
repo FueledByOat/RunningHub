@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "coach_g_service",
-        "CoachGService"
+        "CoachGService",
+        "coach_g_service"
       ]
     },
     "runner_vision": {
@@ -350,18 +350,18 @@
         "config.Config"
       ],
       "services_used": [
-        "TrophyService",
-        "motivation_service",
-        "MotivationService",
-        "CalendarService",
+        "statistics_service",
+        "QueryService",
+        "calendar_service",
         "ActivityService",
         "query_service",
-        "trophy_service",
-        "calendar_service",
-        "StatisticsService",
-        "QueryService",
         "activity_service",
-        "statistics_service"
+        "trophy_service",
+        "TrophyService",
+        "CalendarService",
+        "motivation_service",
+        "StatisticsService",
+        "MotivationService"
       ]
     },
     "run_strong": {
@@ -504,8 +504,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
