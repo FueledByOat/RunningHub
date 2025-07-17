@@ -1,98 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RunningHub | Track Your Progress</title>
-  <link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <!-- <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/main.min.css" rel="stylesheet"> -->
-  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/index.global.min.js'></script>
-</head>
+{% block title %}RunningHub | Calendar{% endblock %}
 
-<body>
-  <header class="site-header">
-    <div class="container">
-      <a href="{{ url_for('running_hub.home') }}">
-        <h1 class="logo">RUNNING<span>HUB</span></h1>
-      </a>
-      <p class="tagline">
-        <a href="https://docs.google.com/spreadsheets/d/1REdIAB6WNbkuGJ-j8E2woSB8gfxVdyfgrL-auGASZXg/edit?usp=sharing"
-          target="_blank">
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+{% endblock %}
 
-          Detailed planning tracker</a>
-      </p>
-    </div>
-  </header>
-
-  <main class="container">
-    <div id="calendar"></div>
-  </main>
-
-  <!-- Sidebar Modal -->
-  <div id="eventModal" class="modal-sidebar" style="display: none;">
-    <div class="sidebar-content">
-      <span class="close-button" onclick="document.getElementById('eventModal').style.display='none';">&times;</span>
-      <form id="workoutForm">
-        <input type="hidden" id="workout_id" name="id">
-
-        <label for="workout_date">Date</label>
-        <input type="date" id="workout_date" name="workout_date" required>
-
-        <label for="workout_name">Workout Name</label>
-        <input type="text" id="workout_name" name="workout_name" placeholder="e.g. 5x1K @ 5K pace">
-
-        <label for="workout_type">Workout Type</label>
-        <select id="workout_type" name="workout_type">
-          <option value="">-- Select Type --</option>
-          <option value="Workout">Workout</option>
-          <option value="Race">Race</option>
-          <option value="Long Run">Long Run</option>
-          <option value="GA">GA</option>
-          <option value="Trail">Trail</option>
-        </select>
-
-        <label for="effort">Effort (1–10)</label>
-        <input type="number" id="effort" name="effort" min="1" max="10">
-
-        <label for="success">Completed Full Workout?</label>
-        <select id="success" name="success">
-          <option value="">-- Select --</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
-        </select>
-
-        <label for="planned_notes">Planned Notes</label>
-        <textarea id="planned_notes" name="planned_notes" rows="5"></textarea>
-
-        <label for="recap_notes">Recap Notes</label>
-        <textarea id="recap_notes" name="recap_notes" rows="5"></textarea>
-
-        <label for="linked_activity_id">Link to Strava Activity</label>
-        <select id="linked_activity_id" name="linked_activity_id">
-          <option value="">-- Optional --</option>
-          {% for activity in recent_activities %}
-          <option value="{{ activity.id }}">
-            {{ activity.start_date_local[:10] }} - {{ activity.name|truncate(50) }}
-          </option>
-          {% endfor %}
-        </select>
-
-        <div style="margin-top: 12px;">
-          <button type="submit">Save</button>
-          <button type="button" id="deleteWorkoutBtn"
-            style="background: #c00; color: white; display: none; margin-left: 10px;">Delete</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-</body>
-<script src="{{ url_for('running_hub.static', filename='js/calendar.js') }}" defer></script>
+{% block head_scripts %}
 <script>
   const EVENTS_API_URL = "{{ url_for('running_hub.get_planned_workouts') }}";
   const POST_API_URL = "{{ url_for('running_hub.save_planned_workout') }}";
 </script>
+<script src="{{ url_for('running_hub.static', filename='js/calendar.js') }}" defer></script>
 
-</html>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.18/index.global.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div id="calendar"></div>
+
+<!-- Sidebar Modal -->
+<div id="eventModal" class="modal-sidebar" style="display: none;">
+  <div class="sidebar-content">
+    <span class="close-button" onclick="document.getElementById('eventModal').style.display='none';">&times;</span>
+    <form id="workoutForm">
+      <input type="hidden" id="workout_id" name="id" />
+
+      <!-- Inputs -->
+      <label for="workout_date">Date</label>
+      <input type="date" id="workout_date" name="workout_date" required />
+
+      <label for="workout_name">Workout Name</label>
+      <input type="text" id="workout_name" name="workout_name" placeholder="e.g. 5x1K @ 5K pace" />
+
+      <label for="workout_type">Workout Type</label>
+      <select id="workout_type" name="workout_type">
+        <option value="">-- Select Type --</option>
+        <option value="Workout">Workout</option>
+        <option value="Race">Race</option>
+        <option value="Long Run">Long Run</option>
+        <option value="GA">GA</option>
+        <option value="Trail">Trail</option>
+      </select>
+
+      <label for="effort">Effort (1–10)</label>
+      <input type="number" id="effort" name="effort" min="1" max="10" />
+
+      <label for="success">Completed Full Workout?</label>
+      <select id="success" name="success">
+        <option value="">-- Select --</option>
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+
+      <label for="planned_notes">Planned Notes</label>
+      <textarea id="planned_notes" name="planned_notes" rows="5"></textarea>
+
+      <label for="recap_notes">Recap Notes</label>
+      <textarea id="recap_notes" name="recap_notes" rows="5"></textarea>
+
+      <label for="linked_activity_id">Link to Strava Activity</label>
+      <select id="linked_activity_id" name="linked_activity_id">
+        <option value="">-- Optional --</option>
+        {% for activity in recent_activities %}
+        <option value="{{ activity.id }}">
+          {{ activity.start_date_local[:10] }} - {{ activity.name|truncate(50) }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <div style="margin-top: 12px;">
+        <button type="submit">Save</button>
+        <button type="button" id="deleteWorkoutBtn"
+          style="background: #c00; color: white; display: none; margin-left: 10px;">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
