@@ -1,10 +1,8 @@
 {% extends "runninghub_base.html" %}
 
-{% block title %}RunningHub | Track Your Progress{% endblock %}
-
 {% block content %}
-
-  <div class="container">
-    <iframe src="/dash/" width="100%" height="1200" style="border:none;"></iframe>
-  </div>
+  {{ app_entry }}
+  {{ config }}
+  {{ scripts }}
+  {{ renderer }}
 {% endblock %}

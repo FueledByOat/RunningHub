@@ -11,6 +11,7 @@ and request/response flow while delegating business logic to service layers.
 """
 
 import logging
+import os
 from flask import Flask, render_template, request, redirect
 
 # Configuration and utilities
