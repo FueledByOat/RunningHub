@@ -80,6 +80,7 @@ body.runstrong {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -791,7 +792,7 @@ body.runstrong {
   border-radius: 20px;
   font-weight: bold;
   font-size: 1.2rem;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .sets-count {
@@ -876,7 +877,8 @@ body.runstrong {
   margin-top: 1rem;
 }
 
-.active, .accordion:hover {
+.active,
+.accordion:hover {
   background-color: var(--rs-highlight);
 }
 
@@ -886,4 +888,142 @@ body.runstrong {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s ease-out;
+}
+
+/* Mobile Friendly Updates */
+@media (max-width: 768px) {
+
+  .runstrong-navbar {
+    /* Revert stacking and enable horizontal scrolling */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    /* Align items to the start */
+    padding: 1rem;
+    -webkit-overflow-scrolling: touch;
+    /* Adds smooth scrolling on iOS */
+  }
+
+  .runstrong-navbar a {
+    margin: 0 1rem;
+    /* Revert to horizontal margin */
+    white-space: nowrap;
+    /* Prevent link text from breaking */
+  }
+
+  /* 2. Layouts */
+  .runstrong .container {
+    flex-direction: column;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .dashboard-grid,
+  .max-weights-list,
+  .exercise-grid,
+  .routine-list {
+    grid-template-columns: 1fr;
+    /* Force single-column grid */
+  }
+
+  /* 3. Sizing and Spacing */
+  body.runstrong {
+    font-size: 14px;
+    /* Slightly smaller base font */
+  }
+
+  .runstrong-header {
+    padding: 1rem 0;
+  }
+
+  .runstrong-logo {
+    max-width: 200px;
+  }
+
+  .runstrong h2,
+  .runstrong h3,
+  .max-weight-item h3,
+  .goals-list .goal-item h3 {
+    font-size: 1.4rem;
+  }
+
+  .rs-card,
+  .planner-section,
+  .journal-section {
+    padding: 1rem;
+  }
+
+  /* 4. Forms & Inputs */
+  .runstrong select,
+  .runstrong input[type="text"],
+  .exercise-search input,
+  .search-box {
+    width: 90%;
+    /* Use percentage for better flexibility */
+  }
+
+  .runstrong-button-grid {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .runstrong-button-grid a button {
+    width: 100%;
+  }
+
+  /* 5. Video */
+  .responsive-video {
+    width: 95%;
+  }
+
+  #category-toggle {
+    flex-wrap: wrap;
+    /* Allow buttons to wrap to the next line */
+    justify-content: center;
+    /* Center the buttons when they wrap */
+  }
+
+  .set-row {
+    flex-direction: column;
+    /* Stack the inputs vertically */
+    align-items: stretch;
+    /* Make all inputs the same width */
+  }
+
+  .set-row .remove-set-btn {
+    /* Make the remove button less wide than the inputs */
+    align-self: flex-end;
+    /* Align it to the right */
+    margin-top: 5px;
+  }
+}
+
+
+.video-container {
+  display: flex;
+  justify-content: center;
+  /* This will center the video */
+  padding: 2rem 0;
+}
+
+.responsive-video {
+  width: 100%;
+  max-width: 700px;
+  /* Sets a max size on large screens */
+  height: auto;
+  display: block;
+}
+
+.set-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.form-container {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
 }

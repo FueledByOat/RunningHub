@@ -37,8 +37,9 @@
     </div>
 </div>
 
-<div style="padding: 2%;">
-    <video controls autoplay muted style="display: block; margin: auto; width: 25%; padding: 2%;">
+<div class="video-container">
+    <!-- <video controls autoplay muted style="display: block; margin: auto; width: 25%; padding: 2%;"> -->
+    <video controls autoplay muted class="responsive-video">
         <source src="{{ url_for('run_strong.static', filename='videos/coach_g_drops_bricks.mp4') }}" type="video/mp4">
         Your browser does not support the video tag.
     </video>
