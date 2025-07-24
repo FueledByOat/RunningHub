@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -145,7 +145,7 @@
           ],
           "docstring": "RunningHub home page with latest activity.",
           "parameters": [],
-          "line_number": 64,
+          "line_number": 66,
           "blueprint": "running_hub",
           "full_url": "/hub/"
         },
@@ -157,7 +157,7 @@
           ],
           "docstring": "Display detailed activity information for specific activity ID.",
           "parameters": [],
-          "line_number": 75,
+          "line_number": 77,
           "blueprint": "running_hub",
           "full_url": "/hub/activity/"
         },
@@ -170,7 +170,7 @@
           ],
           "docstring": "Handle database queries.",
           "parameters": [],
-          "line_number": 96,
+          "line_number": 98,
           "blueprint": "running_hub",
           "full_url": "/hub/query/"
         },
@@ -182,7 +182,7 @@
           ],
           "docstring": "AI-powered natural language query interface.",
           "parameters": [],
-          "line_number": 114,
+          "line_number": 116,
           "blueprint": "running_hub",
           "full_url": "/hub/ai_query"
         },
@@ -194,7 +194,7 @@
           ],
           "docstring": "Display time period aggregated running statistics.",
           "parameters": [],
-          "line_number": 144,
+          "line_number": 146,
           "blueprint": "running_hub",
           "full_url": "/hub/statistics/"
         },
@@ -206,7 +206,7 @@
           ],
           "docstring": "Display personal records and achievements.",
           "parameters": [],
-          "line_number": 160,
+          "line_number": 162,
           "blueprint": "running_hub",
           "full_url": "/hub/trophy_room/"
         },
@@ -218,7 +218,7 @@
           ],
           "docstring": "Motivation Page, including upcoming races and inspriational LLM quote generator",
           "parameters": [],
-          "line_number": 175,
+          "line_number": 177,
           "blueprint": "running_hub",
           "full_url": "/hub/motivation"
         },
@@ -230,7 +230,7 @@
           ],
           "docstring": "API endpoint to generate a daily motivational message based on selected personality.",
           "parameters": [],
-          "line_number": 203,
+          "line_number": 199,
           "blueprint": "running_hub",
           "full_url": "/hub/api/daily_motivation"
         },
@@ -242,7 +242,7 @@
           ],
           "docstring": "Progressive skill tree for running achievement and side-quests.",
           "parameters": [],
-          "line_number": 226,
+          "line_number": 222,
           "blueprint": "running_hub",
           "full_url": "/hub/skill_tree/"
         },
@@ -254,7 +254,7 @@
           ],
           "docstring": "Renders the main calendar page.",
           "parameters": [],
-          "line_number": 241,
+          "line_number": 237,
           "blueprint": "running_hub",
           "full_url": "/hub/calendar"
         },
@@ -266,7 +266,7 @@
           ],
           "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
           "parameters": [],
-          "line_number": 249,
+          "line_number": 245,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -278,7 +278,7 @@
           ],
           "docstring": "API endpoint to save a new planned workout.",
           "parameters": [],
-          "line_number": 276,
+          "line_number": 272,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -292,7 +292,7 @@
           "parameters": [
             "workout_id"
           ],
-          "line_number": 293,
+          "line_number": 289,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts/<int:workout_id>"
         },
@@ -304,7 +304,7 @@
           ],
           "docstring": "API endpoint to update an existing planned workout.",
           "parameters": [],
-          "line_number": 305,
+          "line_number": 301,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts"
         },
@@ -318,7 +318,7 @@
           "parameters": [
             "workout_id"
           ],
-          "line_number": 321,
+          "line_number": 317,
           "blueprint": "running_hub",
           "full_url": "/hub/api/planned_workouts/<int:workout_id>"
         }
@@ -328,6 +328,7 @@
         "os",
         "uuid",
         "json",
+        "random",
         "datetime.datetime",
         "flask.Blueprint",
         "flask.render_template",
@@ -346,22 +347,23 @@
         "services.calendar_service.CalendarService",
         "utils.exception_utils",
         "utils.db.db_utils",
+        "config.LanguageModelConfig",
         "utils.lm_utils",
         "config.Config"
       ],
       "services_used": [
-        "calendar_service",
-        "MotivationService",
-        "CalendarService",
-        "ActivityService",
-        "StatisticsService",
         "trophy_service",
-        "query_service",
-        "activity_service",
+        "MotivationService",
         "statistics_service",
+        "activity_service",
         "QueryService",
+        "CalendarService",
+        "StatisticsService",
+        "query_service",
+        "motivation_service",
+        "ActivityService",
         "TrophyService",
-        "motivation_service"
+        "calendar_service"
       ]
     },
     "run_strong": {
@@ -504,8 +506,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
@@ -606,7 +608,7 @@
       ],
       "docstring": "RunningHub home page with latest activity.",
       "parameters": [],
-      "line_number": 64,
+      "line_number": 66,
       "blueprint": "running_hub",
       "full_url": "/hub/"
     },
@@ -618,7 +620,7 @@
       ],
       "docstring": "Display detailed activity information for specific activity ID.",
       "parameters": [],
-      "line_number": 75,
+      "line_number": 77,
       "blueprint": "running_hub",
       "full_url": "/hub/activity/"
     },
@@ -631,7 +633,7 @@
       ],
       "docstring": "Handle database queries.",
       "parameters": [],
-      "line_number": 96,
+      "line_number": 98,
       "blueprint": "running_hub",
       "full_url": "/hub/query/"
     },
@@ -643,7 +645,7 @@
       ],
       "docstring": "AI-powered natural language query interface.",
       "parameters": [],
-      "line_number": 114,
+      "line_number": 116,
       "blueprint": "running_hub",
       "full_url": "/hub/ai_query"
     },
@@ -655,7 +657,7 @@
       ],
       "docstring": "Display time period aggregated running statistics.",
       "parameters": [],
-      "line_number": 144,
+      "line_number": 146,
       "blueprint": "running_hub",
       "full_url": "/hub/statistics/"
     },
@@ -667,7 +669,7 @@
       ],
       "docstring": "Display personal records and achievements.",
       "parameters": [],
-      "line_number": 160,
+      "line_number": 162,
       "blueprint": "running_hub",
       "full_url": "/hub/trophy_room/"
     },
@@ -679,7 +681,7 @@
       ],
       "docstring": "Motivation Page, including upcoming races and inspriational LLM quote generator",
       "parameters": [],
-      "line_number": 175,
+      "line_number": 177,
       "blueprint": "running_hub",
       "full_url": "/hub/motivation"
     },
@@ -691,7 +693,7 @@
       ],
       "docstring": "API endpoint to generate a daily motivational message based on selected personality.",
       "parameters": [],
-      "line_number": 203,
+      "line_number": 199,
       "blueprint": "running_hub",
       "full_url": "/hub/api/daily_motivation"
     },
@@ -703,7 +705,7 @@
       ],
       "docstring": "Progressive skill tree for running achievement and side-quests.",
       "parameters": [],
-      "line_number": 226,
+      "line_number": 222,
       "blueprint": "running_hub",
       "full_url": "/hub/skill_tree/"
     },
@@ -715,7 +717,7 @@
       ],
       "docstring": "Renders the main calendar page.",
       "parameters": [],
-      "line_number": 241,
+      "line_number": 237,
       "blueprint": "running_hub",
       "full_url": "/hub/calendar"
     },
@@ -727,7 +729,7 @@
       ],
       "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
       "parameters": [],
-      "line_number": 249,
+      "line_number": 245,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -739,7 +741,7 @@
       ],
       "docstring": "API endpoint to save a new planned workout.",
       "parameters": [],
-      "line_number": 276,
+      "line_number": 272,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -753,7 +755,7 @@
       "parameters": [
         "workout_id"
       ],
-      "line_number": 293,
+      "line_number": 289,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts/<int:workout_id>"
     },
@@ -765,7 +767,7 @@
       ],
       "docstring": "API endpoint to update an existing planned workout.",
       "parameters": [],
-      "line_number": 305,
+      "line_number": 301,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts"
     },
@@ -779,7 +781,7 @@
       "parameters": [
         "workout_id"
       ],
-      "line_number": 321,
+      "line_number": 317,
       "blueprint": "running_hub",
       "full_url": "/hub/api/planned_workouts/<int:workout_id>"
     },

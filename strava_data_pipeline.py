@@ -27,7 +27,7 @@ class StravaDataPipeline:
     def _setup_logging(self) -> None:
         """Configure logging with proper formatting and file handling."""
         logging.basicConfig(
-            level=logging.INFO,  # Changed from DEBUG to INFO for cleaner logs
+            level=logging.DEBUG,  # Changed from DEBUG to INFO for cleaner logs
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             # handlers=[
             #     logging.FileHandler('strava_pipeline.log', mode='a'),

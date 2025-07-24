@@ -6,6 +6,7 @@
 <script id="profile-data" type="application/json">
   {{ profile_data | tojson | safe }}
 </script>
+<link rel="stylesheet" href="{{ url_for('running_hub.static', filename='css/styles.css') }}">
 <script src="{{ url_for('running_hub.static', filename='js/motivation.js') }}" defer></script>
 {% endblock %}
 

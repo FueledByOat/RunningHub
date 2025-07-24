@@ -1009,6 +1009,7 @@ def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: 
             processed = 0
             
             for i, activity in enumerate(activities):
+                print(activities)
                 activity_id = activity.get('id')
                 if not activity_id or activity_id in existing_weather_ids:
                     continue
@@ -1022,7 +1023,7 @@ def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: 
                 lat, lng = start_latlng[0], start_latlng[1]
                 
                 # Calculate weather date (midpoint of activity)
-                start_date = activity.get('start_date_local', activity.get('start_date', ''))
+                start_date = activity.get('start_date', activity.get('start_date_local', ''))
                 elapsed_time = activity.get('elapsed_time', 0)
                 
                 if not start_date:
@@ -1039,7 +1040,7 @@ def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: 
                 
                 # Fetch weather data
                 weather_data = get_weather_data(lat, lng, date_str, hour, api_key)
-                
+
                 if weather_data and insert_weather_data(cursor, activity_id, weather_data):
                     processed += 1
                     logger.debug(f"Weather data stored for activity {activity_id}")

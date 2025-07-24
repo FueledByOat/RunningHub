@@ -838,6 +838,41 @@ textarea {
     bottom: 20px;
     right: 20px;
   }
+    .poster-title {
+    font-size: 2.5rem; /* Reduce title font size */
+    line-height: 1.1;  /* Tighten line spacing if title wraps */
+    margin-bottom: 0.75rem;
+  }
+
+  .poster-goal {
+    font-size: 1rem; /* Slightly smaller goal text */
+    margin-bottom: 1rem;
+  }
+
+  .countdown {
+    font-size: 1.2rem; /* Make countdown text more compact */
+    padding: 0.5rem;
+  }
+
+  .poster-text-container {
+    padding: 1rem; /* Reduce padding inside the poster text area */
+  }
+
+  .poster-image-container {
+      height: 220px; /* Reduce image height to save vertical space */
+  }
+    .message-controls {
+    flex-direction: column; /* Stack controls vertically */
+    gap: 10px; /* Add space between them */
+    align-items: stretch; /* Make them full width of the card */
+  }
+
+  .personality-dropdown,
+  .action-button {
+    font-size: 1.1rem; /* Make text easier to read */
+    padding: 0.75rem; /* Increase padding to make the tap area larger */
+    margin: 0; /* Remove horizontal margins */
+  }
 }
 
 /* Motivation Page*/
@@ -1110,7 +1145,7 @@ textarea {
     margin: 0 10px;
   }
 
-  .poster-title {
+  /* .poster-title {
     font-size: 2.8rem;
-  }
+  } */
 }

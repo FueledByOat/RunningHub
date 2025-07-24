@@ -200,13 +200,13 @@ def main():
     cursor.execute('''
         SELECT
             id,
-            start_date_local,
-            datetime(start_date_local, '+' || (elapsed_time / 2) || ' seconds') AS weather_date,
+            start_date,
+            datetime(start_date, '+' || (elapsed_time / 2) || ' seconds') AS weather_date,
             start_latlng
         FROM
             activities
         WHERE
-            start_date_local > '2025-07-02 06:00'
+            start_date_local >= '2025-07-24 05:00'
         ORDER BY
             start_date_local DESC
     ''')
@@ -243,7 +243,7 @@ def main():
         
         # Fetch weather data
         weather_data = get_weather_data(lat, lng, date_str, hour, api_key)
-        
+        print(weather_data)
         if weather_data:
             insert_weather_data(cursor, activity_id, weather_data)
             processed += 1

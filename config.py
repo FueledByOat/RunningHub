@@ -10,7 +10,7 @@ class Config:
     DB_PATH: Optional[str] = os.getenv('DATABASE', 'strava_data.db')
     DB_PATH_RUNSTRONG: Optional[str] = os.getenv('RUNSTRONG_DATABASE', 'runstrong.db')
     CACHE_TTL = int(os.getenv('CACHE_TTL', '300'))
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     VIDEO_FOLDER = os.getenv('VIDEO_FOLDER', 'videos')
     UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'uploads')
     ALLOWED_EXTENSIONS = os.getenv('ALLOWED_EXTENSIONS', 'mp4')

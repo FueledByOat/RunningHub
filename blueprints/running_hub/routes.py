@@ -8,6 +8,7 @@ import logging
 import os
 import uuid
 import json
+import random
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, abort, jsonify, url_for 
 from werkzeug.exceptions import BadRequest, NotFound
@@ -20,6 +21,7 @@ from services.motivation_service import MotivationService
 from services.calendar_service import CalendarService
 from utils import exception_utils
 from utils.db import db_utils
+from config import LanguageModelConfig
 
 logger = logging.getLogger(__name__)
 
@@ -182,15 +184,9 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
                 for race in profile_data['races']:
                     if 'image' in race:
                         relative_image_path = race['image'].replace('static/', '', 1)
-
-                        # --- THIS IS THE CORRECTED LINE ---
-                        # We specify 'running_hub.static' to correctly point to the
-                        # static folder defined within this blueprint.
                         race['imageUrl'] = url_for('running_hub.static', filename=relative_image_path)
-                        # --- END OF CORRECTION ---
                         
                     else:
-                        # Also correct the fallback URL to use the blueprint's static folder
                         race['imageUrl'] = url_for('running_hub.static', filename='images/default_placeholder.png')
             return render_template("motivation.html", profile_data=profile_data)
         
@@ -207,7 +203,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
             if not data:
                 return jsonify({'error': 'No data provided'}), 400
             
-            personality = data.get('personality', 'motivational')
+            personality = data.get('personality', random.choice(list(LanguageModelConfig.PERSONALITY_TEMPLATES.keys())))
 
             # Use a transient session_id as we may not have a chat session cookie
             session_id = request.cookies.get('session_id', f"motivation-{uuid.uuid4()}")
