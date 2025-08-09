@@ -11,8 +11,8 @@ and request/response flow while delegating business logic to service layers.
 """
 
 import logging
-import os
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Configuration and utilities
 from config import Config
@@ -40,6 +40,18 @@ logger = logging.getLogger(__name__)
 
 # Refresh Documentation
 documentation_scanner.main()
+
+# Security for CloudFlare
+
+USERNAME = Config.DEFAULT_USERNAME
+PASSWORD_HASH = generate_password_hash(Config.DEFAULT_PASSWORD)
+
+def require_login():
+    """Redirect to login page if user not logged in."""
+    allowed_routes = {"login"}  # add more public routes if needed
+    if request.endpoint not in allowed_routes and "user" not in session:
+        return redirect(url_for("login"))
+
 
 class FlaskAppFactory:
     """Factory class for creating and configuring Flask application."""
@@ -101,6 +113,24 @@ class FlaskAppFactory:
     def _register_legacy_routes(app: Flask, config: Config) -> None:
         """Register legacy routes for backward compatibility."""
         # Root home route redirects to RunningHub
+
+        @app.route("/login", methods=["GET", "POST"])
+        def login():
+            if request.method == "POST":
+                username = request.form["username"]
+                password = request.form["password"]
+                if username == USERNAME and check_password_hash(PASSWORD_HASH, password):
+                    session["user"] = username
+                    return redirect(url_for("home"))
+                else:
+                    return render_template("login.html", error="Invalid credentials")
+            return render_template("login.html")
+        
+        @app.route("/logout")
+        def logout():
+            session.clear()
+            return redirect(url_for("login"))
+
         @app.route("/")
         def home():
             """Redirect to RunningHub home."""
@@ -180,6 +210,7 @@ def create_app(config: Config = None) -> Flask:
 # Entry point for development server
 if __name__ == '__main__':
     app = create_app()
+    app.before_request(require_login)
     app.run(
         debug=False,
         port=5555,

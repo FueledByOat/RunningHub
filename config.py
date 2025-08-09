@@ -29,6 +29,8 @@ class Config:
     # API rate limiting settings
     DEFAULT_RATE_LIMIT_DELAY: int = 1  # seconds between API calls
     MAX_ACTIVITIES_PER_REQUEST: int = 30
+    DEFAULT_USERNAME = "coach_g"
+    DEFAULT_PASSWORD = "coach_g_23"
 
     @classmethod
     def validate_required_config(cls) -> bool:
