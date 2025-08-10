@@ -268,137 +268,160 @@ def get_cadence_stability_data(conn: sqlite3.Connection):
         print(f"Error in get_cadence_stability_data: {e}")
         return pd.DataFrame(columns=['activity_id', 'start_date_local', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
 
-def get_efficiency_index(conn: sqlite3.Connection):
+def calc_flat_ef(conn: sqlite3.Connection, activity_id: int, grade_threshold: float = 1.0) -> Optional[float]:
     """
-    Efficiency Factor (EF) Calculation and Usage
+    Calculate flat-segment EF for a single activity.
+    Uses aligned grade, velocity, and HR data.
+    """
+    query = """
+        SELECT grade_smooth_data, velocity_smooth_data, heartrate_data
+        FROM streams
+        WHERE activity_id = ?
+    """
+    result = conn.execute(query, (activity_id,)).fetchone()
+    if not result or not all(result):
+        return None
 
-    Definition:
-    Efficiency Factor (EF) = Speed (meters/minute) / Heart Rate (bpm)
+    grade_data = json.loads(result[0])
+    velocity_data = json.loads(result[1])
+    hr_data = json.loads(result[2])
 
-    Purpose:
-    EF measures cardiovascular efficiency by showing how much speed a runner generates per heartbeat.
-    Higher values indicate better aerobic fitness and running economy.
+    # Ensure all arrays are same length
+    min_len = min(len(grade_data), len(velocity_data), len(hr_data))
+    if min_len == 0:
+        return None
 
-    Key Metrics:
-    1. Single-activity EF: Snapshot of efficiency for a specific run
-    2. Rolling average EF (7/30/90 day): Shows trends in efficiency over time
-    3. Efficiency Index: Normalized EF that accounts for different paces
+    grade_data = grade_data[:min_len]
+    velocity_data = velocity_data[:min_len]
+    hr_data = hr_data[:min_len]
+
+    # Filter for flat segments
+    flat_indices = [i for i, g in enumerate(grade_data) if -grade_threshold <= g <= grade_threshold]
+    if not flat_indices:
+        return None
+
+    flat_velocity = [velocity_data[i] * 60 for i in flat_indices]  # m/s → m/min
+    flat_hr = [hr_data[i] for i in flat_indices]
+
+    avg_vel = np.mean(flat_velocity)
+    avg_hr = np.mean(flat_hr)
+
+    return avg_vel / avg_hr if avg_hr > 0 else None
+
+
+def get_efficiency_index(conn: sqlite3.Connection, flat_only: bool = False, grade_threshold: float = 1.0) -> pd.DataFrame:
+    """
+    Calculate running efficiency metrics from stored activity and stream data.
+
+    Overview:
+    This implementation defines Efficiency Factor (EF) as:
+        EF = Speed (m/min) / Heart Rate (bpm)
+    where speed is average moving speed in meters per minute, and heart rate
+    is the average beats per minute. The resulting EF represents the distance
+    traveled per heartbeat, with higher values generally indicating better
+    aerobic efficiency and running economy.
+
+    Units and Scale:
+    - Speed is converted from m/s to m/min by multiplying by 60.
+    - EF values for typical runs fall in the 1.15–1.60 range for most trained
+      runners on flat ground.
+    - Example interpretation:
+        Elite        > 1.60
+        Advanced     1.45 – 1.60
+        Intermediate 1.30 – 1.45
+        Beginner     1.15 – 1.30
+        Untrained    < 1.15
+
+    Features:
+    1. **Base EF**: Computed from average speed and average HR for each run.
+    2. **Flat-Only EF** (optional): Recomputes EF using only segments where the
+       grade is between -grade_threshold and +grade_threshold (default ±1.0%),
+       to allow fairer comparisons between runs on different terrain.
+    3. **Rolling Averages**: 7-day, 30-day, and 90-day time-based averages of EF
+       to smooth daily variability and reveal trends.
+    4. **Regression-Adjusted EF**: Removes natural bias where faster paces
+       produce higher EF values. This is done via linear regression of EF on
+       speed, adjusting all runs to a reference pace (mean speed).
+    5. **Efficiency Index**: A normalized z-score of the regression-adjusted EF,
+       indicating how a run compares to the athlete’s historical baseline.
 
     Best Practices:
-    - Compare EF values from similar workouts (similar pace/terrain)
-    - Monitor long-term trends in the 30 and 90-day averages
-    - Use flat-terrain EF (commented implementation) for most accurate comparisons
-    - Increases in EF over time indicate improving aerobic fitness
-    - Sudden drops may indicate fatigue, illness, or overtraining
+    - Compare EF values between runs of similar type (e.g., easy runs to easy runs).
+    - Use flat-only EF for long-term tracking to avoid hill-induced variability.
+    - Monitor 30-day and 90-day rolling averages to assess aerobic fitness trends.
+    - Drops in EF can signal fatigue, overtraining, heat stress, or illness.
 
     Limitations:
-    - Influenced by environmental factors (heat, humidity, elevation)
-    - Not directly comparable between different types of terrain
-    - Heart rate can be affected by factors other than fitness (medication, stress, etc.)
+    - EF is affected by heat, humidity, wind, and altitude.
+    - HR can be influenced by non-fitness factors such as hydration, stress, or
+      medication.
+    - Regression-adjusted EF assumes a linear relationship between EF and speed,
+      which may not perfectly hold for all athletes.
 
-    Implementation Notes:
-    The provided code calculates basic EF and rolling averages. The commented section shows how
-    to implement terrain-specific (flat segments only) EF calculations for more precise comparisons.
+    Parameters:
+        conn (sqlite3.Connection): Database connection with 'activities' and 'streams' tables.
+        flat_only (bool): If True, calculates EF using only flat segments.
+        grade_threshold (float): Maximum absolute grade (%) to consider "flat".
+
+    Returns:
+        pd.DataFrame: DataFrame indexed by activity date containing:
+            - efficiency_factor (float)
+            - flat_efficiency_factor (float, optional)
+            - ef_7day, ef_30day, ef_90day (rolling averages)
+            - efficiency_factor_adj (pace-adjusted EF)
+            - efficiency_index (z-score of adjusted EF)
     """
-    
-    # Retrieve activities with distance, time and heart rate data
-    query = """
-    SELECT 
-        id,
-        distance,         -- in meters
-        moving_time,      -- in seconds
-        average_heartrate,
-        start_date_local,
-        average_speed,    -- in m/s
-        type
-    FROM activities
-    WHERE 
-        type = 'Run' 
-        AND average_heartrate IS NOT NULL 
-        AND average_heartrate > 0
-        AND distance IS NOT NULL
-        AND distance > 0
-        AND moving_time IS NOT NULL
-        AND moving_time > 0
-    ORDER BY start_date_local ASC;
-    """
-    
-    df = pd.read_sql_query(query, conn)
-    
-    # Convert start_date_local to datetime
+    # Pull main activity data
+    df = pd.read_sql_query("""
+        SELECT id, distance, moving_time, average_heartrate, start_date_local, average_speed
+        FROM activities
+        WHERE type='Run'
+          AND average_heartrate > 0
+          AND distance > 0
+          AND moving_time > 0
+        ORDER BY start_date_local
+    """, conn)
+
+    # Convert and calculate base EF
     df['start_date_local'] = pd.to_datetime(df['start_date_local'])
-    
-    # Calculate speed in meters per minute
-    df['speed_mpm'] = df['average_speed'] * 60  # convert m/s to m/min
-    
-    # Calculate Efficiency Factor
+    df['speed_mpm'] = df['average_speed'] * 60  # m/s --> m/min
     df['efficiency_factor'] = df['speed_mpm'] / df['average_heartrate']
-    
-    # Calculate efficiency factor for flat segments only (advanced version)
-    # This requires accessing the grade_smooth_data from the streams table
 
-    flat_ef_values = []
-    
-    for idx, row in df.iterrows():
-        activity_id = row['id']
-        
-        # Get grade data for this activity
-        grade_query = "SELECT grade_smooth_data FROM streams WHERE activity_id = ?"
-        grade_result = conn.execute(grade_query, (activity_id,)).fetchone()
-        
-        if grade_result and grade_result[0]:
-            # Process grade data to find flat segments
-            grade_data = json.loads(grade_result[0])
-            
-            # Get velocity and heartrate data
-            velocity_query = "SELECT velocity_smooth_data FROM streams WHERE activity_id = ?"
-            hr_query = "SELECT heartrate_data FROM streams WHERE activity_id = ?"
-            
-            velocity_result = conn.execute(velocity_query, (activity_id,)).fetchone()
-            hr_result = conn.execute(hr_query, (activity_id,)).fetchone()
-            
-            if velocity_result and velocity_result[0] and hr_result and hr_result[0]:
-                velocity_data = json.loads(velocity_result[0])
-                hr_data = json.loads(hr_result[0])
-                
-                # Find flat segments (grade between -1% and 1%)
-                flat_indices = [i for i, grade in enumerate(grade_data) if -1 <= grade <= 1]
-                
-                if flat_indices:
-                    # Calculate EF for flat segments only
-                    flat_velocity = [velocity_data[i] * 60 for i in flat_indices if i < len(velocity_data)]
-                    flat_hr = [hr_data[i] for i in flat_indices if i < len(hr_data)]
-                    
-                    if flat_velocity and flat_hr:
-                        avg_flat_velocity = sum(flat_velocity) / len(flat_velocity)
-                        avg_flat_hr = sum(flat_hr) / len(flat_hr)
-                        flat_ef = avg_flat_velocity / avg_flat_hr if avg_flat_hr > 0 else None
-                        flat_ef_values.append(flat_ef)
-                    else:
-                        flat_ef_values.append(None)
-                else:
-                    flat_ef_values.append(None)
-            else:
-                flat_ef_values.append(None)
-        else:
-            flat_ef_values.append(None)
-    
-    df['flat_efficiency_factor'] = flat_ef_values
-    
-    # Calculate rolling averages (7-day, 30-day, 90-day)
+    # Optional flat-only EF
+    if flat_only:
+        df['flat_efficiency_factor'] = df['id'].apply(lambda aid: calc_flat_ef(conn, aid, grade_threshold))
+    else:
+        df['flat_efficiency_factor'] = None
+
+    # Set index for rolling calculations
     df.set_index('start_date_local', inplace=True)
     df.sort_index(inplace=True)
+
+    # Rolling averages (time-based)
     df['ef_7day'] = df['efficiency_factor'].rolling('7D', min_periods=3).mean()
     df['ef_30day'] = df['efficiency_factor'].rolling('30D', min_periods=7).mean()
     df['ef_90day'] = df['efficiency_factor'].rolling('90D', min_periods=14).mean()
-    
-    # Calculate Efficiency Index (normalized for pace)
-    # This helps compare EF across different paces
-    df['efficiency_index'] = (df['efficiency_factor'] - df['efficiency_factor'].mean()) / df['efficiency_factor'].std()
+
+    # Regression adjustment for pace bias
+    if len(df) >= 3:
+        slope, intercept = np.polyfit(df['speed_mpm'], df['efficiency_factor'], 1)
+        pace_ref = df['speed_mpm'].mean()  # could be a fixed target pace instead
+        df['efficiency_factor_adj'] = df['efficiency_factor'] - slope * (df['speed_mpm'] - pace_ref)
+    else:
+        df['efficiency_factor_adj'] = df['efficiency_factor']
+
+    # Normalized efficiency index (z-score)
+    ef_mean = df['efficiency_factor_adj'].mean()
+    ef_std = df['efficiency_factor_adj'].std()
+    valid_ef = df['efficiency_factor_adj'].dropna()
+    if not valid_ef.empty and valid_ef.std() > 0:
+        df['efficiency_index'] = (df['efficiency_factor_adj'] - valid_ef.mean()) / valid_ef.std()
+    else:
+        df['efficiency_index'] = np.nan
 
     return df
 
-def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=None):
+def calculate_running_tss(moving_time, avg_hr=None, max_hr= None, threshold_hr=RunnerConfig.THRESHOLD_HR):
     """
     Calculate a Training Stress Score (TSS) for running activities.
     
@@ -432,7 +455,7 @@ def calculate_running_tss(moving_time, avg_hr=None, max_hr=None, threshold_hr=No
     
     return tss
 
-def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, athlete_threshold_hr=172):
+def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, athlete_threshold_hr=RunnerConfig.THRESHOLD_HR):
     """
     Calculate CTL, ATL, TSB, and then PERSIST the results to the database.
     This function is now the single source of truth for these metrics.

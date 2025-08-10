@@ -25,9 +25,12 @@ class Config:
     CLIENT_SECRET: Optional[str] = os.getenv("CLIENT_SECRET")
     REFRESH_TOKEN: Optional[str] = os.getenv("REFRESH_TOKEN")
     ACCESS_TOKEN: Optional[str] = os.getenv("ACCESS_TOKEN")
+
     # API rate limiting settings
     DEFAULT_RATE_LIMIT_DELAY: int = 1  # seconds between API calls
     MAX_ACTIVITIES_PER_REQUEST: int = 30
+
+    # Basic Login Settings
     DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME")
     DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD")
 

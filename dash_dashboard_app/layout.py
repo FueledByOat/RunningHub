@@ -305,21 +305,28 @@ def create_dash_dashboard_app(server, db_path):
     
     def effidiency_index_card(efficiency_index_value, trend_data):
         """
-            Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+    Overview:
+    This implementation defines Efficiency Factor (EF) as:
+        EF = Speed (m/min) / Heart Rate (bpm)
+    where speed is average moving speed in meters per minute, and heart rate
+    is the average beats per minute. The resulting EF represents the distance
+    traveled per heartbeat, with higher values generally indicating better
+    aerobic efficiency and running economy.
 
-            reference_values = {
-            'efficiency_factor': {
-            "Elite": ">0.40",
-            "Advanced": "0.35-0.40",
-            "Intermediate": "0.30-0.35",
-            "Beginner": "0.25-0.30",
-            "Untrained": "<0.25"
-    }
-        
+    Units and Scale:
+    - Speed is converted from m/s to m/min by multiplying by 60.
+    - EF values for typical runs fall in the 1.15–1.60 range for most trained
+      runners on flat ground.
+    - Example interpretation:
+        Elite        > 1.60
+        Advanced     1.45 – 1.60
+        Intermediate 1.30 – 1.45
+        Beginner     1.15 – 1.30
+        Untrained    < 1.15
             """
         badge = status_badge(
             efficiency_index_value, 
-            [0.25, 0.30, 0.35, 0.40],
+            [1.15, 1.30, 1.45, 1.60],
             ["Poor", "Fair", "Good", "Very Good", "Excellent"],
             ["danger", "warning", "primary", "success", "info"]
         )
@@ -328,31 +335,38 @@ def create_dash_dashboard_app(server, db_path):
         description = f"""Efficiency Index normalizes EF for pace, allowing comparison across different workout intensities."""
         
         return metric_card(
-            "Efficiency Index", 
+            "365 Day Efficiency Index", 
             value_text, 
             badge, 
             description, 
             trend_data,
-            reference_line=0.30  # Reference line at the optimal threshold
+            reference_line=1.45  # Reference line at the advanced threshold
         )
     
     def ef_7day_card(ef_7day_value, trend_data):
         """
-            Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+    Overview:
+    This implementation defines Efficiency Factor (EF) as:
+        EF = Speed (m/min) / Heart Rate (bpm)
+    where speed is average moving speed in meters per minute, and heart rate
+    is the average beats per minute. The resulting EF represents the distance
+    traveled per heartbeat, with higher values generally indicating better
+    aerobic efficiency and running economy.
 
-            reference_values = {
-            'efficiency_factor': {
-            "Elite": ">0.40",
-            "Advanced": "0.35-0.40",
-            "Intermediate": "0.30-0.35",
-            "Beginner": "0.25-0.30",
-            "Untrained": "<0.25"
-    }
-        
+    Units and Scale:
+    - Speed is converted from m/s to m/min by multiplying by 60.
+    - EF values for typical runs fall in the 1.15–1.60 range for most trained
+      runners on flat ground.
+    - Example interpretation:
+        Elite        > 1.60
+        Advanced     1.45 – 1.60
+        Intermediate 1.30 – 1.45
+        Beginner     1.15 – 1.30
+        Untrained    < 1.15
             """
         badge = status_badge(
             ef_7day_value, 
-            [0.25, 0.30, 0.35, 0.40],
+            [1.15, 1.30, 1.45, 1.60],
             ["Poor", "Fair", "Good", "Very Good", "Excellent"],
             ["danger", "warning", "primary", "success", "info"]
         )
@@ -366,26 +380,33 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=0.30  # Reference line at the optimal threshold
+            reference_line=1.45  # Reference line at the advanced threshold
         )
 
     def ef_90day_card(ef_90day_value, trend_data):
         """
-            Generate a Fitness, Fatigue, or Form card based on CTL, ATL, or TSB.
+    Overview:
+    This implementation defines Efficiency Factor (EF) as:
+        EF = Speed (m/min) / Heart Rate (bpm)
+    where speed is average moving speed in meters per minute, and heart rate
+    is the average beats per minute. The resulting EF represents the distance
+    traveled per heartbeat, with higher values generally indicating better
+    aerobic efficiency and running economy.
 
-            reference_values = {
-            'efficiency_factor': {
-            "Elite": ">0.40",
-            "Advanced": "0.35-0.40",
-            "Intermediate": "0.30-0.35",
-            "Beginner": "0.25-0.30",
-            "Untrained": "<0.25"
-    }
-        
+    Units and Scale:
+    - Speed is converted from m/s to m/min by multiplying by 60.
+    - EF values for typical runs fall in the 1.15–1.60 range for most trained
+      runners on flat ground.
+    - Example interpretation:
+        Elite        > 1.60
+        Advanced     1.45 – 1.60
+        Intermediate 1.30 – 1.45
+        Beginner     1.15 – 1.30
+        Untrained    < 1.15
             """
         badge = status_badge(
             ef_90day_value, 
-            [0.25, 0.30, 0.35, 0.40],
+            [1.15, 1.30, 1.45, 1.60],
             ["Poor", "Fair", "Good", "Very Good", "Excellent"],
             ["danger", "warning", "primary", "success", "info"]
         )
@@ -399,7 +420,7 @@ def create_dash_dashboard_app(server, db_path):
             badge, 
             description, 
             trend_data,
-            reference_line=0.30 # Reference line at the optimal threshold
+            reference_line=1.45 # Reference line at the advanced threshold
         )
     
     def create_training_shape_chart(conn: sqlite3.Connection):
@@ -675,9 +696,9 @@ def create_dash_dashboard_app(server, db_path):
     def build_dashboard_efficiency_cards(efficiency_index_value, efficiency_index_trend, ef_7day_value, ef_7day_trend, ef_90day_value, ef_90day_trend):
         """Build the efficiency dashboard row with all three metric cards"""
         return dbc.Row([
-            dbc.Col(effidiency_index_card(efficiency_index_value, efficiency_index_trend), md=4),
             dbc.Col(ef_7day_card(ef_7day_value, ef_7day_trend), md=4),
             dbc.Col(ef_90day_card(ef_90day_value, ef_90day_trend), md=4),
+            dbc.Col(effidiency_index_card(efficiency_index_value, efficiency_index_trend), md=4),
         ], className="mb-4")
  
     # --- Load and Process Data ---
@@ -766,8 +787,8 @@ def create_dash_dashboard_app(server, db_path):
             efficiency = dash_db_utils.get_efficiency_index(conn)
 
         # Process  data
-        latest_efficiency_index = efficiency['flat_efficiency_factor'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
-        efficiency_index_trend = efficiency['flat_efficiency_factor'].tolist()[::1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else []
+        latest_efficiency_index = efficiency['efficiency_factor_adj'].iloc[-1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else None
+        efficiency_index_trend = efficiency['efficiency_factor_adj'].tail(365).tolist()[::1] if not efficiency.empty and 'efficiency_index' in efficiency.columns else [] # last 365 days
     
         _7day_ef = efficiency.dropna(subset=['ef_7day'])
         latest_ef_7day = _7day_ef['ef_7day'].iloc[-1] if not _7day_ef.empty and 'ef_7day' in _7day_ef.columns else None
