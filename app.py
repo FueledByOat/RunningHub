@@ -48,8 +48,11 @@ PASSWORD_HASH = generate_password_hash(Config.DEFAULT_PASSWORD)
 
 def require_login():
     """Redirect to login page if user not logged in."""
-    allowed_routes = {"login"}  # add more public routes if needed
-    if request.endpoint not in allowed_routes and "user" not in session:
+    allowed_routes = {"login", "static"}  # allow login page and static assets
+    
+    if (request.endpoint not in allowed_routes 
+        and not request.path.startswith("/static/")
+        and "user" not in session):
         return redirect(url_for("login"))
 
 
