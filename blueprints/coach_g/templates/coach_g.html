@@ -4,6 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180"
+        href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+
     <title>RunningHub | Coach G</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,10 +27,10 @@
         <main class="coach_g_container">
             <div class="coach_g_chat_container">
                 <div class="coach_g_chat_header">
-<a href="{{ url_for('running_hub.home') }}">
-            <img src="{{ url_for('coach_g.static', filename='images/coach_g_text.png') }}"
-                alt="Coach G Text" class="coach-g-logo" />
-        </a>
+                    <a href="{{ url_for('running_hub.home') }}">
+                        <img src="{{ url_for('coach_g.static', filename='images/coach_g_text.png') }}"
+                            alt="Coach G Text" class="coach-g-logo" />
+                    </a>
                 </div>
                 <div class="coach_g_chat_messages" id="coachGChatMessages">
                     <div class="coach_g_welcome_message">
@@ -67,10 +71,10 @@
                                 onclick="sendQuickQuestion('What is my strength straining looking like?', 'strength_status')">
                                 Strength Insights
                             </button>
-                             <button class="coach_g_quick_question"
+                            <button class="coach_g_quick_question"
                                 onclick="sendQuickQuestion('Recommend a strength workout for me.', 'workout_recommendation')">
                                 Workout Suggestion
-                            </button>                           
+                            </button>
                             <button class="coach_g_quick_question"
                                 onclick="sendQuickQuestion('How has my last week of training been?', 'weekly_summary')">
                                 Weekly Summary

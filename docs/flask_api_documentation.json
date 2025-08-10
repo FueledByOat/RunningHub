@@ -145,7 +145,7 @@
           ],
           "docstring": "RunningHub home page with latest activity.",
           "parameters": [],
-          "line_number": 61,
+          "line_number": 66,
           "blueprint": "running_hub",
           "full_url": "/hub/"
         },
@@ -157,7 +157,7 @@
           ],
           "docstring": "Display detailed activity information for specific activity ID.",
           "parameters": [],
-          "line_number": 72,
+          "line_number": 77,
           "blueprint": "running_hub",
           "full_url": "/hub/activity/"
         },
@@ -170,7 +170,7 @@
           ],
           "docstring": "Handle database queries.",
           "parameters": [],
-          "line_number": 93,
+          "line_number": 98,
           "blueprint": "running_hub",
           "full_url": "/hub/query/"
         },
@@ -182,7 +182,7 @@
           ],
           "docstring": "AI-powered natural language query interface.",
           "parameters": [],
-          "line_number": 111,
+          "line_number": 116,
           "blueprint": "running_hub",
           "full_url": "/hub/ai_query"
         },
@@ -194,7 +194,7 @@
           ],
           "docstring": "Display time period aggregated running statistics.",
           "parameters": [],
-          "line_number": 141,
+          "line_number": 146,
           "blueprint": "running_hub",
           "full_url": "/hub/statistics/"
         },
@@ -206,7 +206,7 @@
           ],
           "docstring": "Display personal records and achievements.",
           "parameters": [],
-          "line_number": 157,
+          "line_number": 162,
           "blueprint": "running_hub",
           "full_url": "/hub/trophy_room/"
         },
@@ -218,7 +218,7 @@
           ],
           "docstring": "Motivation Page, including upcoming races and inspriational LLM quote generator",
           "parameters": [],
-          "line_number": 172,
+          "line_number": 177,
           "blueprint": "running_hub",
           "full_url": "/hub/motivation"
         },
@@ -230,7 +230,7 @@
           ],
           "docstring": "API endpoint to generate a daily motivational message based on selected personality.",
           "parameters": [],
-          "line_number": 200,
+          "line_number": 199,
           "blueprint": "running_hub",
           "full_url": "/hub/api/daily_motivation"
         },
@@ -242,9 +242,85 @@
           ],
           "docstring": "Progressive skill tree for running achievement and side-quests.",
           "parameters": [],
-          "line_number": 223,
+          "line_number": 222,
           "blueprint": "running_hub",
           "full_url": "/hub/skill_tree/"
+        },
+        {
+          "function_name": "calendar",
+          "endpoint": "/calendar",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Renders the main calendar page.",
+          "parameters": [],
+          "line_number": 237,
+          "blueprint": "running_hub",
+          "full_url": "/hub/calendar"
+        },
+        {
+          "function_name": "get_planned_workouts",
+          "endpoint": "/api/planned_workouts",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
+          "parameters": [],
+          "line_number": 245,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/planned_workouts"
+        },
+        {
+          "function_name": "save_planned_workout",
+          "endpoint": "/api/planned_workouts",
+          "methods": [
+            "POST"
+          ],
+          "docstring": "API endpoint to save a new planned workout.",
+          "parameters": [],
+          "line_number": 272,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/planned_workouts"
+        },
+        {
+          "function_name": "get_planned_workout",
+          "endpoint": "/api/planned_workouts/<int:workout_id>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API endpoint to fetch a single planned workout by ID.",
+          "parameters": [
+            "workout_id"
+          ],
+          "line_number": 289,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/planned_workouts/<int:workout_id>"
+        },
+        {
+          "function_name": "update_planned_workout",
+          "endpoint": "/api/planned_workouts",
+          "methods": [
+            "PUT"
+          ],
+          "docstring": "API endpoint to update an existing planned workout.",
+          "parameters": [],
+          "line_number": 301,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/planned_workouts"
+        },
+        {
+          "function_name": "delete_planned_workout",
+          "endpoint": "/api/planned_workouts/<int:workout_id>",
+          "methods": [
+            "DELETE"
+          ],
+          "docstring": "API endpoint to delete a planned workout.",
+          "parameters": [
+            "workout_id"
+          ],
+          "line_number": 317,
+          "blueprint": "running_hub",
+          "full_url": "/hub/api/planned_workouts/<int:workout_id>"
         }
       ],
       "imports": [
@@ -252,6 +328,8 @@
         "os",
         "uuid",
         "json",
+        "random",
+        "datetime.datetime",
         "flask.Blueprint",
         "flask.render_template",
         "flask.request",
@@ -266,22 +344,26 @@
         "services.statistics_service.StatisticsService",
         "services.trophy_service.TrophyService",
         "services.motivation_service.MotivationService",
+        "services.calendar_service.CalendarService",
         "utils.exception_utils",
         "utils.db.db_utils",
+        "config.LanguageModelConfig",
         "utils.lm_utils",
         "config.Config"
       ],
       "services_used": [
+        "statistics_service",
+        "query_service",
+        "QueryService",
         "ActivityService",
         "StatisticsService",
-        "MotivationService",
-        "statistics_service",
-        "QueryService",
         "TrophyService",
         "motivation_service",
-        "query_service",
+        "calendar_service",
+        "activity_service",
         "trophy_service",
-        "activity_service"
+        "CalendarService",
+        "MotivationService"
       ]
     },
     "run_strong": {
@@ -370,9 +452,47 @@
           ],
           "docstring": "Display the goals dashboard page.",
           "parameters": [],
-          "line_number": 118,
+          "line_number": 117,
           "blueprint": "run_strong",
           "full_url": "/strong/goals"
+        },
+        {
+          "function_name": "max_weights",
+          "endpoint": "/max-weights",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display exercise max weights page.",
+          "parameters": [],
+          "line_number": 127,
+          "blueprint": "run_strong",
+          "full_url": "/strong/max-weights"
+        },
+        {
+          "function_name": "get_exercise_max",
+          "endpoint": "/api/exercise-max/<int:exercise_id>",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "API: Get maximum weight for a specific exercise.",
+          "parameters": [
+            "exercise_id"
+          ],
+          "line_number": 137,
+          "blueprint": "run_strong",
+          "full_url": "/strong/api/exercise-max/<int:exercise_id>"
+        },
+        {
+          "function_name": "movement_catalog",
+          "endpoint": "/movement-catalog",
+          "methods": [
+            "GET"
+          ],
+          "docstring": "Display movement catalog page.",
+          "parameters": [],
+          "line_number": 147,
+          "blueprint": "run_strong",
+          "full_url": "/strong/movement-catalog"
         }
       ],
       "imports": [
@@ -386,8 +506,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "RunStrongService",
-        "runstrong_service"
+        "runstrong_service",
+        "RunStrongService"
       ]
     }
   },
@@ -488,7 +608,7 @@
       ],
       "docstring": "RunningHub home page with latest activity.",
       "parameters": [],
-      "line_number": 61,
+      "line_number": 66,
       "blueprint": "running_hub",
       "full_url": "/hub/"
     },
@@ -500,7 +620,7 @@
       ],
       "docstring": "Display detailed activity information for specific activity ID.",
       "parameters": [],
-      "line_number": 72,
+      "line_number": 77,
       "blueprint": "running_hub",
       "full_url": "/hub/activity/"
     },
@@ -513,7 +633,7 @@
       ],
       "docstring": "Handle database queries.",
       "parameters": [],
-      "line_number": 93,
+      "line_number": 98,
       "blueprint": "running_hub",
       "full_url": "/hub/query/"
     },
@@ -525,7 +645,7 @@
       ],
       "docstring": "AI-powered natural language query interface.",
       "parameters": [],
-      "line_number": 111,
+      "line_number": 116,
       "blueprint": "running_hub",
       "full_url": "/hub/ai_query"
     },
@@ -537,7 +657,7 @@
       ],
       "docstring": "Display time period aggregated running statistics.",
       "parameters": [],
-      "line_number": 141,
+      "line_number": 146,
       "blueprint": "running_hub",
       "full_url": "/hub/statistics/"
     },
@@ -549,7 +669,7 @@
       ],
       "docstring": "Display personal records and achievements.",
       "parameters": [],
-      "line_number": 157,
+      "line_number": 162,
       "blueprint": "running_hub",
       "full_url": "/hub/trophy_room/"
     },
@@ -561,7 +681,7 @@
       ],
       "docstring": "Motivation Page, including upcoming races and inspriational LLM quote generator",
       "parameters": [],
-      "line_number": 172,
+      "line_number": 177,
       "blueprint": "running_hub",
       "full_url": "/hub/motivation"
     },
@@ -573,7 +693,7 @@
       ],
       "docstring": "API endpoint to generate a daily motivational message based on selected personality.",
       "parameters": [],
-      "line_number": 200,
+      "line_number": 199,
       "blueprint": "running_hub",
       "full_url": "/hub/api/daily_motivation"
     },
@@ -585,9 +705,85 @@
       ],
       "docstring": "Progressive skill tree for running achievement and side-quests.",
       "parameters": [],
-      "line_number": 223,
+      "line_number": 222,
       "blueprint": "running_hub",
       "full_url": "/hub/skill_tree/"
+    },
+    {
+      "function_name": "calendar",
+      "endpoint": "/calendar",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Renders the main calendar page.",
+      "parameters": [],
+      "line_number": 237,
+      "blueprint": "running_hub",
+      "full_url": "/hub/calendar"
+    },
+    {
+      "function_name": "get_planned_workouts",
+      "endpoint": "/api/planned_workouts",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint to fetch planned workouts for the visible calendar range.",
+      "parameters": [],
+      "line_number": 245,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/planned_workouts"
+    },
+    {
+      "function_name": "save_planned_workout",
+      "endpoint": "/api/planned_workouts",
+      "methods": [
+        "POST"
+      ],
+      "docstring": "API endpoint to save a new planned workout.",
+      "parameters": [],
+      "line_number": 272,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/planned_workouts"
+    },
+    {
+      "function_name": "get_planned_workout",
+      "endpoint": "/api/planned_workouts/<int:workout_id>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API endpoint to fetch a single planned workout by ID.",
+      "parameters": [
+        "workout_id"
+      ],
+      "line_number": 289,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/planned_workouts/<int:workout_id>"
+    },
+    {
+      "function_name": "update_planned_workout",
+      "endpoint": "/api/planned_workouts",
+      "methods": [
+        "PUT"
+      ],
+      "docstring": "API endpoint to update an existing planned workout.",
+      "parameters": [],
+      "line_number": 301,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/planned_workouts"
+    },
+    {
+      "function_name": "delete_planned_workout",
+      "endpoint": "/api/planned_workouts/<int:workout_id>",
+      "methods": [
+        "DELETE"
+      ],
+      "docstring": "API endpoint to delete a planned workout.",
+      "parameters": [
+        "workout_id"
+      ],
+      "line_number": 317,
+      "blueprint": "running_hub",
+      "full_url": "/hub/api/planned_workouts/<int:workout_id>"
     },
     {
       "function_name": "runstrong",
@@ -669,9 +865,47 @@
       ],
       "docstring": "Display the goals dashboard page.",
       "parameters": [],
-      "line_number": 118,
+      "line_number": 117,
       "blueprint": "run_strong",
       "full_url": "/strong/goals"
+    },
+    {
+      "function_name": "max_weights",
+      "endpoint": "/max-weights",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display exercise max weights page.",
+      "parameters": [],
+      "line_number": 127,
+      "blueprint": "run_strong",
+      "full_url": "/strong/max-weights"
+    },
+    {
+      "function_name": "get_exercise_max",
+      "endpoint": "/api/exercise-max/<int:exercise_id>",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "API: Get maximum weight for a specific exercise.",
+      "parameters": [
+        "exercise_id"
+      ],
+      "line_number": 137,
+      "blueprint": "run_strong",
+      "full_url": "/strong/api/exercise-max/<int:exercise_id>"
+    },
+    {
+      "function_name": "movement_catalog",
+      "endpoint": "/movement-catalog",
+      "methods": [
+        "GET"
+      ],
+      "docstring": "Display movement catalog page.",
+      "parameters": [],
+      "line_number": 147,
+      "blueprint": "run_strong",
+      "full_url": "/strong/movement-catalog"
     }
   ],
   "services": {
@@ -764,7 +998,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 32,
+              "line_number": 31,
               "is_async": false,
               "decorators": []
             },
@@ -773,12 +1007,12 @@
               "docstring": "Get database connection with error handling.",
               "parameters": [],
               "return_type": "sqlite3.Connection",
-              "line_number": 36,
+              "line_number": 35,
               "is_async": false,
               "decorators": []
             }
           ],
-          "line_number": 29,
+          "line_number": 28,
           "bases": [
             "ABC"
           ]
@@ -805,9 +1039,114 @@
         "os",
         "utils.format_utils",
         "utils.exception_utils",
-        "utils.RunnerVision.runnervision_utils",
         "config.Config",
         "utils.db.db_utils"
+      ]
+    },
+    "calendar_service": {
+      "file_path": "services\\calendar_service.py",
+      "classes": [
+        {
+          "name": "CalendarService",
+          "docstring": "Service for handling calendar and planned workout operations.",
+          "methods": [
+            {
+              "name": "get_planned_workouts_for_calendar",
+              "docstring": "Retrieves planned workouts in a date range and formats them for FullCalendar.",
+              "parameters": [
+                {
+                  "name": "start_date"
+                },
+                {
+                  "name": "end_date"
+                }
+              ],
+              "return_type": "list[dict]",
+              "line_number": 13,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "save_planned_workout",
+              "docstring": "Saves a new or updated planned workout to the database.\n\nArgs:\n    workout_data: A dictionary containing the details of the workout.",
+              "parameters": [
+                {
+                  "name": "workout_data",
+                  "type": "dict"
+                }
+              ],
+              "return_type": null,
+              "line_number": 56,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_planned_workout",
+              "docstring": "Retrieves a single planned workout.",
+              "parameters": [
+                {
+                  "name": "workout_id",
+                  "type": "int"
+                }
+              ],
+              "return_type": "dict | None",
+              "line_number": 76,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "update_planned_workout",
+              "docstring": "Updates an existing planned workout.",
+              "parameters": [
+                {
+                  "name": "workout_data",
+                  "type": "dict"
+                }
+              ],
+              "return_type": "None",
+              "line_number": 85,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "delete_planned_workout",
+              "docstring": "Deletes a planned workout.",
+              "parameters": [
+                {
+                  "name": "workout_id",
+                  "type": "int"
+                }
+              ],
+              "return_type": "None",
+              "line_number": 99,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_recent_strava_activity_ids",
+              "docstring": "Retrieves recent Strava IDs",
+              "parameters": [],
+              "return_type": "list[Any]",
+              "line_number": 110,
+              "is_async": false,
+              "decorators": []
+            }
+          ],
+          "line_number": 10,
+          "bases": [
+            "BaseService"
+          ]
+        }
+      ],
+      "functions": [],
+      "imports": [
+        "logging",
+        "typing.Dict",
+        "typing.Any",
+        "typing.List",
+        "services.base_service.BaseService",
+        "utils.db.running_hub_db_utils",
+        "utils.exception_utils"
       ]
     },
     "coach_g_service": {
@@ -961,7 +1300,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 313,
+              "line_number": 311,
               "is_async": false,
               "decorators": []
             },
@@ -975,7 +1314,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 344,
+              "line_number": 342,
               "is_async": false,
               "decorators": []
             },
@@ -997,7 +1336,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 348,
+              "line_number": 346,
               "is_async": false,
               "decorators": []
             },
@@ -1015,7 +1354,7 @@
                 }
               ],
               "return_type": "List[Dict]",
-              "line_number": 357,
+              "line_number": 355,
               "is_async": false,
               "decorators": []
             },
@@ -1024,7 +1363,7 @@
               "docstring": "Fetches and formats a summary of the last 7 days of running.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 366,
+              "line_number": 364,
               "is_async": false,
               "decorators": []
             },
@@ -1033,7 +1372,7 @@
               "docstring": "Fetches and formats a summary of the last 28-day training trend.\nReturns a text summary for history and a Markdown summary for the user.",
               "parameters": [],
               "return_type": "tuple[(str, str)]",
-              "line_number": 434,
+              "line_number": 432,
               "is_async": false,
               "decorators": []
             },
@@ -1055,7 +1394,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 499,
+              "line_number": 497,
               "is_async": false,
               "decorators": []
             }
@@ -1181,7 +1520,7 @@
               "docstring": "Get latest RunnerVision analysis results.",
               "parameters": [],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 30,
+              "line_number": 31,
               "is_async": false,
               "decorators": []
             },
@@ -1195,7 +1534,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 50,
+              "line_number": 51,
               "is_async": false,
               "decorators": []
             },
@@ -1209,7 +1548,7 @@
                 }
               ],
               "return_type": null,
-              "line_number": 64,
+              "line_number": 65,
               "is_async": false,
               "decorators": []
             },
@@ -1223,7 +1562,7 @@
                 }
               ],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 84,
+              "line_number": 85,
               "is_async": false,
               "decorators": []
             },
@@ -1232,7 +1571,7 @@
               "docstring": "Execute biomechanics analysis.",
               "parameters": [],
               "return_type": "Dict[(str, Any)]",
-              "line_number": 117,
+              "line_number": 118,
               "is_async": false,
               "decorators": []
             },
@@ -1246,13 +1585,15 @@
                 }
               ],
               "return_type": "bool",
-              "line_number": 133,
+              "line_number": 135,
               "is_async": false,
               "decorators": []
             }
           ],
           "line_number": 23,
-          "bases": []
+          "bases": [
+            "BaseService"
+          ]
         }
       ],
       "functions": [],
@@ -1337,7 +1678,7 @@
               "docstring": "Get active goals and calculate their progress percentage.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 79,
+              "line_number": 78,
               "is_async": false,
               "decorators": []
             },
@@ -1351,7 +1692,7 @@
                 }
               ],
               "return_type": "int",
-              "line_number": 99,
+              "line_number": 98,
               "is_async": false,
               "decorators": []
             },
@@ -1365,7 +1706,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 133,
+              "line_number": 132,
               "is_async": false,
               "decorators": []
             },
@@ -1379,7 +1720,7 @@
                 }
               ],
               "return_type": "float",
-              "line_number": 146,
+              "line_number": 145,
               "is_async": false,
               "decorators": []
             },
@@ -1388,7 +1729,30 @@
               "docstring": "Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.\n\nThis on-the-fly calculation includes:\n- Exponentially decayed workload for higher accuracy.\n- Fatigue scores for individual muscles, body groups, and overall.\n- Human-readable interpretations of all scores.\n- Data structured for categorical filtering (Overall, Lower, Upper, Core).",
               "parameters": [],
               "return_type": "Dict",
-              "line_number": 154,
+              "line_number": 153,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_exercise_max_weights",
+              "docstring": "Get exercises with their maximum weights.",
+              "parameters": [],
+              "return_type": "List[Dict]",
+              "line_number": 242,
+              "is_async": false,
+              "decorators": []
+            },
+            {
+              "name": "get_exercise_max_for_goals",
+              "docstring": "Get maximum weight for a specific exercise for goals tracking.",
+              "parameters": [
+                {
+                  "name": "exercise_id",
+                  "type": "int"
+                }
+              ],
+              "return_type": "float",
+              "line_number": 251,
               "is_async": false,
               "decorators": []
             }
@@ -4594,12 +4958,14 @@
   },
   "summary": {
     "total_blueprints": 4,
-    "total_routes": 23,
-    "total_services": 9,
+    "total_routes": 32,
+    "total_services": 10,
     "total_biomechanic_modules": 24,
     "methods_distribution": {
-      "GET": 17,
-      "POST": 7
+      "GET": 23,
+      "POST": 8,
+      "PUT": 1,
+      "DELETE": 1
     },
     "blueprints_list": [
       "coach_g",
@@ -4610,6 +4976,7 @@
     "services_list": [
       "activity_service",
       "base_service",
+      "calendar_service",
       "coach_g_service",
       "motivation_service",
       "query_service",

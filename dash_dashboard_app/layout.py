@@ -851,29 +851,26 @@ def create_dash_dashboard_app(server, db_path):
         return dashboard_cards
     
     app_layout = dbc.Container(
-     [
-        # Styled Header
-        html.Header(
-            dbc.Container(
         [
-            html.A(
-                [
-                    html.H1(
-                        ["RUNNING", html.Span("HUB")],
-                        className="logo"
-                    ),
-                    html.P(
-                        "Track, analyze, and improve your running performance",
-                        className="tagline"
-                    )
-                ],
-                href="/"  # <-- Link to your homepage
-            )
-        ],
-        className="container"
-    ),
-    className="site-header"
-),
+            # Styled Header
+            html.Header(
+                dbc.Container(
+                    [
+                        html.A(
+                            [
+                                html.Img(
+                                    src="/static/images/running_hub_logo_long_transparent.png",
+                                    alt="Running Hub Logo",
+                                    className="logo"
+                                )
+                            ],
+                            href="/"
+                        )
+                    ],
+                    className="container"
+                ),
+                className="site-header"
+            ),
 
         # Dashboard Content
  html.Main(

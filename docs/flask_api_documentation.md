@@ -3,10 +3,10 @@
 ## Summary  
   
 - **Total Blueprints**: 4  
-- **Total Routes**: 23  
-- **Total Services**: 9  
+- **Total Routes**: 32  
+- **Total Services**: 10  
 - **Total Biomechanic Modules**: 24  
-- **HTTP Methods**: GET(17), POST(7)  
+- **HTTP Methods**: GET(23), POST(8), PUT(1), DELETE(1)  
   
 ## Blueprint: coach_g  
   
@@ -50,9 +50,9 @@
   
 **URL Prefix**: `/hub`  
 **Directory**: `blueprints\running_hub`  
-**Routes Count**: 9  
+**Routes Count**: 15  
   
-**Services Used**: ActivityService, StatisticsService, MotivationService, statistics_service, QueryService, TrophyService, motivation_service, query_service, trophy_service, activity_service  
+**Services Used**: statistics_service, query_service, QueryService, ActivityService, StatisticsService, TrophyService, motivation_service, calendar_service, activity_service, trophy_service, CalendarService, MotivationService  
   
 ### Routes  
   
@@ -74,14 +74,28 @@
     - API endpoint to generate a daily motivational message based on selected personality  
 - **GET** `/hub/skill_tree/` → `skill_tree()`  
     - Progressive skill tree for running achievement and side-quests  
+- **GET** `/hub/calendar` → `calendar()`  
+    - Renders the main calendar page  
+- **GET** `/hub/api/planned_workouts` → `get_planned_workouts()`  
+    - API endpoint to fetch planned workouts for the visible calendar range  
+- **POST** `/hub/api/planned_workouts` → `save_planned_workout()`  
+    - API endpoint to save a new planned workout  
+- **GET** `/hub/api/planned_workouts/<int:workout_id>` → `get_planned_workout()`  
+    - API endpoint to fetch a single planned workout by ID  
+    - Parameters: workout_id  
+- **PUT** `/hub/api/planned_workouts` → `update_planned_workout()`  
+    - API endpoint to update an existing planned workout  
+- **DELETE** `/hub/api/planned_workouts/<int:workout_id>` → `delete_planned_workout()`  
+    - API endpoint to delete a planned workout  
+    - Parameters: workout_id  
   
 ## Blueprint: run_strong  
   
 **URL Prefix**: `/strong`  
 **Directory**: `blueprints\run_strong`  
-**Routes Count**: 7  
+**Routes Count**: 10  
   
-**Services Used**: RunStrongService, runstrong_service  
+**Services Used**: runstrong_service, RunStrongService  
   
 ### Routes  
   
@@ -99,4 +113,11 @@
     - Display the enhanced fatigue dashboard page  
 - **GET** `/strong/goals` → `goals()`  
     - Display the goals dashboard page  
+- **GET** `/strong/max-weights` → `max_weights()`  
+    - Display exercise max weights page  
+- **GET** `/strong/api/exercise-max/<int:exercise_id>` → `get_exercise_max()`  
+    - API: Get maximum weight for a specific exercise  
+    - Parameters: exercise_id  
+- **GET** `/strong/movement-catalog` → `movement_catalog()`  
+    - Display movement catalog page  
   

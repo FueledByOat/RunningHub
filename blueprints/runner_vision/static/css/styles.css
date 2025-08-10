@@ -1,4 +1,3 @@
-/* Begin RunnerVision Section */
 :root {
   --rv-primary: #110721;
   --rv-accent: #0fbfe8;
@@ -18,6 +17,7 @@ body.runnervision {
   min-height: 100vh;
 }
 
+/* Header */
 .runnervision-header {
   text-align: center;
   padding: 2rem 0;
@@ -30,18 +30,7 @@ body.runnervision {
   animation: fadeIn 2.5s ease-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* Upload Section */
 .upload-section {
   text-align: center;
   margin: 2rem auto;
@@ -82,6 +71,7 @@ body.runnervision {
   color: var(--rv-primary);
 }
 
+/* Loading Overlay */
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -89,14 +79,13 @@ body.runnervision {
   width: 100%;
   height: 100%;
   background-color: rgba(17, 7, 33, 0.85);
-  display: flex;
+  display: none;
   justify-content: center;
   align-items: center;
+  flex-direction: column;
   color: var(--rv-accent);
   font-size: 1.5rem;
   z-index: 1000;
-  display: none;
-  flex-direction: column;
 }
 
 .progress-container {
@@ -120,6 +109,7 @@ body.runnervision {
   transition: width 0.3s ease;
 }
 
+/* Video Section */
 .video-section {
   display: flex;
   justify-content: space-between;
@@ -138,7 +128,6 @@ video {
   width: 100%;
   max-width: 100%;
   max-height: 400px;
-  /* or any height you want */
   height: auto;
   object-fit: contain;
   border: 3px solid var(--rv-accent);
@@ -151,6 +140,7 @@ video {
   color: var(--rv-accent);
   text-decoration: none;
   font-weight: 600;
+  cursor: pointer;
 }
 
 .video-link:hover {
@@ -158,7 +148,7 @@ video {
   color: var(--rv-highlight);
 }
 
-/* Report overlay styles */
+/* Report Overlay */
 .report-overlay {
   position: fixed;
   top: 0;
@@ -197,25 +187,14 @@ video {
   color: var(--rv-highlight);
 }
 
-/* Update video element to specify MIME type */
-video {
-  width: 100%;
-  max-width: 100%;
-  border: 3px solid var(--rv-accent);
-  border-radius: 10px;
-  box-shadow: 0 4px 10px var(--rv-shadow);
-}
-
-/* Make sure links stand out */
-.video-link {
-  margin-top: 1rem;
-  color: var(--rv-accent);
-  text-decoration: none;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.video-link:hover {
-  text-decoration: underline;
-  color: var(--rv-highlight);
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -19,7 +19,6 @@ from werkzeug.utils import secure_filename
 import os
 
 from utils import format_utils, exception_utils
-from utils.RunnerVision import runnervision_utils as rv_utils
 from config import Config
 from utils.db import db_utils
 

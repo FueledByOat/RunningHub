@@ -1,6 +1,6 @@
 # Services Documentation  
   
-Found 9 service files.  
+Found 10 service files.  
   
 ## Service: activity_service  
   
@@ -42,6 +42,35 @@ Abstract base class for all services.
 - `__init__(db_path)`  
 - `_get_connection()` → sqlite3.Connection  
     - Get database connection with error handling.  
+  
+---  
+  
+## Service: calendar_service  
+  
+**File**: `services\calendar_service.py`  
+  
+### Classes  
+  
+#### CalendarService  
+  
+Service for handling calendar and planned workout operations.  
+  
+**Inherits from**: BaseService  
+  
+**Methods**:  
+  
+- `get_planned_workouts_for_calendar(start_date, end_date)` → list[dict]  
+    - Retrieves planned workouts in a date range and formats them for FullCalendar.  
+- `save_planned_workout(workout_data)`  
+    - Saves a new or updated planned workout to the database.  
+- `get_planned_workout(workout_id)` → dict | None  
+    - Retrieves a single planned workout.  
+- `update_planned_workout(workout_data)` → None  
+    - Updates an existing planned workout.  
+- `delete_planned_workout(workout_id)` → None  
+    - Deletes a planned workout.  
+- `get_recent_strava_activity_ids()` → list[Any]  
+    - Retrieves recent Strava IDs  
   
 ---  
   
@@ -135,6 +164,8 @@ Service for handling database queries.
   
 Service for RunnerVision biomechanics analysis.  
   
+**Inherits from**: BaseService  
+  
 **Methods**:  
   
 - `__init__(config)`  
@@ -187,6 +218,10 @@ Service for RunStrong strength training operations.
     - Converts an ACWR value to a 0-100 fatigue score. (No changes from before)  
 - `get_fatigue_dashboard_data()` → Dict  
     - Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.  
+- `get_exercise_max_weights()` → List[Dict]  
+    - Get exercises with their maximum weights.  
+- `get_exercise_max_for_goals(exercise_id)` → float  
+    - Get maximum weight for a specific exercise for goals tracking.  
   
 ---  
   

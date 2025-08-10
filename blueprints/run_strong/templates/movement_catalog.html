@@ -1,0 +1,37 @@
+{% extends "runstrong_base.html" %}
+
+{% block title %}Workout Journal | RUNSTRONG{% endblock %}
+
+{% block extra_head %}
+<script src="{{ url_for('run_strong.static', filename='js/runstrong_movement_catalog.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+
+<div class="runstrong-header">
+    <h1><a href="{{ url_for('running_hub.home') }}">Movement Catalog 📚</a></h1>
+    <p>Drills, Plyometrics, Mobility, and Prehab Exercises for Runners</p>
+</div>
+
+<div class="max-weights-container">
+    <div class="goals-list">
+        {% for category in movement_categories %}
+        <button class="accordion">{{ category.name }}</button>
+        <div class="panel">
+            {% for exercise in category.exercises %}
+            <div class="exercise-card">
+                <h4>{{ exercise.exercise_name }}</h4>
+                <p><strong>Purpose:</strong> {{ exercise.purpose }}</p>
+                <p><strong>When to Use:</strong> {{ exercise.when_to_use }}</p>
+                {% if exercise.video_url %}
+                <a href="{{ exercise.video_url }}" target="_blank">▶ Watch Video</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-exercises">No movement data found. Add entries to populate your catalog.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@
 
 import logging
 import sqlite3
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 
 from config import Config
@@ -36,9 +37,23 @@ def get_activity_details_by_id(conn, activity_id: int, activity_types: List[str]
     # Using dynamic placeholders here as the number of parameters is variable
     placeholders = ",".join("?" * len(activity_types))
     query = f"""
-        SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name
+    SELECT a.*, COALESCE(CONCAT(g.model_name, " ", g.nickname), a.gear_id) as gear_name, 
+    w.location_name as location_name,
+    w.temp_f as temp_f,
+    w.condition_text as condition_text,
+    w.condition_icon as condition_icon,
+    w.wind_mph as wind_mph,
+    w.feelslike_f as feelslike_f, 
+    w.windchill_f as windchill_f,
+    w.heatindex_f as heatindex_f,
+    w.dewpoint_f as dewpoint_f,
+    w.gust_mph as gust_mph,
+    w.uv as uv,
+    w.humidity as humidity,
+    w.rcs as rcs
         FROM activities as a
         LEFT JOIN gear as g ON a.gear_id = g.gear_id
+		LEFT JOIN weather as w ON a.id = w.activity_id
         WHERE a.id = ?
         AND a.gear_id IS NOT NULL AND a.gear_id != ''
         AND a.type IN ({placeholders})
@@ -236,4 +251,100 @@ def get_longest_run(conn: sqlite3.Connection, units: str) -> Optional[Dict[str, 
 
 # -------------------------------------
 # Trophy Page SQL Logic END
+# -------------------------------------
+
+# -------------------------------------
+# Calendar Page SQL Logic Begin
+# -------------------------------------
+
+def get_planned_workouts_by_date_range(conn, start_date, end_date) -> list[dict]:
+    """Retrieve all planned workouts within a specific date range."""
+    try:
+        query = """
+            SELECT id, workout_name, workout_date, workout_type, success, linked_activity_id
+            FROM planned_running_workouts
+            WHERE workout_date BETWEEN ? AND ?
+        """
+        cur = conn.cursor()
+        cur.execute(query, (start_date, end_date))
+        rows = cur.fetchall()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"Unexpected error getting planned workouts by date range: {e}")
+        raise exception_utils.DatabaseError(f"Failed to get planned workouts: {e}") from e
+
+def insert_planned_workout(conn, data: dict):
+    """Inserts a new planned workout into the database."""
+    try:
+        query = """
+            INSERT INTO planned_running_workouts (
+                user_id, workout_date, workout_name, workout_type, effort, 
+                success, planned_notes, recap_notes, linked_activity_id, last_modified
+            ) VALUES (
+                :user_id, :workout_date, :workout_name, :workout_type, :effort,
+                :success, :planned_notes, :recap_notes, :linked_activity_id, CURRENT_TIMESTAMP
+            )
+        """
+        cur = conn.cursor()
+        cur.execute(query, data)
+    except Exception as e:
+        logger.error(f"Unexpected error inserting planned workout: {e}")
+        raise exception_utils.DatabaseError(f"Failed to insert planned workout: {e}") from e
+
+def get_planned_workout_by_id(conn, workout_id: int) -> dict | None:
+    """Retrieve a single planned workout by its ID."""
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM planned_running_workouts WHERE id = ?", (workout_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Error fetching workout ID {workout_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to fetch workout: {e}") from e
+
+def update_planned_workout(conn, data: dict):
+    """Updates an existing planned workout in the database."""
+    try:
+        query = """
+            UPDATE planned_running_workouts SET
+                workout_date = :workout_date, workout_name = :workout_name, 
+                workout_type = :workout_type, effort = :effort, success = :success, 
+                planned_notes = :planned_notes, recap_notes = :recap_notes,
+                linked_activity_id = :linked_activity_id, last_modified = CURRENT_TIMESTAMP
+            WHERE id = :id
+        """
+        cur = conn.cursor()
+        cur.execute(query, data)
+    except Exception as e:
+        logger.error(f"Error updating workout ID {data.get('id')}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to update workout: {e}") from e
+
+def delete_planned_workout_by_id(conn, workout_id: int):
+    """Deletes a planned workout from the database by its ID."""
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM planned_running_workouts WHERE id = ?", (workout_id,))
+    except Exception as e:
+        logger.error(f"Error deleting workout ID {workout_id}: {e}")
+        raise exception_utils.DatabaseError(f"Failed to delete workout: {e}") from e
+
+def get_recent_strava_activity_ids(conn):
+    """Retrieves recent Strava IDs"""
+    recent_start = (datetime.now() - timedelta(days=3)).isoformat()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        SELECT id, name, start_date_local
+        FROM activities
+        WHERE start_date_local >= ?
+        AND type = 'Run'
+        ORDER BY start_date_local DESC
+    """, (recent_start,))
+        return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error fetching strava ID values: {e}")
+        raise exception_utils.DatabaseError(f"Failed to delete workout: {e}") from e
+
+# -------------------------------------
+# Calendar Page SQL Logic End
 # -------------------------------------

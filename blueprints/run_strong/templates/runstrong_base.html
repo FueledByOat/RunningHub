@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" class="runstrong">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}RUNSTRONG{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='favicon/apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="runstrong {% block body_class %}{% endblock %}">
+
+    <div class="runstrong-navbar">
+        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
+        <a href="{{ url_for('run_strong.exercise_library') }}">Exercise Library</a>
+        <a href="{{ url_for('run_strong.journal') }}">Workout Journal</a>
+        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
+        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
+        <a href="{{ url_for('run_strong.max_weights') }}">Max Weights</a>
+        <a href="{{ url_for('run_strong.movement_catalog') }}">Movement Catalog</a>
+    </div>
+
+    <div class="runstrong-container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block extra_body %}{% endblock %}
+</body>
+
+</html>

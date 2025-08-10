@@ -27,7 +27,7 @@ class StravaDataPipeline:
     def _setup_logging(self) -> None:
         """Configure logging with proper formatting and file handling."""
         logging.basicConfig(
-            level=logging.INFO,  # Changed from DEBUG to INFO for cleaner logs
+            level=logging.DEBUG,  # Changed from DEBUG to INFO for cleaner logs
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             # handlers=[
             #     logging.FileHandler('strava_pipeline.log', mode='a'),
@@ -52,6 +52,7 @@ class StravaDataPipeline:
         self.refresh_token = config.Config.REFRESH_TOKEN
         self.db_path = config.Config.DB_PATH
         self.access_token = None
+        self.weather_api_key = config.Config.WEATHER_API_KEY
         
     def refresh_access_token(self) -> bool:
         """
@@ -243,6 +244,51 @@ class StravaDataPipeline:
         
         self.logger.info(f"Gear fetch complete: {successful_gear}/{len(gear_ids)} successful")
     
+    def fetch_and_store_weather(self, activities: List[Dict]) -> None:
+        """
+        Fetch weather data for activities and store in database.
+        
+        Args:
+            activities: List of activity dictionaries
+        """
+
+        if not self.weather_api_key:
+            self.logger.warning("WEATHER_API_KEY not found in environment variables")
+            return
+        
+        if not activities:
+            self.logger.info("No activities provided for weather fetching")
+            return
+        
+        self.logger.info(f"Starting weather data fetch for {len(activities)} activities")
+        
+        try:
+            processed = strava_utils.fetch_weather_for_activities(activities, self.db_path, self.weather_api_key)
+            self.logger.info(f"Weather fetch complete: {processed} activities processed")
+            
+        except Exception as e:
+            self.logger.error(f"Error in weather fetch: {e}")
+
+    def update_workout_linkage(self) -> None:
+        """
+        After any potential activity import, attempt to link workout to strava activity id.
+        """
+        try:
+            strava_utils.auto_link_strava_activities(self.db_path)
+            self.logger.info(f"Update workout activity to strava activity linkage operation is successful")
+        except Exception as e:
+            self.logger.warning("Update workout activity to strava activity linkage database update failed!")
+
+    def update_workout_embeddings(self) -> None:
+        """
+        After any potential activity import, attempt to link workout to strava activity id.
+        """
+        try:
+            strava_utils.embed_workouts_and_build_faiss(self.db_path, "faiss_workout_index.idx")
+            self.logger.info(f"Update workout embeddings operation is successful")
+        except Exception as e:
+            self.logger.warning("Update workout embeddings procedure failed!")
+
     def update_daily_dashboard_metrics(self) -> None:
         """
         After any potential activity import, call to db to calculate
@@ -288,9 +334,18 @@ class StravaDataPipeline:
             
             # Step 4: Fetch and store gear data
             self.fetch_and_store_gear(activities)
+            
+            # Step 5: Fetch and store weather data
+            self.fetch_and_store_weather(activities)
 
-            # Step 5: Update daily dashboard metrics
+            # Step 6: Update daily dashboard metrics
             self.update_daily_dashboard_metrics()
+
+            # Step 7: Attempt to link custom workout data and Strava activity data
+            self.update_workout_linkage()
+
+            # Step 8: Generate and store embeddings from workout data
+            self.update_workout_embeddings()
             
             self.logger.info("=== Pipeline completed successfully ===")
             return True

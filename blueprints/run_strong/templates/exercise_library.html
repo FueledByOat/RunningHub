@@ -1,36 +1,27 @@
-<!DOCTYPE html>
-<html lang="en" class="runstrong">
+{% extends "runstrong_base.html" %}
 
-<head>
-    <meta charset="UTF-8" />
-    <title>Exercise Library | RUNSTRONG</title>
-    <link rel="stylesheet" href="{{ url_for('run_strong.static', filename='css/styles.css') }}">
-</head>
+{% block title %}Workout Journal | RUNSTRONG{% endblock %}
 
-<body class="runstrong">
-    <div class="runstrong-navbar">
-        <a href="{{ url_for('run_strong.runstrong') }}">Home</a>
-        <a href="{{ url_for('run_strong.exercise_library') }}" class="active">Exercise Library</a>
-        <a href="{{ url_for('run_strong.journal') }}">Workout Journal</a>
-        <a href="{{ url_for('run_strong.fatigue_dashboard') }}">Fatigue Dashboard</a>
-        <a href="{{ url_for('run_strong.goals') }}">Goals Dashboard</a>
+{% block content %}
+
+<div class="runstrong-header">
+    <h1>
+        <a href="{{ url_for('running_hub.home') }}">Exercise Library 📔</a>
+    </h1>
+</div>
+
+<div class="exercise-list">
+    {% for exercise in exercises %}
+    <div class="exercise-item">
+        <h2>{{ exercise.name }}</h2>
+        <p>{{ exercise.description or 'No description available.' }}</p>
     </div>
-    <div class="runstrong-header">
-        <h1>
-            <a href="{{ url_for('running_hub.home') }}">Exercise Library 🏋️</a>
-        </h1>
-    </div>
-    <div class="exercise-list">
-        {% for exercise in exercises %}
-        <div class="exercise-item">
-            <h2>{{ exercise.name }}</h2>
-            <p>{{ exercise.description or 'No description available.' }}</p>
-        </div>
-        {% else %}
-        <p>No exercises found in the library.</p>
-        {% endfor %}
-    </div>
-    </div>
+    {% else %}
+    <p>No exercises found in the library.</p>
+    {% endfor %}
+</div>
+</div>
+{% endblock %}
 </body>
 
 </html>

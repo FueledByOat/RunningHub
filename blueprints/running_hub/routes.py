@@ -8,6 +8,8 @@ import logging
 import os
 import uuid
 import json
+import random
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, abort, jsonify, url_for 
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -16,8 +18,10 @@ from services.query_service import QueryService
 from services.statistics_service import StatisticsService
 from services.trophy_service import TrophyService
 from services.motivation_service import MotivationService
+from services.calendar_service import CalendarService
 from utils import exception_utils
 from utils.db import db_utils
+from config import LanguageModelConfig
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +52,12 @@ def init_running_hub_blueprint(config):
     statistics_service = StatisticsService(config.DB_PATH)
     trophy_service = TrophyService(config.DB_PATH)
     motivation_service = MotivationService(config)
+    calendar_service = CalendarService(config.DB_PATH)
     
-    register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service)
+    register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service, calendar_service)
     return running_hub_bp
 
-def register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service):
+def register_routes(activity_service, query_service, statistics_service, trophy_service, motivation_service, calendar_service):
     """Register all RunningHub routes."""
     
     # Home/Dashboard Routes
@@ -179,15 +184,9 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
                 for race in profile_data['races']:
                     if 'image' in race:
                         relative_image_path = race['image'].replace('static/', '', 1)
-
-                        # --- THIS IS THE CORRECTED LINE ---
-                        # We specify 'running_hub.static' to correctly point to the
-                        # static folder defined within this blueprint.
                         race['imageUrl'] = url_for('running_hub.static', filename=relative_image_path)
-                        # --- END OF CORRECTION ---
                         
                     else:
-                        # Also correct the fallback URL to use the blueprint's static folder
                         race['imageUrl'] = url_for('running_hub.static', filename='images/default_placeholder.png')
             return render_template("motivation.html", profile_data=profile_data)
         
@@ -204,7 +203,7 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
             if not data:
                 return jsonify({'error': 'No data provided'}), 400
             
-            personality = data.get('personality', 'motivational')
+            personality = data.get('personality', random.choice(list(LanguageModelConfig.PERSONALITY_TEMPLATES.keys())))
 
             # Use a transient session_id as we may not have a chat session cookie
             session_id = request.cookies.get('session_id', f"motivation-{uuid.uuid4()}")
@@ -229,3 +228,97 @@ def register_routes(activity_service, query_service, statistics_service, trophy_
         except Exception as e:
             logger.error(f"Error loading skill tree: {e}")
             return render_template("skill_tree.html")
+        
+    # -------------------------------------
+    # Calendar Routes
+    # -------------------------------------
+
+    @running_hub_bp.route("/calendar")
+    def calendar():
+        """Renders the main calendar page."""
+
+        recent_activities = calendar_service.get_recent_strava_activity_ids()
+
+        return render_template("calendar.html", recent_activities=recent_activities)
+
+    @running_hub_bp.route("/api/planned_workouts", methods=["GET"])
+    def get_planned_workouts():
+        """API endpoint to fetch planned workouts for the visible calendar range."""
+        try:
+            # 1. Get arguments from the request
+            start_str = request.args.get("start")
+            end_str = request.args.get("end")
+
+            if not start_str or not end_str:
+                raise BadRequest("Start and end date parameters are required.")
+
+            # 2. Parse dates (the service layer expects date objects, not strings)
+            start_date = datetime.fromisoformat(start_str).date()
+            end_date = datetime.fromisoformat(end_str).date()
+
+            # 3. Call the service with the prepared data
+            events = calendar_service.get_planned_workouts_for_calendar(start_date, end_date)
+            
+            return jsonify(events)
+            
+        except (ValueError, BadRequest) as e:
+            logger.warning(f"Invalid request for planned workouts: {e}")
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.error(f"API failed to fetch planned workouts: {e}")
+            return jsonify({"error": "Failed to fetch calendar events"}), 500
+
+    @running_hub_bp.route("/api/planned_workouts", methods=["POST"])
+    def save_planned_workout():
+        """API endpoint to save a new planned workout."""
+        try:
+            data = request.get_json()
+            if not data or not data.get("workout_date"):
+                raise BadRequest("Missing required workout data.")
+
+            calendar_service.save_planned_workout(data)
+            return jsonify({"message": "Workout saved successfully"}), 201
+        except BadRequest as e:
+            logger.warning(f"Bad request for saving workout: {e}")
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.error(f"API failed to save planned workout: {e}")
+            return jsonify({"error": "Failed to save workout"}), 500
+        
+    @running_hub_bp.route("/api/planned_workouts/<int:workout_id>", methods=["GET"])
+    def get_planned_workout(workout_id):
+        """API endpoint to fetch a single planned workout by ID."""
+        try:
+            workout = calendar_service.get_planned_workout(workout_id)
+            if not workout:
+                return jsonify({"error": "Workout not found"}), 404
+            return jsonify(workout)
+        except Exception as e:
+            logger.error(f"API failed to fetch workout {workout_id}: {e}")
+            return jsonify({"error": "Failed to retrieve workout"}), 500
+
+    @running_hub_bp.route("/api/planned_workouts", methods=["PUT"])
+    def update_planned_workout():
+        """API endpoint to update an existing planned workout."""
+        try:
+            data = request.get_json()
+            if not data or not data.get("id"):
+                raise BadRequest("Workout ID is required for an update.")
+            
+            calendar_service.update_planned_workout(data)
+            return jsonify({"message": "Workout updated successfully"})
+        except BadRequest as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            logger.error(f"API failed to update workout: {e}")
+            return jsonify({"error": "Failed to update workout"}), 500
+
+    @running_hub_bp.route("/api/planned_workouts/<int:workout_id>", methods=["DELETE"])
+    def delete_planned_workout(workout_id):
+        """API endpoint to delete a planned workout."""
+        try:
+            calendar_service.delete_planned_workout(workout_id)
+            return jsonify({"message": "Workout deleted successfully"})
+        except Exception as e:
+            logger.error(f"API failed to delete workout {workout_id}: {e}")
+            return jsonify({"error": "Failed to delete workout"}), 500

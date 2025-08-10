@@ -6,17 +6,20 @@ Handles data extraction, transformation, and loading for Strava athlete data.
 
 import sqlite3
 import requests
+from difflib import SequenceMatcher
 import json
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
+import time
 from dotenv import load_dotenv
 
-from utils.db import db_utils
+from sentence_transformers import SentenceTransformer
+import faiss
+
 from utils.db import dash_db_utils
 from utils.db import language_db_utils
-from utils.db import runstrong_db_utils
 from config import Config
 
 # Configure module-level logger
@@ -239,6 +242,17 @@ def get_gear(access_token: str, gear_id: str) -> Dict[str, Any]:
         logger.error(f"Request error fetching gear {gear_id}: {e}")
         raise
 
+def calculate_pahr(average_speed, average_heartrate):
+    """Pace to Heart Rate Ratio (PaHR)
+    PaHR = average_speed / average_heartrate
+    Where:
+    - average_speed is in meters per second (m/s)
+    - average_heartrate is in beats per minute (bpm)
+    - PaHR is a unit-less ratio representing efficiency (higher = faster pace per bpm)
+    """
+    if average_speed is None or average_heartrate is None or average_heartrate == 0:
+        return None
+    return round(average_speed / average_heartrate, 5)
 
 def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -> int:
     """
@@ -270,6 +284,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                 # Safely extract nested values with proper defaults
                 athlete_data = activity.get("athlete", {})
                 map_data = activity.get("map", {})
+                pahr = calculate_pahr(activity.get("average_speed"), activity.get("average_heartrate"))
                 
                 data.append({
                     "id": activity.get("id"),
@@ -330,7 +345,8 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                     "pr_count": activity.get("pr_count"),
                     "total_photo_count": activity.get("total_photo_count"),
                     "has_kudoed": activity.get("has_kudoed"),
-                    "import_date": current_time
+                    "import_date": current_time,
+                    "pahr": pahr
                 })
 
             # Execute batch insert with proper error handling
@@ -350,7 +366,7 @@ def insert_activities_batch(activity_list: List[Dict[str, Any]], db_path: str) -
                     :heartrate_opt_out, :display_hide_heartrate_option,
                     :elev_high, :elev_low,
                     :upload_id, :upload_id_str, :external_id, :from_accepted_tag,
-                    :pr_count, :total_photo_count, :has_kudoed, :import_date
+                    :pr_count, :total_photo_count, :has_kudoed, :import_date, :pahr
                 )
             ''', data)
             
@@ -770,23 +786,638 @@ def update_daily_dashboard_metrics() -> None:
     metrics like ctl, atl, tsb, tss, etc.
     """
 
-    df = dash_db_utils.get_ctl_atl_tsb_tss_data().tail(1)
     try:
         with sqlite3.connect(Config.DB_PATH) as conn:
+            df = dash_db_utils.get_ctl_atl_tsb_tss_data(conn).tail(1)
             language_db_utils.update_daily_training_metrics(conn=conn, df=df)
             logger.info(f"Daily stats updated with: {df}")
     except sqlite3.Error as e:
         logger.error(f"Database error updating daily metrics: {e}")
         raise
 
-def update_daily_runstrong_metrics() -> None:
-    """
-    Updates fatigue metrics on strength training data
-    """
+def create_weather_table(cursor):
+    """Create the weather table if it doesn't exist"""
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS weather (
+            id INTEGER PRIMARY KEY,
+            activity_id INTEGER,
+            location_name TEXT,
+            location_region TEXT,
+            location_country TEXT,
+            time_epoch INTEGER,
+            time TEXT,
+            temp_c REAL,
+            temp_f REAL,
+            is_day INTEGER,
+            condition_text TEXT,
+            condition_icon TEXT,
+            condition_code INTEGER,
+            wind_mph REAL,
+            wind_kph REAL,
+            wind_degree INTEGER,
+            wind_dir TEXT,
+            pressure_mb REAL,
+            pressure_in REAL,
+            precip_mm REAL,
+            precip_in REAL,
+            snow_cm REAL,
+            humidity INTEGER,
+            cloud INTEGER,
+            feelslike_c REAL,
+            feelslike_f REAL,
+            windchill_c REAL,
+            windchill_f REAL,
+            heatindex_c REAL,
+            heatindex_f REAL,
+            dewpoint_c REAL,
+            dewpoint_f REAL,
+            will_it_rain INTEGER,
+            chance_of_rain INTEGER,
+            will_it_snow INTEGER,
+            chance_of_snow INTEGER,
+            vis_km REAL,
+            vis_miles REAL,
+            gust_mph REAL,
+            gust_kph REAL,
+            uv REAL,
+            import_date TEXT,
+            FOREIGN KEY (activity_id) REFERENCES activities (id)
+        )
+    ''')
+
+def parse_latlng(latlng_str):
+    """Parse the lat/lng string format [lat, lng] into separate values"""
+    if not latlng_str or latlng_str == 'NULL':
+        return None, None
+    
+    coords = latlng_str.strip('[]').split(',')
+    if len(coords) != 2:
+        return None, None
+    
     try:
-        with sqlite3.connect(Config.DB_PATH) as conn:
-            runstrong_db_utils.update_muscle_group_fatigue(conn=conn)
-            logger.info(f"Muscle group fatigue updated")
+        lat = float(coords[0].strip())
+        lng = float(coords[1].strip())
+        return lat, lng
+    except ValueError:
+        return None, None
+
+def get_weather_data(lat, lng, date_str, hour, api_key):
+    """Fetch weather data from WeatherAPI"""
+    url = "https://api.weatherapi.com/v1/history.json"
+    params = {
+        'q': f"{lat},{lng}",
+        'dt': date_str,
+        'hour': hour,
+        'key': api_key
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching weather data: {e}")
+        return None
+
+def extract_hour_from_datetime(weather_date_str):
+    """Extract hour from weather_date string"""
+    try:
+        dt = datetime.strptime(weather_date_str, '%Y-%m-%d %H:%M:%S')
+        return dt.hour, dt.strftime('%Y-%m-%d')
+    except ValueError:
+        try:
+            dt = datetime.strptime(weather_date_str, '%m/%d/%Y %H:%M')
+            return dt.hour, dt.strftime('%Y-%m-%d')
+        except ValueError:
+            logger.warning(f"Could not parse datetime: {weather_date_str}")
+            return None, None
+
+def insert_weather_data(cursor, activity_id, weather_response):
+    """Insert weather data into the database"""
+    if not weather_response:
+        return False
+    
+    location = weather_response.get('location', {})
+    forecast = weather_response.get('forecast', {})
+    
+    if not forecast.get('forecastday'):
+        return False
+    
+    hourly_data = forecast['forecastday'][0].get('hour', [])
+
+    if hourly_data:
+        hour_data = hourly_data[0]
+
+        try:
+            rcs = calculate_rcs(hour_data.get("dewpoint_c"),
+                                hour_data.get("feelslike_c"),
+                                hour_data.get("wind_kph"),
+                                hour_data.get("chance_of_rain"),
+                                hour_data.get("chance_of_snow"),
+                                hour_data.get("uv"),
+                                hour_data.get("temp_c")
+            )
+        except:
+            logger.warning(f"RCS calculation failed for Activity ID {activity_id}")
+            rcs = 0
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO weather (
+                activity_id, location_name, location_region, location_country,
+                time_epoch, time, temp_c, temp_f, is_day,
+                condition_text, condition_icon, condition_code,
+                wind_mph, wind_kph, wind_degree, wind_dir,
+                pressure_mb, pressure_in, precip_mm, precip_in, snow_cm,
+                humidity, cloud, feelslike_c, feelslike_f,
+                windchill_c, windchill_f, heatindex_c, heatindex_f,
+                dewpoint_c, dewpoint_f, will_it_rain, chance_of_rain,
+                will_it_snow, chance_of_snow, vis_km, vis_miles,
+                gust_mph, gust_kph, uv, import_date, rcs
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            activity_id,
+            location.get('name'),
+            location.get('region'),
+            location.get('country'),
+            hour_data.get('time_epoch'),
+            hour_data.get('time'),
+            hour_data.get('temp_c'),
+            hour_data.get('temp_f'),
+            hour_data.get('is_day'),
+            hour_data.get('condition', {}).get('text'),
+            hour_data.get('condition', {}).get('icon'),
+            hour_data.get('condition', {}).get('code'),
+            hour_data.get('wind_mph'),
+            hour_data.get('wind_kph'),
+            hour_data.get('wind_degree'),
+            hour_data.get('wind_dir'),
+            hour_data.get('pressure_mb'),
+            hour_data.get('pressure_in'),
+            hour_data.get('precip_mm'),
+            hour_data.get('precip_in'),
+            hour_data.get('snow_cm'),
+            hour_data.get('humidity'),
+            hour_data.get('cloud'),
+            hour_data.get('feelslike_c'),
+            hour_data.get('feelslike_f'),
+            hour_data.get('windchill_c'),
+            hour_data.get('windchill_f'),
+            hour_data.get('heatindex_c'),
+            hour_data.get('heatindex_f'),
+            hour_data.get('dewpoint_c'),
+            hour_data.get('dewpoint_f'),
+            hour_data.get('will_it_rain'),
+            hour_data.get('chance_of_rain'),
+            hour_data.get('will_it_snow'),
+            hour_data.get('chance_of_snow'),
+            hour_data.get('vis_km'),
+            hour_data.get('vis_miles'),
+            hour_data.get('gust_mph'),
+            hour_data.get('gust_kph'),
+            hour_data.get('uv'),
+            datetime.now().isoformat(),
+            rcs
+        ))
+        return True
+    return False
+
+def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: str) -> int:
+    """
+    Fetch weather data for a list of activities and store in database.
+    
+    Args:
+        activities: List of activity dictionaries from Strava API
+        db_path: Path to the SQLite database
+        api_key: WeatherAPI key
+        
+    Returns:
+        Number of activities processed successfully
+    """
+    if not activities or not api_key:
+        logger.info("No activities or API key provided for weather fetching")
+        return 0
+    
+    try:
+        with sqlite3.connect(db_path) as conn:
+            cursor = conn.cursor()
+            create_weather_table(cursor)
+            
+            # Get existing weather data to avoid duplicates
+            cursor.execute('SELECT DISTINCT activity_id FROM weather')
+            existing_weather_ids = set(row[0] for row in cursor.fetchall())
+            
+            processed = 0
+            
+            for i, activity in enumerate(activities):
+                print(activities)
+                activity_id = activity.get('id')
+                if not activity_id or activity_id in existing_weather_ids:
+                    continue
+                
+                # Get coordinates from activity
+                start_latlng = activity.get('start_latlng')
+                if not start_latlng or len(start_latlng) != 2:
+                    logger.debug(f"No coordinates for activity {activity_id}")
+                    continue
+                
+                lat, lng = start_latlng[0], start_latlng[1]
+                
+                # Calculate weather date (midpoint of activity)
+                start_date = activity.get('start_date', activity.get('start_date_local', ''))
+                elapsed_time = activity.get('elapsed_time', 0)
+                
+                if not start_date:
+                    continue
+                
+                try:
+                    start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                    weather_dt = start_dt + timedelta(seconds=elapsed_time // 2)
+                    hour = weather_dt.hour
+                    date_str = weather_dt.strftime('%Y-%m-%d')
+                except (ValueError, TypeError):
+                    logger.warning(f"Could not parse date for activity {activity_id}")
+                    continue
+                
+                # Fetch weather data
+                weather_data = get_weather_data(lat, lng, date_str, hour, api_key)
+
+                if weather_data and insert_weather_data(cursor, activity_id, weather_data):
+                    processed += 1
+                    logger.debug(f"Weather data stored for activity {activity_id}")
+                
+                # Rate limiting
+                time.sleep(0.2)
+                
+                # Commit every 10 records
+                if processed % 10 == 0:
+                    conn.commit()
+            
+            conn.commit()
+            logger.info(f"Weather fetch complete: {processed} activities processed")
+            return processed
+            
     except sqlite3.Error as e:
-        logger.error(f"Database error updating muscle group fatigue: {e}")
+        logger.error(f"Database error during weather fetch: {e}")
+        return 0
+    except Exception as e:
+        logger.error(f"Unexpected error during weather fetch: {e}")
+        return 0
+    
+## Running Condition Score (RCS) calculations
+
+def score_dewpoint(dew_c):
+    if dew_c < 10:
+        return 10
+    elif dew_c < 15:
+        return 8
+    elif dew_c < 18:
+        return 6
+    elif dew_c < 21:
+        return 4
+    elif dew_c < 24:
+        return 2
+    else:
+        return 0
+
+def score_feelslike(temp_c):
+    # Ideal range: 5°C to 15°C
+    if 5 <= temp_c <= 15:
+        return 10
+    elif 0 <= temp_c < 5 or 15 < temp_c <= 20:
+        return 8
+    elif -5 <= temp_c < 0 or 20 < temp_c <= 25:
+        return 5
+    elif -10 <= temp_c < -5 or 25 < temp_c <= 30:
+        return 3
+    else:
+        return 0
+
+def score_wind(wind_kph):
+    if wind_kph < 10:
+        return 10
+    elif wind_kph < 20:
+        return 6
+    elif wind_kph < 30:
+        return 3
+    else:
+        return 0
+
+def score_precipitation(chance_of_rain, chance_of_snow):
+    chance = max(chance_of_rain or 0, chance_of_snow or 0)
+    if chance > 80:
+        return 0
+    elif chance > 60:
+        return 3
+    elif chance > 40:
+        return 5
+    elif chance > 20:
+        return 8
+    else:
+        return 10
+
+def score_uv(uv):
+    if uv is None:
+        return 10
+    elif uv <= 2:
+        return 10
+    elif uv <= 5:
+        return 8
+    elif uv <= 7:
+        return 5
+    elif uv <= 10:
+        return 3
+    else:
+        return 0
+
+def score_temp(temp_c):
+    # Ideal: 5-15°C
+    if 5 <= temp_c <= 15:
+        return 10
+    elif 0 <= temp_c < 5 or 15 < temp_c <= 20:
+        return 7
+    elif -5 <= temp_c < 0 or 20 < temp_c <= 25:
+        return 4
+    else:
+        return 1
+
+def calculate_rcs(dew_c, feelslike_c, wind_kph, chance_of_rain, chance_of_snow, uv, temp_c):
+    """Calculates Running Condition Score (RCS) using the following structure
+    
+    Component	Importance	Weight	Notes
+    Dew Point	High	0.25	Correlates with discomfort; humid air makes sweating ineffective.
+    Feels-like Temp	High	0.25	Accounts for both wind chill and heat index.
+    Wind Speed	Medium	0.15	Higher winds can impair pace and comfort.
+    Precipitation Chance	Medium	0.15	Wet conditions can impact traction and comfort.
+    UV Index	Lower	0.10	Strong sun can increase fatigue and sunburn risk.
+    Actual Temp	Lower	0.10	Secondary to feels-like, but still impactful.
+
+    Total: 1.00
+
+    All sub-scores will be normalized to a 0–10 scale, where 10 is ideal and 0 is poor.
+    
+    """
+    scores = {
+        "dew": score_dewpoint(dew_c),
+        "feelslike": score_feelslike(feelslike_c),
+        "wind": score_wind(wind_kph),
+        "precip": score_precipitation(chance_of_rain, chance_of_snow),
+        "uv": score_uv(uv),
+        "temp": score_temp(temp_c)
+    }
+
+    rcs = (
+        scores["dew"] * 0.25 +
+        scores["feelslike"] * 0.25 +
+        scores["wind"] * 0.15 +
+        scores["precip"] * 0.15 +
+        scores["uv"] * 0.10 +
+        scores["temp"] * 0.10
+    )
+
+    return round(rcs, 2)
+
+def fuzzy_match(a, b):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+def auto_link_strava_activities(db_path):
+    try:
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT * FROM planned_running_workouts
+                WHERE linked_activity_id = ''
+                AND workout_date <= date('now')
+            """)
+            planned_workouts = cursor.fetchall()
+            
+    except sqlite3.Error as e:
+        logger.error(f"Database error getting unlinked planned_running_workouts data: {e}")
         raise
+    except (ValueError, AttributeError) as e:
+        logger.error(f"Error getting unlinked planned_running_workouts data: {e}")
+        return None
+    
+    for workout in planned_workouts:
+        date_str = workout["workout_date"][:10]  # yyyy-mm-dd
+        workout_type = workout["workout_type"]
+        workout_name = workout["workout_name"] or ""
+    # Pull all activities from that day
+        try:
+            with sqlite3.connect(db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                cursor.execute("""
+                SELECT * FROM activities
+                WHERE DATE(start_date_local) = ? AND type = 'Run'
+            """, (date_str,))
+            activities = cursor.fetchall()
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error getting unlinked activity data: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error getting unlinked activity data: {e}")
+            return None
+        
+        candidates = []
+
+        for activity in activities:
+            act_type = activity["workout_type"]
+            act_name = activity["name"] or ""
+
+            # Rule 2: If workout_type = 'Workout', prefer workout_type = 3
+            if workout_type == 'Workout' and act_type == 3:
+                candidates.append((activity, 1.0))  # strong match
+
+            # Rule 3: If workout_type = 'Long Run', prefer workout_type = 2
+            elif workout_type == 'Long Run' and act_type == 2:
+                candidates.append((activity, 1.0))  # strong match
+
+            # Rule 4: Non-Workout matching to workout_type = 0
+            elif workout_type != 'Workout' and workout_type != 'Long Run' and act_type == 0:
+                candidates.append((activity, 0.9))
+
+            # Fallback: fuzzy name match
+            else:
+                score = fuzzy_match(workout_name, act_name)
+                if score > 0.8:
+                    candidates.append((activity, score))
+
+        # Choose best candidate
+        if len(candidates) == 1:
+            best = candidates[0][0]
+            logger.info(f"Auto-linking workout {workout['id']} to activity {best['id']}")
+            try:
+                with sqlite3.connect(db_path) as conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE planned_running_workouts
+                        SET linked_activity_id = ?
+                        WHERE id = ?
+                    """, (best["id"], workout["id"]))
+            except sqlite3.Error as e:
+                logger.error(f"Database error updating planned_running_workouts {workout["id"]} with {best["id"]}: {e}")
+                raise
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Error error updating planned_running_workouts with link: {e}")
+                return None
+    
+        elif len(candidates) > 1:
+            # Sort by score, only auto-link if clear winner
+            candidates.sort(key=lambda x: x[1], reverse=True)
+            if candidates[0][1] > 0.9 and (candidates[0][1] - candidates[1][1]) > 0.1:
+                best = candidates[0][0]
+                logger.info(f"Auto-linking (strong match) workout {workout['id']} to activity {best['id']}")
+                try:
+                    with sqlite3.connect(db_path) as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                        UPDATE planned_running_workouts
+                        SET linked_activity_id = ?
+                        WHERE id = ?
+                        """, (best["id"], workout["id"]))
+                except sqlite3.Error as e:
+                    logger.error(f"Database error updating planned_running_workouts {workout["id"]} with {best["id"]}: {e}")
+                    raise
+                except (ValueError, AttributeError) as e:
+                    logger.error(f"Error updating planned_running_workouts with link: {e}")
+                return None
+            else:
+                logger.info(f"Multiple possible matches for workout {workout['id']}, skipping.")
+
+def generate_natural_language_description(row):
+    """Generate natural language summary from workout data for vector embedding"""
+
+    workout_date = row["workout_date"]
+    workout_type = row["workout_type"] or "Unknown type"
+    workout_name = row["workout_name"] or ""
+    effort = row["effort"] or "unknown"
+    success = "successful" if row["success"] == "yes" else "not successful"
+    planned_notes = row["planned_notes"] or ""
+    recap_notes = row["recap_notes"] or ""
+    activity_id = row["linked_activity_id"]
+
+    return (
+        f"On {workout_date}, a {workout_type} activity was planned: '{workout_name}'. "
+        f"The effort was rated an RPE of: {effort}/10 and it was marked as {success}. "
+        f"Planned notes: '{planned_notes}'. Recap: '{recap_notes}'. "
+        f"This workout is linked to Strava activity ID {activity_id}."
+    )
+
+def embed_workouts_and_build_faiss(db_path: str, faiss_index_path: str = "faiss_workout_index.idx"):
+    """Generate and store the FAISS index-to-workout ID mapping in a dedicated SQLite table"""
+
+    model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+    with sqlite3.connect(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Ensure the mapping table exists
+        try:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS workout_vector_index (
+                    faiss_index INTEGER PRIMARY KEY,
+                    workout_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+        except sqlite3.Error as e:
+            logger.error(f"Database error creating workout_vector_index table: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error on workout_vector_index table: {e}")
+            return None
+
+        try:
+            # Select only linked workouts that aren't embedded
+            cur.execute("""
+                SELECT * FROM planned_running_workouts
+                WHERE linked_activity_id != ''
+                AND (
+                embedding_generated_at IS NULL
+                OR last_modified > embedding_generated_at
+            )
+            """)
+            rows = cur.fetchall()
+        except sqlite3.Error as e:
+            logger.error(f"Database error accessing data from planned_running_workouts: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error on planned_running_workouts select query: {e}")
+            return None
+
+        if not rows:
+            logger.info("No new workouts to embed.")
+            return
+
+        texts = []
+        workout_ids = []
+
+        for row in rows:
+            text = generate_natural_language_description(row)
+            texts.append(text)
+            workout_ids.append(row["id"])
+            try:
+                cur.execute("""
+                    UPDATE planned_running_workouts
+                    SET workout_embedding_text = ?
+                    WHERE id = ?
+                """, (text, row["id"]))
+            except sqlite3.Error as e:
+                logger.error(f"Database error updating planned_running_workouts with workout embedding text: {e}")
+                raise
+            except (ValueError, AttributeError) as e:
+                logger.error(f"Error updating planned_running_workouts: {e}")
+                return None
+
+        embeddings = model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+
+        dim = embeddings.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index.add(embeddings)
+        faiss.write_index(index, faiss_index_path)
+
+        # Clear old index mapping if re-generating full index
+        try:
+            cur.execute("DELETE FROM workout_vector_index")
+        except sqlite3.Error as e:
+            logger.error(f"Database error deleting old index mapping from workout_vector_index: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error updating workout_vector_index: {e}")
+            return None
+
+        # Insert new FAISS index → workout ID rows
+        try:
+            cur.executemany("""
+                INSERT INTO workout_vector_index (faiss_index, workout_id)
+                VALUES (?, ?)
+            """, [(i, wid) for i, wid in enumerate(workout_ids)])
+        except sqlite3.Error as e:
+            logger.error(f"Database error inserting index mapping into workout_vector_index: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error inserting data into workout_vector_index: {e}")
+            return None
+        
+        # Mark embedded
+        try:
+            cur.executemany("""
+                UPDATE planned_running_workouts
+                SET 
+                    workout_embedding_text = ?,
+                    embedding_generated = 1,
+                    embedding_generated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, list(zip(texts, workout_ids)))
+        except sqlite3.Error as e:
+            logger.error(f"Database error marking planned_running_workouts activity as having an embedding: {e}")
+            raise
+        except (ValueError, AttributeError) as e:
+            logger.error(f"Error marking embeddings on planned_running_workouts: {e}")
+            return None
+
+    logger.info(f"Indexed and mapped {len(workout_ids)} workouts to FAISS.")

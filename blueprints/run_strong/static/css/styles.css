@@ -4,11 +4,56 @@
   --rs-accent: #ff0080;
   --rs-secondary: #ffa500;
   --rs-highlight: #ff4ec7;
-  --rs-white: #fff;
+  --rs-white: #ffffff;
   --rs-shadow: rgba(255, 105, 180, 0.3);
   --rs-background: #2d003e;
 }
 
+/* Base Classes */
+.rs-card {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 10px var(--rs-shadow);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.rs-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+}
+
+.rs-input {
+  padding: 0.5rem;
+  border: 1px solid var(--rs-accent);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+}
+
+.rs-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rs-button {
+  background: linear-gradient(135deg, var(--rs-accent), var(--rs-highlight));
+  color: var(--rs-white);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px var(--rs-shadow);
+}
+
+.rs-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px var(--rs-shadow);
+  background: linear-gradient(135deg, var(--rs-highlight), var(--rs-secondary));
+}
+
+/* Main Layout */
 body.runstrong {
   background: linear-gradient(to right, #46003d, #1b002a);
   color: var(--rs-white);
@@ -24,7 +69,7 @@ body.runstrong {
 }
 
 .runstrong-logo {
-  max-width: 400px;
+  max-width: 300px;
   height: auto;
   filter: drop-shadow(0 2px 5px var(--rs-shadow));
   animation: fadeIn 2.5s ease-out;
@@ -159,7 +204,7 @@ body.runstrong {
   border: 2px solid var(--rs-accent);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
+  color: var(--rs-white);
   backdrop-filter: blur(5px);
 }
 
@@ -196,6 +241,7 @@ body.runstrong {
   transform: scale(1.05);
 }
 
+/* Exercise Components */
 .exercise-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -204,16 +250,29 @@ body.runstrong {
 }
 
 .exercise-card {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 10px var(--rs-shadow);
-  transition: transform 0.2s ease;
-  backdrop-filter: blur(10px);
+  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
+  border: 2px solid var(--rs-accent);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 15px var(--rs-shadow);
+  transition: all 0.3s ease;
 }
 
 .exercise-card:hover {
   transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+  border-color: var(--rs-highlight);
+}
+
+.exercise-card h4 {
+  margin: 0;
+  color: var(--rs-highlight);
+}
+
+.exercise-card a {
+  color: var(--rs-secondary);
+  font-size: 0.95rem;
 }
 
 .exercise-title {
@@ -258,7 +317,7 @@ body.runstrong {
   border-radius: 6px;
   border: 2px solid var(--rs-accent);
   background: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
+  color: var(--rs-white);
 }
 
 .exercise-form {
@@ -297,6 +356,75 @@ body.runstrong {
   margin-top: 1rem;
 }
 
+/* Form Components */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  color: var(--rs-white);
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  padding: 0.5rem;
+  border: 1px solid var(--rs-accent);
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--rs-white);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-group input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--rs-accent);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--rs-highlight);
+}
+
+.btn-secondary {
+  background-color: var(--rs-secondary);
+  color: var(--rs-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: var(--rs-white);
+  border: none;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* Specialized Components */
 .journal-section {
   background: rgba(255, 255, 255, 0.1);
   padding: 2rem;
@@ -378,58 +506,6 @@ body.runstrong {
   margin: 1rem 0;
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  color: var(--rs-white);
-  font-weight: bold;
-  font-size: 0.9rem;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  padding: 0.5rem;
-  border: 1px solid var(--rs-accent);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--rs-white);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 60px;
-}
-
-.btn-primary {
-  background-color: var(--rs-accent);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: var(--rs-highlight);
-}
-
-.btn-secondary {
-  background-color: var(--rs-secondary);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
 .status-selector {
   display: flex;
   gap: 0.5rem;
@@ -454,7 +530,6 @@ body.runstrong {
 .status-btn.active {
   background-color: var(--rs-shadow);
   color: var(--rs-white);
-  /* Or white depending on your theme */
   font-weight: bold;
   border: 4px solid var(--rs-white);
 }
@@ -511,41 +586,6 @@ body.runstrong {
   background-color: rgba(255, 0, 128, 0.1);
 }
 
-.exercise-details {
-  display: none;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin: 1rem 0;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  color: var(--rs-white);
-  font-weight: bold;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  padding: 0.5rem;
-  border: 1px solid var(--rs-accent);
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: var(--rs-accent);
-}
-
-.form-group input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
 .routine-builder {
   background: rgba(255, 255, 255, 0.05);
   padding: 2rem;
@@ -563,41 +603,6 @@ body.runstrong {
   border-radius: 8px;
 }
 
-.btn-primary {
-  background-color: var(--rs-accent);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.2s;
-}
-
-.btn-primary:hover {
-  background-color: var(--rs-highlight);
-}
-
-.btn-secondary {
-  background-color: var(--rs-secondary);
-  color: var(--rs-white);
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.btn-danger {
-  background-color: #dc3545;
-  color: var(--rs-white);
-  border: none;
-  padding: 0.3rem 0.8rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
 .search-box {
   width: 100%;
   padding: 0.8rem;
@@ -613,7 +618,7 @@ body.runstrong {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Fatigue Dashboard 2.0 */
+/* Dashboard Components */
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -691,7 +696,7 @@ body.runstrong {
 }
 
 .circular-chart .percentage {
-  fill: #fff;
+  fill: var(--rs-white);
   font-size: 0.5em;
   text-anchor: middle;
 }
@@ -705,3 +710,320 @@ body.runstrong {
 .fatigue-score {
   --score-color: hsl(calc(120 - var(--score) * 1.2), 80%, 60%);
   color: var(--score-color);
+}
+
+/* Max Weights Page */
+.max-weights-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.max-weights-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.max-weight-item {
+  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
+  border: 2px solid var(--rs-accent);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 4px 15px var(--rs-shadow);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 160px;
+}
+
+.max-weight-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+  border-color: var(--rs-highlight);
+}
+
+.max-weight-item h3 {
+  color: var(--rs-highlight);
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.max-weight-item p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--rs-white);
+}
+
+.max-weight-content {
+  flex-grow: 1;
+}
+
+.max-weight-content h3 {
+  color: var(--rs-highlight);
+  margin: 0 0 0.5rem 0;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.max-weight-content p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--rs-white);
+}
+
+.max-weight-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rs-accent);
+}
+
+.weight-badge {
+  background: linear-gradient(45deg, var(--rs-accent), var(--rs-secondary));
+  color: var(--rs-white);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.sets-count {
+  color: var(--rs-secondary);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+/* Goals Integration */
+.goals-list .goal-item {
+  background: linear-gradient(135deg, var(--rs-primary), var(--rs-background));
+  border: 2px solid var(--rs-accent);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 15px var(--rs-shadow);
+  transition: all 0.3s ease;
+}
+
+.goals-list .goal-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 20px var(--rs-shadow);
+  border-color: var(--rs-highlight);
+}
+
+.goals-list .goal-item h3 {
+  color: var(--rs-highlight);
+  margin: 0 0 1rem 0;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.goals-list .goal-item p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+  color: var(--rs-white);
+}
+
+.goals-list progress {
+  width: 100%;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--rs-primary);
+  border: 1px solid var(--rs-accent);
+  margin: 1rem 0;
+}
+
+.goals-list progress::-webkit-progress-bar {
+  background: var(--rs-primary);
+  border-radius: 10px;
+}
+
+.goals-list progress::-webkit-progress-value {
+  background: linear-gradient(45deg, var(--rs-accent), var(--rs-secondary));
+  border-radius: 10px;
+}
+
+.goals-list progress::-moz-progress-bar {
+  background: linear-gradient(45deg, var(--rs-accent), var(--rs-secondary));
+  border-radius: 10px;
+}
+
+.goals-list span {
+  color: var(--rs-secondary);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Accordion Component */
+.accordion {
+  background-color: var(--rs-primary);
+  color: var(--rs-white);
+  cursor: pointer;
+  padding: 1rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  outline: none;
+  transition: 0.4s;
+  font-size: 1.2rem;
+  margin-top: 1rem;
+}
+
+.active,
+.accordion:hover {
+  background-color: var(--rs-highlight);
+}
+
+.panel {
+  padding: 0 1rem;
+  background-color: var(--rs-background);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+/* Mobile Friendly Updates */
+@media (max-width: 768px) {
+
+  .runstrong-navbar {
+    /* Revert stacking and enable horizontal scrolling */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    /* Align items to the start */
+    padding: 1rem;
+    -webkit-overflow-scrolling: touch;
+    /* Adds smooth scrolling on iOS */
+  }
+
+  .runstrong-navbar a {
+    margin: 0 1rem;
+    /* Revert to horizontal margin */
+    white-space: nowrap;
+    /* Prevent link text from breaking */
+  }
+
+  /* 2. Layouts */
+  .runstrong .container {
+    flex-direction: column;
+    padding: 15px;
+    gap: 20px;
+  }
+
+  .dashboard-grid,
+  .max-weights-list,
+  .exercise-grid,
+  .routine-list {
+    grid-template-columns: 1fr;
+    /* Force single-column grid */
+  }
+
+  /* 3. Sizing and Spacing */
+  body.runstrong {
+    font-size: 14px;
+    /* Slightly smaller base font */
+  }
+
+  .runstrong-header {
+    padding: 1rem 0;
+  }
+
+  .runstrong-logo {
+    max-width: 200px;
+  }
+
+  .runstrong h2,
+  .runstrong h3,
+  .max-weight-item h3,
+  .goals-list .goal-item h3 {
+    font-size: 1.4rem;
+  }
+
+  .rs-card,
+  .planner-section,
+  .journal-section {
+    padding: 1rem;
+  }
+
+  /* 4. Forms & Inputs */
+  .runstrong select,
+  .runstrong input[type="text"],
+  .exercise-search input,
+  .search-box {
+    width: 90%;
+    /* Use percentage for better flexibility */
+  }
+
+  .runstrong-button-grid {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .runstrong-button-grid a button {
+    width: 100%;
+  }
+
+  /* 5. Video */
+  .responsive-video {
+    width: 95%;
+  }
+
+  #category-toggle {
+    flex-wrap: wrap;
+    /* Allow buttons to wrap to the next line */
+    justify-content: center;
+    /* Center the buttons when they wrap */
+  }
+
+  .set-row {
+    flex-direction: column;
+    /* Stack the inputs vertically */
+    align-items: stretch;
+    /* Make all inputs the same width */
+  }
+
+  .set-row .remove-set-btn {
+    /* Make the remove button less wide than the inputs */
+    align-self: flex-end;
+    /* Align it to the right */
+    margin-top: 5px;
+  }
+}
+
+
+.video-container {
+  display: flex;
+  justify-content: center;
+  /* This will center the video */
+  padding: 2rem 0;
+}
+
+.responsive-video {
+  width: 100%;
+  max-width: 700px;
+  /* Sets a max size on large screens */
+  height: auto;
+  display: block;
+}
+
+.set-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.form-container {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
