@@ -1023,7 +1023,7 @@ def fetch_weather_for_activities(activities: List[Dict], db_path: str, api_key: 
                 lat, lng = start_latlng[0], start_latlng[1]
                 
                 # Calculate weather date (midpoint of activity)
-                start_date = activity.get('start_date', activity.get('start_date_local', ''))
+                start_date = activity.get('start_date_local', activity.get('start_date', ''))
                 elapsed_time = activity.get('elapsed_time', 0)
                 
                 if not start_date:
