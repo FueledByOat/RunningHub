@@ -8,7 +8,6 @@ load_dotenv(dotenv_path="secrets.env")
 class Config:
     """Configuration class for environment variables and settings."""
     DB_PATH: Optional[str] = os.getenv('DATABASE', 'strava_data.db')
-    DB_PATH_RUNSTRONG: Optional[str] = os.getenv('RUNSTRONG_DATABASE', 'runstrong.db')
     CACHE_TTL = int(os.getenv('CACHE_TTL', '300'))
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     VIDEO_FOLDER = os.getenv('VIDEO_FOLDER', 'videos')
@@ -29,8 +28,8 @@ class Config:
     # API rate limiting settings
     DEFAULT_RATE_LIMIT_DELAY: int = 1  # seconds between API calls
     MAX_ACTIVITIES_PER_REQUEST: int = 30
-    DEFAULT_USERNAME = "coach_g"
-    DEFAULT_PASSWORD = "coach_g_23"
+    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME")
+    DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD")
 
     @classmethod
     def validate_required_config(cls) -> bool:
