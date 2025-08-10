@@ -24,11 +24,11 @@ logger = logging.getLogger(__name__)
 def get_acwr_data(conn: sqlite3.Connection):
     """Calculate Acute:Chronic Workload Ratio (ACWR) from a given connection."""
     try:
-        # Pass the provided connection object to pandas
+
         df = pd.read_sql_query("""
             WITH daily_load AS (
                 SELECT 
-                    date(datetime(start_date)) as date,
+                    date(datetime(start_date_local)) as date,
                     SUM(average_speed * moving_time / 1000.0) as daily_km
                 FROM activities
                 WHERE type = 'Run'
@@ -62,10 +62,10 @@ def get_hr_drift_data(conn: sqlite3.Connection):
     """Calculate Heart Rate Drift from a given connection."""
     try:
         activities_df = pd.read_sql_query("""
-            SELECT id, start_date, moving_time, average_speed
+            SELECT id, start_date_local, moving_time, average_speed
             FROM activities 
             WHERE type = 'Run' AND moving_time >= 1200
-            ORDER BY start_date DESC
+            ORDER BY start_date_local DESC
             LIMIT 90
         """, conn)
         
@@ -152,7 +152,7 @@ def get_hr_drift_data(conn: sqlite3.Connection):
         merged_df['hr_drift_pct'] = merged_df.apply(calculate_hr_drift, axis=1)
         
         # Clean up result dataframe
-        result_df = merged_df[['id', 'start_date', 'hr_drift_pct']].dropna()
+        result_df = merged_df[['id', 'start_date_local', 'hr_drift_pct']].dropna()
         result_df = result_df.rename(columns={'id': 'activity_id'})
         
         return result_df
@@ -160,10 +160,10 @@ def get_hr_drift_data(conn: sqlite3.Connection):
         
     except sqlite3.Error as e:
         print(f"Database error in get_hr_drift_data: {e}")
-        return pd.DataFrame(columns=['activity_id', 'start_date', 'hr_drift_pct'])
+        return pd.DataFrame(columns=['activity_id', 'start_date_local', 'hr_drift_pct'])
     except Exception as e:
         print(f"Error in get_hr_drift_data: {e}")
-        return pd.DataFrame(columns=['activity_id', 'start_date', 'hr_drift_pct'])
+        return pd.DataFrame(columns=['activity_id', 'start_date_local', 'hr_drift_pct'])
 
 def get_cadence_stability_data(conn: sqlite3.Connection):
     """
@@ -176,10 +176,10 @@ def get_cadence_stability_data(conn: sqlite3.Connection):
     try:        
         # Get activities and streams data
         activities_df = pd.read_sql_query("""
-            SELECT id, average_speed, start_date, moving_time
+            SELECT id, average_speed, start_date_local, moving_time
             FROM activities 
             WHERE type = 'Run' AND moving_time >= 600
-            ORDER BY start_date DESC
+            ORDER BY start_date_local DESC
             LIMIT 90
         """, conn)
         
@@ -256,17 +256,17 @@ def get_cadence_stability_data(conn: sqlite3.Connection):
         merged_df['avg_pace_kmh'] = merged_df['average_speed'] * 3.6
         
         # Clean up result dataframe
-        result_df = merged_df[['id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv']]
+        result_df = merged_df[['id', 'start_date_local', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv']]
         result_df = result_df.rename(columns={'id': 'activity_id'})
         
         return result_df
         
     except sqlite3.Error as e:
         print(f"Database error in get_cadence_stability_data: {e}")
-        return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
+        return pd.DataFrame(columns=['activity_id', 'start_date_local', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
     except Exception as e:
         print(f"Error in get_cadence_stability_data: {e}")
-        return pd.DataFrame(columns=['activity_id', 'start_date', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
+        return pd.DataFrame(columns=['activity_id', 'start_date_local', 'avg_pace_kmh', 'avg_cadence', 'cadence_stdev', 'cadence_cv'])
 
 def get_efficiency_index(conn: sqlite3.Connection):
     """
@@ -308,7 +308,7 @@ def get_efficiency_index(conn: sqlite3.Connection):
         distance,         -- in meters
         moving_time,      -- in seconds
         average_heartrate,
-        start_date,
+        start_date_local,
         average_speed,    -- in m/s
         type
     FROM activities
@@ -320,13 +320,13 @@ def get_efficiency_index(conn: sqlite3.Connection):
         AND distance > 0
         AND moving_time IS NOT NULL
         AND moving_time > 0
-    ORDER BY start_date ASC;
+    ORDER BY start_date_local ASC;
     """
     
     df = pd.read_sql_query(query, conn)
     
-    # Convert start_date to datetime
-    df['start_date'] = pd.to_datetime(df['start_date'])
+    # Convert start_date_local to datetime
+    df['start_date_local'] = pd.to_datetime(df['start_date_local'])
     
     # Calculate speed in meters per minute
     df['speed_mpm'] = df['average_speed'] * 60  # convert m/s to m/min
@@ -386,7 +386,7 @@ def get_efficiency_index(conn: sqlite3.Connection):
     df['flat_efficiency_factor'] = flat_ef_values
     
     # Calculate rolling averages (7-day, 30-day, 90-day)
-    df.set_index('start_date', inplace=True)
+    df.set_index('start_date_local', inplace=True)
     df.sort_index(inplace=True)
     df['ef_7day'] = df['efficiency_factor'].rolling('7D', min_periods=3).mean()
     df['ef_30day'] = df['efficiency_factor'].rolling('30D', min_periods=7).mean()
@@ -441,14 +441,14 @@ def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, ath
         activities_df = pd.read_sql_query(f"""
             SELECT id, moving_time, average_heartrate, max_heartrate, start_date_local
             FROM activities
-            WHERE type = 'Run' AND start_date >= date('now', '-{days_to_retrieve} days')
-            ORDER BY start_date ASC
+            WHERE type = 'Run' AND start_date_local >= date('now', '-{days_to_retrieve} days')
+            ORDER BY start_date_local ASC
         """, conn)
 
         if activities_df.empty:
             return pd.DataFrame(columns=['date', 'tss', 'CTL', 'ATL', 'TSB'])
         
-        activities_df['start_date'] = pd.to_datetime(activities_df['start_date_local'])
+        activities_df['start_date_local'] = pd.to_datetime(activities_df['start_date_local'])
         activities_df['tss'] = activities_df.apply(
             lambda row: calculate_running_tss(
                 row['moving_time'], 
@@ -459,12 +459,12 @@ def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, ath
             axis=1
         )
         
-        activities_df['date'] = activities_df['start_date'].dt.tz_localize(None).dt.floor('D')
+        activities_df['date'] = activities_df['start_date_local'].dt.tz_localize(None).dt.floor('D')
         daily_tss = activities_df.groupby('date')['tss'].sum()
         
-        start_date = daily_tss.index.min() - datetime.timedelta(days=42)
+        start_date_local = daily_tss.index.min() - datetime.timedelta(days=42)
         end_date = datetime.date.today()
-        date_range = pd.date_range(start=start_date, end=end_date, freq='D')
+        date_range = pd.date_range(start=start_date_local, end=end_date, freq='D')
         
         daily_df = pd.DataFrame(index=date_range)
         daily_df.index.name = 'date'
@@ -553,18 +553,18 @@ def get_enhanced_training_shape_data(
     query = """
     SELECT 
         id, distance, moving_time, average_heartrate, max_heartrate,
-        average_speed, average_cadence, kilojoules, start_date,
+        average_speed, average_cadence, kilojoules, start_date_local,
         total_elevation_gain, average_watts, device_watts
     FROM activities
     WHERE type = 'Run' AND distance IS NOT NULL AND moving_time IS NOT NULL
-    ORDER BY start_date ASC;
+    ORDER BY start_date_local ASC;
     """
     activities_df = pd.read_sql_query(query, conn)
 
     if activities_df.empty:
         return pd.DataFrame()
 
-    activities_df['start_date'] = pd.to_datetime(activities_df['start_date'])
+    activities_df['start_date_local'] = pd.to_datetime(activities_df['start_date_local'])
     activities_df['pace_per_km'] = activities_df['moving_time'] / (activities_df['distance'] / 1000)
     activities_df['duration_hours'] = activities_df['moving_time'] / 3600
 
@@ -597,11 +597,11 @@ def get_enhanced_training_shape_data(
         activities_df['watts_per_kph'] = activities_df['average_watts'] / (activities_df['average_speed'] * 3.6)
 
     # Weekly grouping
-    activities_df['year_week'] = (activities_df['start_date'].dt.isocalendar().year.astype(str) +
-                                  '-' + activities_df['start_date'].dt.isocalendar().week.astype(str).str.zfill(2))
+    activities_df['year_week'] = (activities_df['start_date_local'].dt.isocalendar().year.astype(str) +
+                                  '-' + activities_df['start_date_local'].dt.isocalendar().week.astype(str).str.zfill(2))
 
     weekly_df = activities_df.groupby('year_week').agg({
-        'start_date': 'min',
+        'start_date_local': 'min',
         'distance': 'sum',
         'moving_time': 'sum',
         'tss': 'sum',
@@ -611,7 +611,7 @@ def get_enhanced_training_shape_data(
         'watts_per_kph': 'mean'
     }).reset_index()
 
-    weekly_df = weekly_df.sort_values('start_date')
+    weekly_df = weekly_df.sort_values('start_date_local')
     weekly_df['ctl'] = weekly_df['tss'].ewm(span=42, adjust=False).mean()
     weekly_df['atl'] = weekly_df['tss'].ewm(span=7, adjust=False).mean()
     weekly_df['tsb'] = weekly_df['ctl'] - weekly_df['atl']
@@ -738,10 +738,10 @@ def get_cumulative_training_shape_data(conn: sqlite3.Connection) -> pd.DataFrame
     query = """
     SELECT 
         id, distance, moving_time, average_heartrate, max_heartrate,
-        average_speed, start_date
+        average_speed, start_date_local
     FROM activities
     WHERE type = 'Run' AND distance IS NOT NULL AND moving_time IS NOT NULL
-    ORDER BY start_date ASC;
+    ORDER BY start_date_local ASC;
     """
     
     activities_df = pd.read_sql_query(query, conn)
@@ -749,7 +749,7 @@ def get_cumulative_training_shape_data(conn: sqlite3.Connection) -> pd.DataFrame
     if activities_df.empty:
         return pd.DataFrame()
     
-    activities_df['start_date'] = pd.to_datetime(activities_df['start_date'])
+    activities_df['start_date_local'] = pd.to_datetime(activities_df['start_date_local'])
     
     # Calculate training value for each activity
     activities_df['pace_per_km'] = activities_df['moving_time'] / (activities_df['distance'] / 1000)
@@ -771,22 +771,22 @@ def get_cumulative_training_shape_data(conn: sqlite3.Connection) -> pd.DataFrame
                              60)  # Scale to reasonable range
     
     # Weekly aggregation
-    activities_df['year_week'] = (activities_df['start_date'].dt.isocalendar().year.astype(str) + 
-                                 '-' + activities_df['start_date'].dt.isocalendar().week.astype(str).str.zfill(2))
+    activities_df['year_week'] = (activities_df['start_date_local'].dt.isocalendar().year.astype(str) + 
+                                 '-' + activities_df['start_date_local'].dt.isocalendar().week.astype(str).str.zfill(2))
     
     weekly_df = activities_df.groupby('year_week').agg({
-        'start_date': 'min',
+        'start_date_local': 'min',
         'distance': 'sum',
         'moving_time': 'sum',
         'trimp': 'sum',
         'intensity_factor': 'mean'
     }).reset_index()
     
-    weekly_df = weekly_df.sort_values('start_date').reset_index(drop=True)
+    weekly_df = weekly_df.sort_values('start_date_local').reset_index(drop=True)
     
     # Calculate weeks since start for experience factor
-    start_date = weekly_df['start_date'].min()
-    weekly_df['weeks_training'] = ((weekly_df['start_date'] - start_date).dt.days / 7).astype(int) + 1
+    start_date_local = weekly_df['start_date_local'].min()
+    weekly_df['weeks_training'] = ((weekly_df['start_date_local'] - start_date_local).dt.days / 7).astype(int) + 1
     
     # Cumulative metrics with slow decay
     decay_rate = 0.998  # 2% annual decay (very slow)
@@ -800,7 +800,7 @@ def get_cumulative_training_shape_data(conn: sqlite3.Connection) -> pd.DataFrame
         if i == 0:
             weekly_df.loc[i, 'cumulative_fitness'] = weekly_df.loc[i, 'trimp']
         else:
-            weeks_gap = (weekly_df.loc[i, 'start_date'] - weekly_df.loc[i-1, 'start_date']).days / 7
+            weeks_gap = (weekly_df.loc[i, 'start_date_local'] - weekly_df.loc[i-1, 'start_date_local']).days / 7
             decay_factor = decay_rate ** weeks_gap
             
             previous_fitness = weekly_df.loc[i-1, 'cumulative_fitness'] * decay_factor

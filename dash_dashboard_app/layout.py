@@ -430,7 +430,7 @@ def create_dash_dashboard_app(server, db_path):
         # Add Training Shape line
         fig.add_trace(
             go.Scatter(
-                x=df['start_date'],
+                x=df['start_date_local'],
                 y=df['training_shape'],
                 mode='lines',
                 name='Training Shape',
@@ -443,7 +443,7 @@ def create_dash_dashboard_app(server, db_path):
         # Add Freshness Score line
         fig.add_trace(
             go.Scatter(
-                x=df['start_date'],
+                x=df['start_date_local'],
                 y=df['freshness_score'],
                 mode='lines',
                 name='Freshness Score',
@@ -458,7 +458,7 @@ def create_dash_dashboard_app(server, db_path):
         # # Add fitness_trend line
         # fig.add_trace(
         #     go.Scatter(
-        #         x=df['start_date'],
+        #         x=df['start_date_local'],
         #         y=df['fitness_trend'],
         #         mode='lines',
         #         name='fitness_trend Score',
@@ -473,7 +473,7 @@ def create_dash_dashboard_app(server, db_path):
         # # Add form_trend line
         # fig.add_trace(
         #     go.Scatter(
-        #         x=df['start_date'],
+        #         x=df['start_date_local'],
         #         y=df['form_trend'],
         #         mode='lines',
         #         name='form_trend Score',
@@ -487,7 +487,7 @@ def create_dash_dashboard_app(server, db_path):
         # Add weekly distance bars
         fig.add_trace(
             go.Bar(
-                x=df['start_date'],
+                x=df['start_date_local'],
                 y=df['weekly_distance_km'],
                 name='Weekly Distance',
                 marker_color='rgba(58, 71, 80, 0.6)',
@@ -499,9 +499,9 @@ def create_dash_dashboard_app(server, db_path):
         # Add threshold lines for Training Shape
         fig.add_shape(
             type="line",
-            x0=df['start_date'].min(),
+            x0=df['start_date_local'].min(),
             y0=80,
-            x1=df['start_date'].max(),
+            x1=df['start_date_local'].max(),
             y1=80,
             line=dict(
                 color="green",
@@ -513,9 +513,9 @@ def create_dash_dashboard_app(server, db_path):
         
         fig.add_shape(
             type="line",
-            x0=df['start_date'].min(),
+            x0=df['start_date_local'].min(),
             y0=50,
-            x1=df['start_date'].max(),
+            x1=df['start_date_local'].max(),
             y1=50,
             line=dict(
                 color="orange",
@@ -527,7 +527,7 @@ def create_dash_dashboard_app(server, db_path):
         
         # Add annotations for the threshold lines
         fig.add_annotation(
-            x=df['start_date'].max(),
+            x=df['start_date_local'].max(),
             y=80,
             text="Excellent",
             showarrow=False,
@@ -537,7 +537,7 @@ def create_dash_dashboard_app(server, db_path):
         )
         
         fig.add_annotation(
-            x=df['start_date'].max(),
+            x=df['start_date_local'].max(),
             y=50,
             text="Good",
             showarrow=False,
@@ -612,7 +612,7 @@ def create_dash_dashboard_app(server, db_path):
         # Add Training Shape line
         fig.add_trace(
             go.Scatter(
-                x=df['start_date'],
+                x=df['start_date_local'],
                 y=df['fitness_score'],
                 mode='lines',
                 name='Cumulative Fitness Score',

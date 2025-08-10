@@ -352,18 +352,18 @@
         "config.Config"
       ],
       "services_used": [
-        "statistics_service",
-        "query_service",
-        "QueryService",
-        "ActivityService",
-        "StatisticsService",
         "TrophyService",
-        "motivation_service",
+        "ActivityService",
         "calendar_service",
-        "activity_service",
-        "trophy_service",
         "CalendarService",
-        "MotivationService"
+        "motivation_service",
+        "statistics_service",
+        "MotivationService",
+        "query_service",
+        "StatisticsService",
+        "QueryService",
+        "activity_service",
+        "trophy_service"
       ]
     },
     "run_strong": {
@@ -506,8 +506,8 @@
         "services.runstrong_service.RunStrongService"
       ],
       "services_used": [
-        "runstrong_service",
-        "RunStrongService"
+        "RunStrongService",
+        "runstrong_service"
       ]
     }
   },
