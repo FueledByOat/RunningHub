@@ -200,6 +200,8 @@ Service for RunStrong strength training operations.
   
 - `get_exercises()` → List[Dict]  
     - Get all available exercises.  
+- `get_exercises_for_library()` → Dict  
+    - Get all available exercises.  
 - `get_exercises_with_load()` → List[Dict]  
     - Get all available exercises with load values.  
 - `get_exercise_details(exercise_id)` → Dict  

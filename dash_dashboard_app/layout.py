@@ -331,7 +331,7 @@ def create_dash_dashboard_app(server, db_path):
             ["danger", "warning", "primary", "success", "info"]
         )
         
-        value_text = f"{efficiency_index_value:.1f}" if efficiency_index_value is not None else "No data"
+        value_text = f"{efficiency_index_value:.2f}" if efficiency_index_value is not None else "No data"
         description = f"""Efficiency Index normalizes EF for pace, allowing comparison across different workout intensities."""
         
         return metric_card(
@@ -371,7 +371,7 @@ def create_dash_dashboard_app(server, db_path):
             ["danger", "warning", "primary", "success", "info"]
         )
         
-        value_text = f"{ef_7day_value:.1f}" if ef_7day_value is not None else "No data"
+        value_text = f"{ef_7day_value:.2f}" if ef_7day_value is not None else "No data"
         description = f"""7-day average Efficiency Factor shows your recent aerobic efficiency trend."""
         
         return metric_card(
@@ -411,7 +411,7 @@ def create_dash_dashboard_app(server, db_path):
             ["danger", "warning", "primary", "success", "info"]
         )
         
-        value_text = f"{ef_90day_value:.1f}" if ef_90day_value is not None else "No data"
+        value_text = f"{ef_90day_value:.2f}" if ef_90day_value is not None else "No data"
         description = f"""90-day average Efficiency Factor shows your long-term aerobic efficiency progress."""
         
         return metric_card(

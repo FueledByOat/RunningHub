@@ -66,7 +66,7 @@ def register_routes(runstrong_service):
     def exercise_library():
         """Display the exercise library page."""
         try:
-            exercises = runstrong_service.get_exercises()
+            exercises = runstrong_service.get_exercises_for_library()
             return render_template('exercise_library.html', exercises=exercises)
         except Exception as e:
             logger.error(f"Error loading exercise library: {e}")
@@ -78,7 +78,8 @@ def register_routes(runstrong_service):
         try:
             sessions = runstrong_service.get_workout_journal()
             exercises = runstrong_service.get_exercises() # Fetch exercises for the form
-            return render_template('journal.html', sessions=sessions, exercises=exercises)
+            sorted_exercises = sorted(exercises, key=lambda x: x['name'])
+            return render_template('journal.html', sessions=sessions, exercises=sorted_exercises)
         except Exception as e:
             logger.error(f"Error loading workout journal: {e}")
             # This should render an error page or return a JSON error
@@ -143,6 +144,8 @@ def register_routes(runstrong_service):
             logger.error(f"API error getting exercise max: {e}", exc_info=True)
             return _error('Failed to get exercise max weight.', 500)
         
+    # Obviously move to db or remove this
+
     @run_strong_bp.route('/movement-catalog')
     def movement_catalog():
         """Display movement catalog page."""

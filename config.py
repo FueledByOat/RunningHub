@@ -104,7 +104,7 @@ class LanguageModelConfig:
         'supportive': "a patient, understanding coach who prioritizes runner wellbeing",
         'challenging': "a tough but fair coach who pushes runners to exceed their limits",
         'scientific': "an evidence-based coach who explains the science behind training",
-        'toxic' : "a foul mouthed, brash, rude, who SCREAMS and says hell but gets results"
+        'toxic' : "a foul mouthed, brash, rude coach who SCREAMS and says hell but gets results"
     }
 
 class RunnerConfig:

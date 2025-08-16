@@ -2,23 +2,34 @@
 
 {% block title %}Workout Journal | RUNSTRONG{% endblock %}
 
+{% block extra_head %}
+<script src="{{ url_for('run_strong.static', filename='js/runstrong_movement_catalog.js') }}" defer></script>
+{% endblock %}
+
 {% block content %}
 
 <div class="runstrong-header">
     <h1>
-        <a href="{{ url_for('running_hub.home') }}">Exercise Library 📔</a>
+        <a href="{{ url_for('run_strong.runstrong') }}">Exercise Library 📔</a>
     </h1>
 </div>
 
-<div class="exercise-list">
-    {% for exercise in exercises %}
-    <div class="exercise-item">
-        <h2>{{ exercise.name }}</h2>
-        <p>{{ exercise.description or 'No description available.' }}</p>
+<div class="max-weights-container">
+    <div class="goals-list">
+        {% for category, exercises_ in exercises.items() %}
+        <button class="accordion">{{ category }}</button>
+        <div class="panel">
+            {% for exercise in exercises_ %}
+            <div class="exercise-card">
+                <h4>{{ exercise.name }}</h4>
+                <p><strong>Description:</strong> {{ exercise.description or 'No description available.' }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="no-exercises">No exercise data found. Add entries to populate your catalog.</p>
+        {% endfor %}
     </div>
-    {% else %}
-    <p>No exercises found in the library.</p>
-    {% endfor %}
 </div>
 </div>
 {% endblock %}

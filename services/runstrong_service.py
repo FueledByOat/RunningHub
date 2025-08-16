@@ -29,6 +29,19 @@ class RunStrongService(BaseService):
             self.logger.error(f"Error getting all exercises: {e}")
             raise exception_utils.DatabaseError(f"Failed to get all exercises: {e}")
         
+    def get_exercises_for_library(self) -> Dict:
+        """Get all available exercises."""
+        try:
+            with self._get_connection() as conn:
+                exercises = runstrong_db_utils.get_all_exercises(conn)
+            exercise_categories = defaultdict(list)
+            for row in exercises:
+                exercise_categories[row["type"]].append(row)
+            return exercise_categories
+        except Exception as e:
+            self.logger.error(f"Error getting all exercises: {e}")
+            raise exception_utils.DatabaseError(f"Failed to get all exercises: {e}")
+        
     def get_exercises_with_load(self) -> List[Dict]:
         """Get all available exercises with load values."""
         try:

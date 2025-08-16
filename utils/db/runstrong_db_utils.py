@@ -15,6 +15,7 @@ def get_all_exercises(conn: sqlite3.Connection) -> list:
     cursor = conn.execute("select * from exercises")
     return [dict(row) for row in cursor.fetchall()] 
 
+
 def get_all_exercises_with_load(conn: sqlite3.Connection) -> list:
     """Get all exercises with load data."""
     query = """SELECT

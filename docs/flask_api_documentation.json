@@ -42,8 +42,8 @@
         "services.coach_g_service.CoachGService"
       ],
       "services_used": [
-        "CoachGService",
-        "coach_g_service"
+        "coach_g_service",
+        "CoachGService"
       ]
     },
     "runner_vision": {
@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "runnervision_service",
-        "RunnerVisionService"
+        "RunnerVisionService",
+        "runnervision_service"
       ]
     },
     "running_hub": {
@@ -352,18 +352,18 @@
         "config.Config"
       ],
       "services_used": [
-        "query_service",
-        "trophy_service",
-        "motivation_service",
-        "MotivationService",
-        "statistics_service",
+        "activity_service",
+        "QueryService",
         "StatisticsService",
+        "MotivationService",
+        "trophy_service",
+        "query_service",
         "TrophyService",
+        "motivation_service",
         "CalendarService",
         "calendar_service",
-        "QueryService",
-        "ActivityService",
-        "activity_service"
+        "statistics_service",
+        "ActivityService"
       ]
     },
     "run_strong": {
@@ -428,7 +428,7 @@
           ],
           "docstring": "API endpoint to log a new workout session.",
           "parameters": [],
-          "line_number": 89,
+          "line_number": 90,
           "blueprint": "run_strong",
           "full_url": "/strong/api/journal/log"
         },
@@ -440,7 +440,7 @@
           ],
           "docstring": "Display the enhanced fatigue dashboard page.",
           "parameters": [],
-          "line_number": 106,
+          "line_number": 107,
           "blueprint": "run_strong",
           "full_url": "/strong/fatigue_dashboard"
         },
@@ -452,7 +452,7 @@
           ],
           "docstring": "Display the goals dashboard page.",
           "parameters": [],
-          "line_number": 117,
+          "line_number": 118,
           "blueprint": "run_strong",
           "full_url": "/strong/goals"
         },
@@ -464,7 +464,7 @@
           ],
           "docstring": "Display exercise max weights page.",
           "parameters": [],
-          "line_number": 127,
+          "line_number": 128,
           "blueprint": "run_strong",
           "full_url": "/strong/max-weights"
         },
@@ -478,7 +478,7 @@
           "parameters": [
             "exercise_id"
           ],
-          "line_number": 137,
+          "line_number": 138,
           "blueprint": "run_strong",
           "full_url": "/strong/api/exercise-max/<int:exercise_id>"
         },
@@ -490,7 +490,7 @@
           ],
           "docstring": "Display movement catalog page.",
           "parameters": [],
-          "line_number": 147,
+          "line_number": 150,
           "blueprint": "run_strong",
           "full_url": "/strong/movement-catalog"
         }
@@ -841,7 +841,7 @@
       ],
       "docstring": "API endpoint to log a new workout session.",
       "parameters": [],
-      "line_number": 89,
+      "line_number": 90,
       "blueprint": "run_strong",
       "full_url": "/strong/api/journal/log"
     },
@@ -853,7 +853,7 @@
       ],
       "docstring": "Display the enhanced fatigue dashboard page.",
       "parameters": [],
-      "line_number": 106,
+      "line_number": 107,
       "blueprint": "run_strong",
       "full_url": "/strong/fatigue_dashboard"
     },
@@ -865,7 +865,7 @@
       ],
       "docstring": "Display the goals dashboard page.",
       "parameters": [],
-      "line_number": 117,
+      "line_number": 118,
       "blueprint": "run_strong",
       "full_url": "/strong/goals"
     },
@@ -877,7 +877,7 @@
       ],
       "docstring": "Display exercise max weights page.",
       "parameters": [],
-      "line_number": 127,
+      "line_number": 128,
       "blueprint": "run_strong",
       "full_url": "/strong/max-weights"
     },
@@ -891,7 +891,7 @@
       "parameters": [
         "exercise_id"
       ],
-      "line_number": 137,
+      "line_number": 138,
       "blueprint": "run_strong",
       "full_url": "/strong/api/exercise-max/<int:exercise_id>"
     },
@@ -903,7 +903,7 @@
       ],
       "docstring": "Display movement catalog page.",
       "parameters": [],
-      "line_number": 147,
+      "line_number": 150,
       "blueprint": "run_strong",
       "full_url": "/strong/movement-catalog"
     }
@@ -1633,11 +1633,20 @@
               "decorators": []
             },
             {
+              "name": "get_exercises_for_library",
+              "docstring": "Get all available exercises.",
+              "parameters": [],
+              "return_type": "Dict",
+              "line_number": 32,
+              "is_async": false,
+              "decorators": []
+            },
+            {
               "name": "get_exercises_with_load",
               "docstring": "Get all available exercises with load values.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 32,
+              "line_number": 45,
               "is_async": false,
               "decorators": []
             },
@@ -1651,7 +1660,7 @@
                 }
               ],
               "return_type": "Dict",
-              "line_number": 41,
+              "line_number": 54,
               "is_async": false,
               "decorators": []
             },
@@ -1660,7 +1669,7 @@
               "docstring": "Get all workout sessions for the journal.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 50,
+              "line_number": 63,
               "is_async": false,
               "decorators": []
             },
@@ -1669,7 +1678,7 @@
               "docstring": "Get and structure fatigue data for the dashboard.",
               "parameters": [],
               "return_type": "Dict[(str, List)]",
-              "line_number": 59,
+              "line_number": 72,
               "is_async": false,
               "decorators": []
             },
@@ -1678,7 +1687,7 @@
               "docstring": "Get active goals and calculate their progress percentage.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 78,
+              "line_number": 91,
               "is_async": false,
               "decorators": []
             },
@@ -1692,7 +1701,7 @@
                 }
               ],
               "return_type": "int",
-              "line_number": 98,
+              "line_number": 111,
               "is_async": false,
               "decorators": []
             },
@@ -1706,7 +1715,7 @@
                 }
               ],
               "return_type": "str",
-              "line_number": 132,
+              "line_number": 145,
               "is_async": false,
               "decorators": []
             },
@@ -1720,7 +1729,7 @@
                 }
               ],
               "return_type": "float",
-              "line_number": 145,
+              "line_number": 158,
               "is_async": false,
               "decorators": []
             },
@@ -1729,7 +1738,7 @@
               "docstring": "Calculates a comprehensive, time-decayed fatigue analysis for the dashboard.\n\nThis on-the-fly calculation includes:\n- Exponentially decayed workload for higher accuracy.\n- Fatigue scores for individual muscles, body groups, and overall.\n- Human-readable interpretations of all scores.\n- Data structured for categorical filtering (Overall, Lower, Upper, Core).",
               "parameters": [],
               "return_type": "Dict",
-              "line_number": 153,
+              "line_number": 166,
               "is_async": false,
               "decorators": []
             },
@@ -1738,7 +1747,7 @@
               "docstring": "Get exercises with their maximum weights.",
               "parameters": [],
               "return_type": "List[Dict]",
-              "line_number": 242,
+              "line_number": 255,
               "is_async": false,
               "decorators": []
             },
@@ -1752,7 +1761,7 @@
                 }
               ],
               "return_type": "float",
-              "line_number": 251,
+              "line_number": 264,
               "is_async": false,
               "decorators": []
             }
