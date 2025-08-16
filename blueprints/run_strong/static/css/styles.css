@@ -1043,10 +1043,23 @@ body.runstrong {
   margin-bottom: 10px;
   align-items: center;
 }
-
+/* GPT Suggested */
 .form-container {
-  margin-bottom: 2rem;
+  margin: 1rem auto;
   padding: 1rem;
   border: 1px solid #ccc;
-  border-radius: 5px;
+  border-radius: 8px;
+  max-width: 1200px; /* keeps it centered on desktop */
+  width: 100%; /* full width on mobile */
+  box-sizing: border-box; /* padding doesn’t overflow */
+}
+.form-group input,
+.form-group textarea,
+.set-row select,
+.set-row input {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  font-size: 1rem;
+  box-sizing: border-box;
 }
