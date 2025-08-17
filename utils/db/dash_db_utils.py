@@ -497,7 +497,7 @@ def get_ctl_atl_tsb_tss_data(conn: sqlite3.Connection, days_to_retrieve=180, ath
         ctl_time_constant = 42
         atl_time_constant = 7
         
-        # Initialize columns correctly
+        # Initialize columns 
         daily_df['CTL'] = 0.0
         daily_df['ATL'] = 0.0
 

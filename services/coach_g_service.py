@@ -193,8 +193,8 @@ class CoachGService(RunStrongService):
                 latest_metrics = language_db_utils.get_latest_daily_training_metrics(conn=conn)
                 if not latest_metrics:
                     return "<p>I couldn't find any recent training data to give you a summary.</p>"
-                print(latest_metrics)
-                # This function doesn't use the LLM, it just formats data. This is correct.
+                
+                # This function doesn't use the LLM, it just formats data
                 prompt = (
                     f"### Your Training Status for {latest_metrics['date']}\n\n"
                     f"**CTL (Fitness):** {latest_metrics.get('ctl', 0):.1f}\n"

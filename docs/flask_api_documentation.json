@@ -127,8 +127,8 @@
         "services.runnervision_service.RunnerVisionService"
       ],
       "services_used": [
-        "RunnerVisionService",
-        "runnervision_service"
+        "runnervision_service",
+        "RunnerVisionService"
       ]
     },
     "running_hub": {
@@ -352,18 +352,18 @@
         "config.Config"
       ],
       "services_used": [
-        "CalendarService",
-        "ActivityService",
-        "activity_service",
-        "calendar_service",
-        "query_service",
-        "StatisticsService",
         "MotivationService",
-        "QueryService",
+        "StatisticsService",
+        "query_service",
         "trophy_service",
-        "statistics_service",
         "TrophyService",
-        "motivation_service"
+        "motivation_service",
+        "activity_service",
+        "QueryService",
+        "CalendarService",
+        "calendar_service",
+        "statistics_service",
+        "ActivityService"
       ]
     },
     "run_strong": {
